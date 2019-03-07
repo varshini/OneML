@@ -1,0 +1,121 @@
+﻿//Script GUID:84aac418-d282-416c-9bed-79712e4cec29
+//Used for tracking history
+
+#DECLARE In_path string = "/local/Projects/Compete/SlackTeamsZoomStrideOneHipFBSpark/SlackTeamsZoomStrideOneHipFBSparkLync/";
+#DECLARE In_patt string = "%Y/%m/TeamsCompetitorMetricsWin10_%Y-%m-%d.ss";
+#DECLARE startString string = "2017-09-01";
+#DECLARE endString string = "2017-09-30";
+
+
+//Read the Streams
+AppActivity =
+    SSTREAM STREAMSET @In_path
+            PATTERN   @In_patt
+            RANGE __date = [@startString, @endString];
+
+data_compete =
+    SELECT ProcessName,
+           TPId,
+           DeviceId,
+           Date.Month AS Month,
+           Date.Year AS Year
+    FROM AppActivity
+    WHERE ProcessName NOT IN ("lync.exe","ucmapi.exe","teams.exe");
+
+data_compete =
+    SELECT TPId,
+           Month,
+           Year,
+           COUNT(DISTINCT DeviceId) AS CompeteAppsMAD
+    FROM data_compete
+    GROUP BY TPId,
+             Month,
+             Year;
+
+data_microsoft = SELECT ProcessName,
+           TPId,
+           DeviceId,
+           Date.Month AS Month,
+           Date.Year AS Year
+    FROM AppActivity
+    WHERE ProcessName IN ("lync.exe","ucmapi.exe","teams.exe");
+
+data_microsoft =
+    SELECT TPId,
+           Month,
+           Year,
+           COUNT(DISTINCT DeviceId) AS MicrosoftAppsMAD
+    FROM data_microsoft
+    GROUP BY TPId,
+             Month,
+             Year;
+
+data =
+    SELECT data_compete. *,
+           data_microsoft.MicrosoftAppsMAD
+    FROM data_compete
+         FULL OUTER JOIN
+             data_microsoft
+         ON data_compete.TPId == data_microsoft.TPId;
+
+
+//Getting total Win10 MAD for Sep 2017
+
+sep_win10 =
+    SSTREAM @"/shares/asimov.prod.data/UserSensitive.Usage.Partner.Processed.M365.BusinessReporting.Processed/2017/09/M365Reporting_AggTpid_2017_09_30.ss";
+
+AppActivity =
+    SELECT TPId,
+           IsWin10,
+           IncludeInDeviceCounts,
+           IsWin10MAD,
+           DataDate.ToString() AS DataDate,
+           DeviceCount
+    FROM sep_win10
+    WHERE TPId.HasValue;
+
+win10_MAD =
+    SELECT TPId,
+           GetMonth(DataDate) AS Month,
+           GetYear(DataDate) AS Year,
+           DeviceCount
+    FROM AppActivity
+    WHERE IncludeInDeviceCounts == true AND IsWin10 == true AND IsWin10MAD == true;
+
+
+win10_MAD =
+    SELECT (int) TPId AS TPId,
+           Month,
+           Year,
+           SUM(DeviceCount) AS TotalWin10MAD
+    FROM win10_MAD
+    GROUP BY TPId,
+             Month,
+             Year;
+         
+final_data =
+    SELECT data. *,
+           win10_MAD.TotalWin10MAD
+    FROM data
+         INNER JOIN
+             win10_MAD
+         ON win10_MAD.TPId == data.TPId
+         AND win10_MAD.Month == data.Month
+         AND win10_MAD.Year == data.Year;    
+
+
+OUTPUT final_data
+TO SSTREAM "/my/SMC_NCA/Compete_Sep2017.ss";
+
+#CS
+public static int GetYear(string year)
+{
+        string str = year.Substring(0,4);
+        return Int32.Parse(str);
+}
+public static int GetMonth(string month)
+{
+         string str = month.Substring(4,2);
+         return Int32.Parse(str);
+}
+#ENDCS

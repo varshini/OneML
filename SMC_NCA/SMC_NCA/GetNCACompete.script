@@ -1,0 +1,121 @@
+﻿//Script GUID:5652bd2b-4200-4dd6-9a69-676e6d7cc52f
+//Used for tracking history
+
+//Compute the overall compete ratio and microsoft apps ratio
+
+//Windows data 
+#DECLARE In_path string = "/my/SMC_NCA/Compete/Win10Devices/";
+#DECLARE In_patt string = "%Y/%m/Win10_%Y-%m-%d.ss";
+#DECLARE startString string = "2017-09-01";
+#DECLARE endString string = "2017-09-30";
+
+
+//Read the Streams
+AppActivity =
+    SSTREAM STREAMSET @In_path
+            PATTERN   @In_patt
+            RANGE __date = [@startString, @endString];
+
+AppActivity =
+    SELECT TPId,
+           DeviceId,
+           DateTime.Parse(Date) AS Date
+    FROM AppActivity;
+
+AppActivity =
+    SELECT TPId,
+           DeviceId,
+           Date.Month AS Month,
+           Date.Year AS Year
+    FROM AppActivity;
+
+win10counts =
+    SELECT TPId,
+           Month, 
+           Year, 
+           COUNT(DISTINCT DeviceId) AS MonthlyWin10Devices
+    FROM AppActivity
+    GROUP BY TPId,
+             Month,
+             Year;
+
+
+//Compete data
+
+#DECLARE In_path1 string = "/local/Projects/Compete/SlackTeamsZoomStrideOneHipFBSpark/SlackTeamsZoomStrideOneHipFBSparkLync/";
+#DECLARE In_patt1 string = "%Y/%m/TeamsCompetitorMetricsWin10_%Y-%m-%d.ss";
+#DECLARE startString1 string = "2017-09-01";
+#DECLARE endString1 string = "2017-09-30";
+
+AppActivity =
+    SSTREAM STREAMSET @In_path1
+            PATTERN   @In_patt1
+            RANGE __date = [@startString1, @endString1];
+
+//Compete data counts
+overall_compete =
+    SELECT *
+    FROM AppActivity
+    WHERE ProcessName NOT IN("lync.exe", "teams.exe", "ucmapi.exe");
+
+overall_compete =
+    SELECT TPId,
+           DeviceId,
+           Date.Month AS Month,
+           Date.Year AS Year
+    FROM overall_compete;
+
+overall_compete =
+    SELECT TPId,
+           Month,
+           Year,
+           COUNT(DISTINCT DeviceId) AS MonthlyCompeteDevices
+    FROM overall_compete
+    GROUP BY TPId,
+             Month,
+             Year;
+
+overall_compete =
+    SELECT overall_compete.*,
+           win10counts.MonthlyWin10Devices           
+    FROM win10counts
+         INNER JOIN
+             overall_compete
+         ON win10counts.TPId == overall_compete.TPId AND win10counts.Month == overall_compete.Month AND win10counts.Year == overall_compete.Year;
+
+OUTPUT overall_compete
+TO SSTREAM @"/my/SMC_NCA/Compete/Sep2017CompeteMAU.ss";
+
+//Microsoft Apps count
+microsoft_apps =
+    SELECT *
+    FROM AppActivity
+    WHERE ProcessName IN("lync.exe", "teams.exe", "ucmapi.exe");
+
+microsoft_apps =
+    SELECT TPId,
+           DeviceId,
+           Date.Month AS Month,
+           Date.Year AS Year
+    FROM microsoft_apps;
+
+microsoft_apps =
+    SELECT TPId,
+           Month,
+           Year,
+           COUNT(DISTINCT DeviceId) AS MonthlyMicrosoftDevices
+    FROM microsoft_apps
+    GROUP BY TPId,
+             Month,
+             Year;
+
+overall_ms =
+    SELECT microsoft_apps.*,
+           win10counts.MonthlyWin10Devices           
+    FROM win10counts
+         INNER JOIN
+             microsoft_apps
+         ON win10counts.TPId == microsoft_apps.TPId AND win10counts.Month == microsoft_apps.Month AND win10counts.Year == microsoft_apps.Year;
+
+OUTPUT overall_ms
+TO SSTREAM @"/my/SMC_NCA/Compete/Sep2017MicrosoftMAU.ss";

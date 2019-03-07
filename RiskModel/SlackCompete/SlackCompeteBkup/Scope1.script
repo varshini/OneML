@@ -1,0 +1,65 @@
+﻿//Script GUID:f3ffd930-c978-4d75-8d47-acc3d11d897c
+//Used for tracking history
+
+//getting total number of Win10 devices per tenant/TPID per month
+
+
+
+
+
+/*
+#DECLARE In_path string = "/shares/asimov.prod.data/UserSensitive.Usage.Partner.Processed.M365.BusinessReporting.Processed/";
+#DECLARE In_patt string = "%Y/%m/M365Reporting_AggTpid_%Y_%m_%d.ss";
+#DECLARE startString string = "2017-01-01";
+#DECLARE endString string = "2017-01-28";
+
+
+AppActivity =
+    SSTREAM STREAMSET @In_path
+            PATTERN   @In_patt
+            RANGE __date = [@startString, @endString];
+
+TotalDevicesCount =
+    SELECT SUM(DeviceCount) AS TotalDevices
+    FROM AppActivity
+    GROUP BY TPId
+    WHERE IsWin10 AND TPId.HasValue;
+
+OUTPUT TotalDevicesCount
+TO SSTREAM @TenantOutput;
+*/
+
+//for 2017 dates, the dates have been aggregated for the whole month
+
+#DECLARE TenantOutput string = @"/my/SlackCompete/Win10DeviceCounts/2018/01_Device_Count.ss";
+
+strategic_tenants_ss =
+    SSTREAM "/users/mialdea/CapOneInvestigation/400Strategic50kPlusSeats_TenantTpid.ss";
+
+unique_tpids =
+    SELECT DISTINCT ((int)PrimaryTPID) AS PrimaryTPID
+    FROM strategic_tenants_ss;
+
+in_data =
+    SSTREAM "/shares/asimov.prod.data/UserSensitive.Usage.Partner.Processed.M365.BusinessReporting.Processed/2018/01/M365Reporting_AggTpid_2018_01_31.ss";
+
+data = SELECT (int) TPId AS TPId,SUM(DeviceCount) AS TotalDevices
+    FROM in_data
+    GROUP BY TPId
+    WHERE IsWin10 == true AND TPId.HasValue;
+
+
+tenant_data =
+    SELECT *
+    FROM data
+         INNER JOIN
+             unique_tpids
+         ON data.TPId == unique_tpids.PrimaryTPID;
+
+OUTPUT tenant_data
+TO SSTREAM @TenantOutput;
+
+
+
+
+

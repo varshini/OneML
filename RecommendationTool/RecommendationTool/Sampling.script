@@ -1,0 +1,12 @@
+﻿//Script GUID:89d1cbf1-9da2-47ad-beab-df132f43f597
+//Used for tracking history
+
+tenant_view =
+    SSTREAM @"/shares/modpim.anfield/O365MarketingDatasets/Commercial/SegmentationModel/2017/TenantUsageSegmentation_2017_03_01.ss";
+
+data =
+    SELECT DISTINCT SegmentGroup
+    FROM tenant_view;
+
+OUTPUT data
+TO SSTREAM @"/my/RecommendationTool/Segments.ss";

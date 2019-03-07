@@ -1,0 +1,67 @@
+﻿//Script GUID:487b8c99-67b4-4f50-b4e5-8840d83cc073
+//Used for tracking history
+
+
+#DECLARE tpid_list_csv_input string = @"/users/varamase/TenantHealth/Strategic_TPID.csv";
+tenant_tpid_mapping_input =
+    SSTREAM @"/shares/IDEAs.Prod/local/Scheduled/Datasets/Public/Profiles/Tenants/MSSalesTenants.ss";
+qe_input =
+    SSTREAM @"/shares/modpim.anfield/O365MarketingDatasets/Commercial/FieldMetrics/ActiveUsage/2018/05/ActiveUsageOutput_2018_05_31.ss";
+
+#DECLARE tpid_list_ss_out string = @"/users/varamase/TenantHealth/Strategic_TPID_1.ss";
+#DECLARE tpid_tenant_qe_out string = @"/users/varamase/TenantHealth/TPID_Tenant_Mapping_QE_1.ss";
+
+//Uploading the strategic TPID list from csv to ss
+data_ss = 
+    EXTRACT 
+        TPId     : int
+    FROM
+    @tpid_list_csv_input
+    USING DefaultTextExtractor(delimiter: ',');
+
+OUTPUT data_ss
+TO SSTREAM @tpid_list_ss_out;
+
+//Mapping the TPIDs to the tenant ids
+mapped_data =
+    SELECT data_ss.TPId,
+           tenant_tpid_mapping_input.OMSTenantId
+    FROM data_ss
+         LEFT JOIN
+             tenant_tpid_mapping_input
+         ON data_ss.TPId == tenant_tpid_mapping_input.CustomerTopParentOrgId;
+
+//Getting the qualified entitilments
+
+tpid_tenant =
+    SELECT *
+    FROM mapped_data
+    WHERE OMSTenantId != null;
+
+qe =
+    SELECT *
+    FROM qe_input
+    WHERE TenantId != null;
+
+qe =
+    SELECT TenantId,
+           SUM(QualifiedEntitlements) AS TotalQualifiedEntitlements
+    FROM qe
+    GROUP BY TenantId;
+
+tpid_tenant =
+    SELECT TPId,
+           Guid.Parse(OMSTenantId) AS OMSTenantId
+    FROM tpid_tenant;
+
+
+final_qe_data =
+    SELECT tpid_tenant. *,
+           qe.TotalQualifiedEntitlements
+    FROM tpid_tenant
+         LEFT JOIN
+             qe
+         ON tpid_tenant.OMSTenantId == qe.TenantId;
+
+OUTPUT final_qe_data
+TO SSTREAM @tpid_tenant_qe_out;

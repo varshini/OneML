@@ -1,0 +1,164 @@
+﻿//Script GUID:c501e91b-7985-4e8a-9a02-3da800705184
+//Used for tracking history
+
+//Code to pull Capital One NPS data
+
+/*
+#DECLARE TenantOutput string = @"/my/OCV/ocv_2017_2018.ss";
+
+//read OCV data from source
+ocv_data =
+    SSTREAM "/local/Ocv/Prod/Processed/OcvItems.ss";
+
+required_data =
+    SELECT *
+    FROM ocv_data 
+    //WITH TIMERANGE "01/01/2017 12:00:00AM","03/01/2017 12:00:00AM";
+    WHERE TimeSlice >= DateTime.Parse("01/01/2017 12:00:00AM");
+
+OUTPUT required_data
+TO SSTREAM @TenantOutput;
+*/
+
+//join above ocv data with tenants list 
+
+/*
+#DECLARE ocvOutput string = @"/my/OCV/ocv_tenants_cpe_pulsegroup.ss";
+    
+ocv_data =
+    SSTREAM "/my/OCV/ocv_2017_2018.ss";
+
+tenant_list =
+    SSTREAM "/users/mialdea/CapOneInvestigation/400Strategic50kPlusSeats_TenantTpid.ss";
+
+data =
+    /*SELECT ocv_data.OcvUrl, ocv_data.TimeSlice, ocv_data.OcvSource,ocv_data.OcvSourceType,ocv_data.Area,ocv_data.ClientCountry,ocv_data.CreatedDate,ocv_data.CustomerId, ocv_data.CustomerType, ocv_data.ExoEnabledUsers,ocv_data.FeedbackStatus,ocv_data.FirstPaidSubscriptionDateId,ocv_data.LicensedUsers,
+           ocv_data.LyoEnabledUsers,ocv_data.OcvSentimentLabel,ocv_data.OcvSentimentValue,ocv_data.OriginalText,Product,PulseMonthId,PulseRating,PulseRatingGroup,TaggedThemes,TenantId,WorkloadName,FeedbackText
+    FROM ocv_data
+         INNER JOIN
+             tenant_list
+         ON tenant_list.OMSTenantId == ocv_data.TenantId
+    WHERE ocv_data.OcvSource == "CPE Pulse";
+    */
+    /*
+      SELECT PulseMonthId,TenantId,WorkloadName,PulseRating,PulseRatingGroup
+    FROM ocv_data
+         INNER JOIN
+             tenant_list
+         ON tenant_list.OMSTenantId == ocv_data.TenantId
+    WHERE ocv_data.OcvSource == "CPE Pulse";
+
+OUTPUT data
+TO SSTREAM @ocvOutput;
+
+/*
+final_data = PROCESS data
+      PRODUCE FeedbackText
+      USING MyProcessor;
+
+#CS
+public class MyProcessor : Processor
+{
+    public override Schema Produces(string[] requested_columns, string[] args, Schema input_schema)
+    {
+        var output_schema = input_schema.Clone();
+        return output_schema;
+    }
+
+    public override IEnumerable<Row> Process(RowSet input_rowset, Row output_row, string[] args)
+    {
+        foreach (Row input_row in input_rowset.Rows)
+        {
+            input_row.CopyTo(output_row);
+            string feedback = input_row[0].String;
+            string process_feedback = feedback.Replace(","," ");
+            output_row[0].Set(process_feedback);
+            yield return output_row;
+
+
+            //string market = input_row[0].String;
+            //output_row[0].Set( "FOO" + market );
+            //yield return output_row;
+        }
+    }
+}
+
+#ENDCS
+
+*/
+
+//CPE pulse
+#DECLARE ocvOutput string = @"/my/OCV/ocv_tenants_cpe_sentiment.ss";
+    
+ocv_data =
+    SSTREAM "/my/OCV/ocv_tenants_cpe.ss";
+
+data =
+    SELECT PulseMonthId,
+           TenantId,
+           OriginalText,
+           OcvSentimentLabel,
+           OcvSentimentValue
+           
+    FROM ocv_data;
+
+final_data = PROCESS data
+      PRODUCE PulseMonthId,
+           TenantId,
+           OriginalText,
+           OcvSentimentLabel,
+           OcvSentimentValue
+      USING MyProcessor;
+
+OUTPUT final_data
+TO SSTREAM @ocvOutput;
+
+
+#CS
+public class MyProcessor : Processor
+{
+    public override Schema Produces(string[] requested_columns, string[] args, Schema input_schema)
+    {
+        var output_schema = input_schema.Clone();
+        return output_schema;
+    }
+
+    public override IEnumerable<Row> Process(RowSet input_rowset, Row output_row, string[] args)
+    {
+        foreach (Row input_row in input_rowset.Rows)
+        {
+            input_row.CopyTo(output_row);
+            string feedback = input_row[2].String;
+            string sentimentLabel = input_row[3].String;
+            string sentimentValue = input_row[4].String;
+            feedback = feedback.ToLower();
+            if (!(string.IsNullOrWhiteSpace(feedback)) && !(string.IsNullOrWhiteSpace(sentimentLabel)) && !(string.IsNullOrWhiteSpace(sentimentValue)))
+            {
+                //string process_feedback = feedback.Replace(","," ");
+                //string process_feedback = feedback.Replace(","," ");
+                
+                if (feedback.Contains("no issues"))
+                {
+                    output_row[3].Set("Positive");
+                    output_row[4].Set("1.0");
+                    yield return output_row;
+                }
+                else
+                {
+                 yield return output_row;
+                }
+           }
+            else 
+           {
+                yield return output_row;
+           }      
+
+
+            //string market = input_row[0].String;
+            //output_row[0].Set( "FOO" + market );
+            //yield return output_row;
+        }
+    }
+}
+
+#ENDCS

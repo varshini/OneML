@@ -1,0 +1,616 @@
+﻿//Script GUID:c3523a8b-2bac-4249-9201-2b12f9e548fa
+//Used for tracking history
+
+// ====================================================================================================================
+// <copyright company="Microsoft Inc">
+//   (c) 2018 Microsoft Inc.
+// </copyright>
+// <summary>
+//     WHERE = cosmos14\office.adhoc; runtime ~ 6 min
+//       WHY = Creating WL and platform specific connected flags with the raw dataset from MonthlyAppServiceData.Script
+// </summary>
+// <history>  
+//    [varamase]   :  2018-07-19: imported from previous version (https://microsoft.sharepoint.com/teams/IDEAsV-Teams/Shared%20Documents/Forms/AllItems.aspx?id=%2Fteams%2FIDEAsV%2DTeams%2FShared%20Documents%2FManaged%20and%20Tenant%20Insights%2FTransition%2F201803%5FNidhi%2FModernMAU%2Fscripts%2FOI%20Data)
+//    [varamase] : 2018-07-19: Parameterizing  and cleaning up
+// </history>
+// ====================================================================================================================
+// Tools for GDPR tagging
+MODULE "/shares/PXSCosmos14.Prod/PXS.DeleteSignal.PROD/PrivacyAnnotation/PrivacyAnnotation.module";
+USING Privacy;
+// ====================================================================================================================
+
+// Script Parameters
+#DECLARE outputRoot     string   = @"/shares/ACE.proc/local/Projects/EntTenantRiskModel/ModernMAU/"; // if running on ACE.proc "/local/Projects/"; if running on office.adhoc "/shares/ACE.proc/local/Projects/"
+#DECLARE snapDate       DateTime = DateTime.Parse(@@PROCESS_DATE_START@@);
+#DECLARE snapDateStr    string   = @snapDate.ToString("yyyy-MM-dd");
+
+// Inputs
+#DECLARE  servdata_str string = string.Format("{0}WLService_ESLT_{1:yyyyMM}.ss", @outputRoot, @snapDate);
+    
+// Output
+#DECLARE wlplatformflags_output          string = string.Format("{0}WLService_ESLT_Puid_{1:yyyyMM}.ss", @outputRoot, @snapDate);
+ 
+// ====================================================================================================================
+
+appServiceData = SSTREAM @servdata_str;
+
+
+Puid_flags =
+    SELECT  DateTime.Parse(@snapDateStr) AS SnapShotDate,
+            (TenantId != null ? TenantId.ToUpper() : TenantId) AS TenantId,
+            (UserId != null ? UserId.ToUpper() : UserId) AS userid,
+                        
+// EXO Flags (connected, modern, platform)
+
+           SUM(
+                (
+                    Application == "EXO"
+                )
+            ? 1 : 0 ) AS MatchedEXOCnt,
+            SUM(
+                (
+                    Application == "EXO" AND
+                    (
+                        ( EndPoint == "Outlook" AND MajorVersion == "16" AND Platform IN ("Windows", "Windows NT","Windows 10","Windows 7","Windows 8.1","Windows 8","Windows XP","Windows Vista") ) OR
+                        ( EndPoint IN ( "Outlook", "MacOutlook" ) AND MajorVersion IN ( "16", "15" ) AND Platform IN ("Mac OS X", "Mac+OS+X", "Mac", "Mac OS") ) // Added "MacOutlook" and MajorVersion "15"
+                    )
+                )
+            ? 1 : 0 ) AS ConnectedEXO_OLDesktop16Cnt,
+           SUM(
+                (
+                    Application == "EXO" AND EndPoint == "Outlook" AND MajorVersion == "16" AND Platform IN ("Windows", "Windows NT","Windows 10","Windows 7","Windows 8.1","Windows 8","Windows XP","Windows Vista")
+                )
+            ? 1 : 0 ) AS ConnectedEXO_OLPc16Cnt,
+           SUM(
+                (
+                    Application == "EXO" AND EndPoint IN ( "Outlook", "MacOutlook" ) AND MajorVersion IN ( "16", "15" ) AND Platform IN ("Mac OS X", "Mac+OS+X", "Mac", "Mac OS") // Added "MacOutlook" and MajorVersion "15"
+                )
+            ? 1 : 0 ) AS ConnectedEXO_OLMac16Cnt,
+           SUM(
+                (
+                    Application == "EXO" AND EmailProtocol == "OWA"
+                )
+            ? 1 : 0 ) AS ConnectedEXO_OWACnt,
+           SUM(
+                (
+                    Application == "EXO" AND
+                    (
+                        ( EndPoint == "OutlookMobile" AND MajorVersion == "2" AND Platform == "iOS" ) OR
+                        ( EndPoint == "OutlookMobile" AND MajorVersion == "2" AND Platform == "Android" )
+                    )
+                )
+            ? 1 : 0 ) AS ConnectedEXO_OLMobileNewCnt,
+           SUM(
+                (
+                    Application == "EXO" AND
+                    (
+                        ( EndPoint == "Outlook" AND MajorVersion != "16" AND Platform IN ("Windows", "Windows NT","Windows 10","Windows 7","Windows 8.1","Windows 8","Windows XP","Windows Vista") ) OR
+                        ( EndPoint IN ( "Outlook", "MacOutlook" ) AND MajorVersion NOT IN ( "16", "15" ) AND Platform IN ("Mac OS X", "Mac+OS+X", "Mac", "Mac OS") ) // Added "MacOutlook" and MajorVersion "15"
+                    )
+                )
+            ? 1 : 0 ) AS ConnectedEXO_OLDesktopOldCnt,
+           SUM(
+                (
+                    Application == "EXO" AND
+                    EndPoint == "Outlook" AND MajorVersion != "16" AND Platform IN ("Windows", "Windows NT","Windows 10","Windows 7","Windows 8.1","Windows 8","Windows XP","Windows Vista")
+                )
+            ? 1 : 0 ) AS ConnectedEXO_OLPcOldCnt,
+           SUM(
+                (
+                    Application == "EXO" AND
+                    EndPoint IN ( "Outlook", "MacOutlook" ) AND MajorVersion NOT IN ( "16", "15" ) AND Platform IN ("Mac OS X", "Mac+OS+X", "Mac", "Mac OS") // Added "MacOutlook" and MajorVersion "15"
+                )
+            ? 1 : 0 ) AS ConnectedEXO_OLMacOldCnt,
+           SUM(
+                (
+                    Application == "EXO" AND
+                    EndPoint == "OutlookMobile" AND MajorVersion != "2" AND Platform IN ( "iOS", "Android" )
+                )
+            ? 1 : 0 ) AS ConnectedEXO_OLMobileOldCnt,
+
+// SPO Flags (connected, modern, platform)
+           SUM(
+                (
+                    Application == "SPO"
+                )
+            ? 1 : 0 ) AS MatchedSPOCnt,
+           SUM(
+                (
+                    Application == "SPO" AND
+                    EndPoint IN (
+                                   "Browser", "OneDrive Sync", "OneDrive iOS App", "OneDrive Android App", "Outlook", "OWA", "Office Online",
+                                   "OneNote", "OneNote iOS App", "OneNote Android App", "Word", "Word iOS App", "Word Android App",
+                                   "Excel", "Excel iOS App", "Excel Android App", "PowerPoint", "PowerPoint iOS App", "PowerPoint Android App"
+                               )
+                )
+            ? 1 : 0 ) AS AppCoveredSPOCnt,
+           SUM(
+                ( Application == "SPO" AND
+                  (    
+                    ( EndPoint == "OneNote" AND MajorVersion == "16" AND Platform IN ( "Windows", "Windows NT", "Windows 10", "Windows 7", "Windows 8", "Windows 8.1", "Windows Vista", "Windows XP","Windows Server 2003" ) ) OR
+                    ( EndPoint == "OneNote" AND MajorVersion IN ( "16", "15" ) AND Platform IN ( "Mac OS X", "Mac+OS+X", "Mac", "Mac OS" ) ) OR // Added MajorVersion "15"
+                    ( EndPoint == "Word" AND MajorVersion == "16" AND Platform IN ("Windows", "Windows NT", "Windows 10", "Windows 7", "Windows 8", "Windows 8.1", "Windows Vista", "Windows XP","Windows Server 2003") ) OR
+                    ( EndPoint == "Word" AND MajorVersion IN ( "16", "15" ) AND Platform IN ("Mac OS X" , "Mac+OS+X" , "Mac" , "Mac OS") ) OR // Added MajorVersion "15"
+                    ( EndPoint == "Excel" AND MajorVersion == "16" AND Platform IN ("Windows" , "Windows NT", "Windows 10", "Windows 7", "Windows 8", "Windows 8.1", "Windows Vista", "Windows XP","Windows Server 2003") ) OR
+                    ( EndPoint == "Excel" AND MajorVersion IN ( "16", "15" ) AND Platform IN ("Mac OS X" , "Mac+OS+X" , "Mac" , "Mac OS") ) OR // Added MajorVersion "15"
+                    ( EndPoint == "PowerPoint" AND MajorVersion == "16" AND Platform IN ("Windows", "Windows NT", "Windows 10", "Windows 7", "Windows 8", "Windows 8.1", "Windows Vista", "Windows XP","Windows Server 2003") ) OR
+                    ( EndPoint == "PowerPoint" AND MajorVersion IN ( "16", "15" ) AND Platform IN ("Mac OS X" , "Mac+OS+X" , "Mac" , "Mac OS") ) OR // Added MajorVersion "15"
+                    ( EndPoint == "Outlook" AND MajorVersion == "16" AND Platform IN ("Windows", "Windows NT", "Windows 10", "Windows 7", "Windows 8", "Windows 8.1", "Windows Vista", "Windows XP","Windows Server 2003") )
+                   
+                  )
+                )
+            ? 1 : 0 ) AS ConnectedSPO_WXPONDesktop16Cnt,
+           SUM(
+                ( Application == "SPO" AND
+                  (    
+                    ( EndPoint == "OneNote" AND MajorVersion == "16" AND Platform IN ( "Windows", "Windows NT", "Windows 10", "Windows 7", "Windows 8", "Windows 8.1", "Windows Vista", "Windows XP","Windows Server 2003" ) ) OR
+                    ( EndPoint == "Word" AND MajorVersion == "16" AND Platform IN ("Windows", "Windows NT", "Windows 10", "Windows 7", "Windows 8", "Windows 8.1", "Windows Vista", "Windows XP","Windows Server 2003") ) OR
+                    ( EndPoint == "Excel" AND MajorVersion == "16" AND Platform IN ("Windows" , "Windows NT", "Windows 10", "Windows 7", "Windows 8", "Windows 8.1", "Windows Vista", "Windows XP","Windows Server 2003") ) OR
+                    ( EndPoint == "PowerPoint" AND MajorVersion == "16" AND Platform IN ("Windows", "Windows NT", "Windows 10", "Windows 7", "Windows 8", "Windows 8.1", "Windows Vista", "Windows XP","Windows Server 2003") ) OR 
+                    ( EndPoint == "Outlook" AND MajorVersion == "16" AND Platform IN ("Windows", "Windows NT", "Windows 10", "Windows 7", "Windows 8", "Windows 8.1", "Windows Vista", "Windows XP","Windows Server 2003") )
+                  )
+                )
+            ? 1 : 0 ) AS ConnectedSPO_WXPONPc16Cnt,
+           SUM(
+                (
+                    Application == "SPO" AND EndPoint == "OneNote" AND MajorVersion == "16" AND Platform IN ( "Windows", "Windows NT", "Windows 10", "Windows 7", "Windows 8", "Windows 8.1", "Windows Vista", "Windows XP","Windows Server 2003" )
+                )
+            ? 1 : 0 ) AS ConnectedSPO_OneNotePc16Cnt,
+           SUM(
+                (
+                    Application == "SPO" AND EndPoint == "Word" AND MajorVersion == "16" AND Platform IN ("Windows", "Windows NT", "Windows 10", "Windows 7", "Windows 8", "Windows 8.1", "Windows Vista", "Windows XP","Windows Server 2003")
+                )
+            ? 1 : 0 ) AS ConnectedSPO_WordPc16Cnt,
+           SUM(
+                (
+                    Application == "SPO" AND EndPoint == "Excel" AND MajorVersion == "16" AND Platform IN ("Windows" , "Windows NT", "Windows 10", "Windows 7", "Windows 8", "Windows 8.1", "Windows Vista", "Windows XP","Windows Server 2003")
+                )
+            ? 1 : 0 ) AS ConnectedSPO_ExcelPc16Cnt,
+           SUM(
+                (
+                    Application == "SPO" AND EndPoint == "PowerPoint" AND MajorVersion == "16" AND Platform IN ("Windows", "Windows NT", "Windows 10", "Windows 7", "Windows 8", "Windows 8.1", "Windows Vista", "Windows XP","Windows Server 2003")
+                )
+            ? 1 : 0 ) AS ConnectedSPO_PptPc16Cnt,
+           SUM(
+                (
+                    Application == "SPO" AND EndPoint == "Outlook" AND MajorVersion == "16" AND Platform IN ("Windows", "Windows NT", "Windows 10", "Windows 7", "Windows 8", "Windows 8.1", "Windows Vista", "Windows XP","Windows Server 2003")
+                )
+            ? 1 : 0 ) AS ConnectedSPO_OutlookPc16Cnt,
+           
+           SUM(
+                ( Application == "SPO" AND
+                  (    
+                    ( EndPoint == "OneNote" AND MajorVersion IN ( "16", "15" ) AND Platform IN ( "Mac OS X", "Mac+OS+X", "Mac", "Mac OS" ) ) OR // Added MajorVersion "15"
+                    ( EndPoint == "Word" AND MajorVersion IN ( "16", "15" ) AND Platform IN ("Mac OS X" , "Mac+OS+X" , "Mac" , "Mac OS") ) OR // Added MajorVersion "15"
+                    ( EndPoint == "Excel" AND MajorVersion IN ( "16", "15" ) AND Platform IN ("Mac OS X" , "Mac+OS+X" , "Mac" , "Mac OS") ) OR // Added MajorVersion "15"
+                    ( EndPoint == "PowerPoint" AND MajorVersion IN ( "16", "15" ) AND Platform IN ("Mac OS X" , "Mac+OS+X" , "Mac" , "Mac OS") ) // Added MajorVersion "15"
+                  )
+                )
+            ? 1 : 0 ) AS ConnectedSPO_WXPONMac16Cnt,
+           SUM(
+                (
+                    Application == "SPO" AND EndPoint == "OneNote" AND MajorVersion IN ( "16", "15" ) AND Platform IN ( "Mac OS X", "Mac+OS+X", "Mac", "Mac OS" ) // Added MajorVersion "15"
+                )
+            ? 1 : 0 ) AS ConnectedSPO_OneNoteMac16Cnt,
+           SUM(
+                (
+                    Application == "SPO" AND EndPoint == "Word" AND MajorVersion IN ( "16", "15" ) AND Platform IN ("Mac OS X" , "Mac+OS+X" , "Mac" , "Mac OS") // Added MajorVersion "15"
+                )
+            ? 1 : 0 ) AS ConnectedSPO_WordMac16Cnt,
+           SUM(
+                (
+                    Application == "SPO" AND EndPoint == "Excel" AND MajorVersion IN ( "16", "15" ) AND Platform IN ("Mac OS X" , "Mac+OS+X" , "Mac" , "Mac OS") // Added MajorVersion "15"
+                )
+            ? 1 : 0 ) AS ConnectedSPO_ExcelMac16Cnt,
+           SUM(
+                (
+                    Application == "SPO" AND EndPoint == "PowerPoint" AND MajorVersion IN ( "16", "15" ) AND Platform IN ("Mac OS X" , "Mac+OS+X" , "Mac" , "Mac OS") // Added MajorVersion "15"
+                )
+            ? 1 : 0 ) AS ConnectedSPO_PptMac16Cnt,
+           SUM(
+                (
+                    Application == "SPO" AND
+                    EndPoint == "OneDrive Sync" AND MajorVersion == "17" AND Platform IN ( "Windows", "Windows NT", "Mac OS X", "Mac+OS+X", "Mac", "Mac OS", "Windows 10", "Windows 7", "Windows 8", "Windows 8.1", "Windows Vista", "Windows XP","Windows Server 2003" )
+                )
+            ? 1 : 0 ) AS ConnectedSPO_ODSync17Cnt,
+           SUM(
+                (
+                    Application == "SPO" AND
+                    EndPoint == "OneDrive Sync" AND MajorVersion == "17" AND Platform IN ( "Windows", "Windows NT", "Windows 10", "Windows 7", "Windows 8", "Windows 8.1", "Windows Vista", "Windows XP","Windows Server 2003" )
+                )
+            ? 1 : 0 ) AS ConnectedSPO_ODSyncPc17Cnt,
+           SUM(
+                (
+                    Application == "SPO" AND
+                    EndPoint == "OneDrive Sync" AND MajorVersion == "17" AND Platform IN ( "Mac OS X", "Mac+OS+X", "Mac", "Mac OS" )
+                )
+            ? 1 : 0 ) AS ConnectedSPO_ODSyncMac17Cnt,
+           SUM(
+                (
+                    Application == "SPO" AND EndPoint == "Browser"
+                )
+            ? 1 : 0 ) AS ConnectedSPO_BrowserCnt,
+           SUM(
+                (
+                    Application == "SPO" AND EndPoint == "OWA"
+                )
+            ? 1 : 0 ) AS ConnectedSPO_OWACnt,
+           
+           SUM(
+                ( Application == "SPO" AND
+                  (
+                    ( EndPoint == "OneNote iOS App" AND MajorVersion == "16" AND Platform == "iOS" ) OR
+                    ( EndPoint == "OneNote Android App" AND MajorVersion == "16" AND Platform == "Android" ) OR
+                    ( EndPoint == "Word iOS App" AND MajorVersion == "2" AND Platform == "iOS" ) OR
+                    ( EndPoint == "Word Android App" AND MajorVersion == "16" AND Platform == "Android" ) OR
+                    ( EndPoint == "Excel iOS App" AND MajorVersion == "2" AND Platform == "iOS" ) OR
+                    ( EndPoint == "Excel Android App" AND MajorVersion == "16" AND Platform == "Android" ) OR
+                    ( EndPoint == "PowerPoint iOS App" AND MajorVersion == "2" AND Platform == "iOS" ) OR
+                    ( EndPoint == "PowerPoint Android App" AND MajorVersion == "16" AND Platform == "Android" )
+                  )
+                )
+            ? 1 : 0 ) AS ConnectedSPO_WXPONMobileNewCnt,
+           SUM(
+                ( Application == "SPO" AND
+                  (
+                    ( EndPoint == "OneNote iOS App" AND MajorVersion == "16" AND Platform == "iOS" ) OR
+                    ( EndPoint == "OneNote Android App" AND MajorVersion == "16" AND Platform == "Android" )
+                  )
+                )
+            ? 1 : 0 ) AS ConnectedSPO_OneNoteMobileNewCnt,
+           SUM(
+                ( Application == "SPO" AND
+                  (
+                    ( EndPoint == "Word iOS App" AND MajorVersion == "2" AND Platform == "iOS" ) OR
+                    ( EndPoint == "Word Android App" AND MajorVersion == "16" AND Platform == "Android" )
+                  )
+                )
+            ? 1 : 0 ) AS ConnectedSPO_WordMobileNewCnt,
+           SUM(
+                ( Application == "SPO" AND
+                  (
+                    ( EndPoint == "Excel iOS App" AND MajorVersion == "2" AND Platform == "iOS" ) OR
+                    ( EndPoint == "Excel Android App" AND MajorVersion == "16" AND Platform == "Android" )
+                  )
+                )
+            ? 1 : 0 ) AS ConnectedSPO_ExcelMobileNewCnt,
+           SUM(
+                ( Application == "SPO" AND
+                  (
+                    ( EndPoint == "PowerPoint iOS App" AND MajorVersion == "2" AND Platform == "iOS" ) OR
+                    ( EndPoint == "PowerPoint Android App" AND MajorVersion == "16" AND Platform == "Android" )
+                  )
+                )
+            ? 1 : 0 ) AS ConnectedSPO_PptMobileNewCnt,
+           SUM(
+                ( Application == "SPO" AND
+                  (    
+                    ( EndPoint == "OneNote" AND MajorVersion != "16" AND Platform IN ( "Windows", "Windows NT", "Windows 10", "Windows 7", "Windows 8", "Windows 8.1", "Windows Vista", "Windows XP","Windows Server 2003" ) ) OR
+                    ( EndPoint == "OneNote" AND MajorVersion NOT IN ( "16", "15" ) AND Platform IN ( "Mac OS X", "Mac+OS+X", "Mac", "Mac OS" ) ) OR // Added MajorVersion "15"
+                    ( EndPoint == "Word" AND MajorVersion != "16" AND Platform IN ("Windows", "Windows NT", "Windows 10", "Windows 7", "Windows 8", "Windows 8.1", "Windows Vista", "Windows XP","Windows Server 2003") ) OR
+                    ( EndPoint == "Word" AND MajorVersion NOT IN ( "16", "15" ) AND Platform IN ("Mac OS X" , "Mac+OS+X" , "Mac" , "Mac OS") ) OR // Added MajorVersion "15"
+                    ( EndPoint == "Excel" AND MajorVersion != "16" AND Platform IN ("Windows" , "Windows NT", "Windows 10", "Windows 7", "Windows 8", "Windows 8.1", "Windows Vista", "Windows XP","Windows Server 2003") ) OR
+                    ( EndPoint == "Excel" AND MajorVersion NOT IN ( "16", "15" ) AND Platform IN ("Mac OS X" , "Mac+OS+X" , "Mac" , "Mac OS") ) OR // Added MajorVersion "15"
+                    ( EndPoint == "PowerPoint" AND MajorVersion != "16" AND Platform IN ("Windows", "Windows NT", "Windows 10", "Windows 7", "Windows 8", "Windows 8.1", "Windows Vista", "Windows XP","Windows Server 2003") ) OR
+                    ( EndPoint == "PowerPoint" AND MajorVersion NOT IN ( "16", "15" ) AND Platform IN ("Mac OS X" , "Mac+OS+X" , "Mac" , "Mac OS") ) OR // Added MajorVersion "15"
+                    ( EndPoint == "Outlook" AND MajorVersion != "16" AND Platform IN ("Windows", "Windows NT", "Windows 10", "Windows 7", "Windows 8", "Windows 8.1", "Windows Vista", "Windows XP","Windows Server 2003") )
+                  )
+                )
+            ? 1 : 0 ) AS ConnectedSPO_WXPONDesktopOldCnt,
+           SUM(
+                ( Application == "SPO" AND
+                  (    
+                    ( EndPoint == "OneNote" AND MajorVersion != "16" AND Platform IN ( "Windows", "Windows NT", "Windows 10", "Windows 7", "Windows 8", "Windows 8.1", "Windows Vista", "Windows XP","Windows Server 2003" ) ) OR
+                    ( EndPoint == "Word" AND MajorVersion != "16" AND Platform IN ("Windows", "Windows NT", "Windows 10", "Windows 7", "Windows 8", "Windows 8.1", "Windows Vista", "Windows XP","Windows Server 2003") ) OR
+                    ( EndPoint == "Excel" AND MajorVersion != "16" AND Platform IN ("Windows" , "Windows NT", "Windows 10", "Windows 7", "Windows 8", "Windows 8.1", "Windows Vista", "Windows XP","Windows Server 2003") ) OR
+                    ( EndPoint == "PowerPoint" AND MajorVersion != "16" AND Platform IN ("Windows", "Windows NT", "Windows 10", "Windows 7", "Windows 8", "Windows 8.1", "Windows Vista", "Windows XP","Windows Server 2003") ) OR
+                    ( EndPoint == "Outlook" AND MajorVersion != "16" AND Platform IN ("Windows", "Windows NT", "Windows 10", "Windows 7", "Windows 8", "Windows 8.1", "Windows Vista", "Windows XP","Windows Server 2003") )
+                  )
+                )
+            ? 1 : 0 ) AS ConnectedSPO_WXPONPcOldCnt,
+           SUM(
+                (
+                    Application == "SPO" AND EndPoint == "OneNote" AND MajorVersion != "16" AND Platform IN ( "Windows", "Windows NT", "Windows 10", "Windows 7", "Windows 8", "Windows 8.1", "Windows Vista", "Windows XP","Windows Server 2003" )
+                )
+            ? 1 : 0 ) AS ConnectedSPO_OneNotePcOldCnt,
+           SUM(
+                (
+                    Application == "SPO" AND EndPoint == "Word" AND MajorVersion != "16" AND Platform IN ("Windows", "Windows NT", "Windows 10", "Windows 7", "Windows 8", "Windows 8.1", "Windows Vista", "Windows XP","Windows Server 2003")
+                )
+            ? 1 : 0 ) AS ConnectedSPO_WordPcOldCnt,
+           SUM(
+                (
+                    Application == "SPO" AND EndPoint == "Excel" AND MajorVersion != "16" AND Platform IN ("Windows" , "Windows NT", "Windows 10", "Windows 7", "Windows 8", "Windows 8.1", "Windows Vista", "Windows XP","Windows Server 2003")
+                )
+            ? 1 : 0 ) AS ConnectedSPO_ExcelPcOldCnt,
+           SUM(
+                (
+                    Application == "SPO" AND EndPoint == "PowerPoint" AND MajorVersion != "16" AND Platform IN ("Windows", "Windows NT", "Windows 10", "Windows 7", "Windows 8", "Windows 8.1", "Windows Vista", "Windows XP","Windows Server 2003")
+                )
+            ? 1 : 0 ) AS ConnectedSPO_PptPcOldCnt,
+           SUM(
+                (
+                    Application == "SPO" AND EndPoint == "Outlook" AND MajorVersion != "16" AND Platform IN ("Windows", "Windows NT", "Windows 10", "Windows 7", "Windows 8", "Windows 8.1", "Windows Vista", "Windows XP","Windows Server 2003")
+                )
+            ? 1 : 0 ) AS ConnectedSPO_OutlookPcOldCnt,
+           
+           SUM(
+                ( Application == "SPO" AND
+                  (    
+                    ( EndPoint == "OneNote" AND MajorVersion NOT IN ( "16", "15" ) AND Platform IN ( "Mac OS X", "Mac+OS+X", "Mac", "Mac OS" ) ) OR // Added MajorVersion "15"
+                    ( EndPoint == "Word" AND MajorVersion NOT IN ( "16", "15" ) AND Platform IN ("Mac OS X" , "Mac+OS+X" , "Mac" , "Mac OS") ) OR // Added MajorVersion "15"
+                    ( EndPoint == "Excel" AND MajorVersion NOT IN ( "16", "15" ) AND Platform IN ("Mac OS X" , "Mac+OS+X" , "Mac" , "Mac OS") ) OR // Added MajorVersion "15"
+                    ( EndPoint == "PowerPoint" AND MajorVersion NOT IN ( "16", "15" ) AND Platform IN ("Mac OS X" , "Mac+OS+X" , "Mac" , "Mac OS") ) // Added MajorVersion "15"
+                  )
+                )
+            ? 1 : 0 ) AS ConnectedSPO_WXPONMacOldCnt,
+           SUM(
+                (
+                    Application == "SPO" AND EndPoint == "OneNote" AND MajorVersion NOT IN ( "16", "15" ) AND Platform IN ( "Mac OS X", "Mac+OS+X", "Mac", "Mac OS" ) // Added MajorVersion "15"
+                )
+            ? 1 : 0 ) AS ConnectedSPO_OneNoteMacOldCnt,
+           SUM(
+                (
+                    Application == "SPO" AND EndPoint == "Word" AND MajorVersion NOT IN ( "16", "15" ) AND Platform IN ("Mac OS X" , "Mac+OS+X" , "Mac" , "Mac OS") // Added MajorVersion "15"
+                )
+            ? 1 : 0 ) AS ConnectedSPO_WordMacOldCnt,
+           SUM(
+                (
+                    Application == "SPO" AND EndPoint == "Excel" AND MajorVersion NOT IN ( "16", "15" ) AND Platform IN ("Mac OS X" , "Mac+OS+X" , "Mac" , "Mac OS") // Added MajorVersion "15"
+                )
+            ? 1 : 0 ) AS ConnectedSPO_ExcelMacOldCnt,
+           SUM(
+                (
+                    Application == "SPO" AND EndPoint == "PowerPoint" AND MajorVersion NOT IN ( "16", "15" ) AND Platform IN ("Mac OS X" , "Mac+OS+X" , "Mac" , "Mac OS") // Added MajorVersion "15"
+                )
+            ? 1 : 0 ) AS ConnectedSPO_PptMacOldCnt,
+           SUM(
+                (
+                    Application == "SPO" AND
+                    EndPoint IN ( "OneDrive Sync", "OneDrive Pro" ) AND MajorVersion != "17" AND Platform IN ( "Windows", "Windows NT", "Mac OS X", "Mac+OS+X", "Mac", "Mac OS", "Windows 10", "Windows 7", "Windows 8", "Windows 8.1", "Windows Vista", "Windows XP","Windows Server 2003" )
+                )
+            ? 1 : 0 ) AS ConnectedSPO_ODSyncOldCnt,
+           SUM(
+                (
+                    Application == "SPO" AND
+                    EndPoint IN ( "OneDrive Sync", "OneDrive Pro" ) AND MajorVersion != "17" AND Platform IN ( "Windows", "Windows NT", "Windows 10", "Windows 7", "Windows 8", "Windows 8.1", "Windows Vista", "Windows XP","Windows Server 2003" )
+                )
+            ? 1 : 0 ) AS ConnectedSPO_ODSyncPcOldCnt,
+           SUM(
+                (
+                    Application == "SPO" AND
+                    EndPoint IN ( "OneDrive Sync", "OneDrive Pro" ) AND MajorVersion != "17" AND Platform IN ( "Mac OS X", "Mac+OS+X", "Mac", "Mac OS" )
+                )
+            ? 1 : 0 ) AS ConnectedSPO_ODSyncMacOldCnt,
+           SUM(
+                ( Application == "SPO" AND
+                  (
+                    ( EndPoint == "OneNote iOS App" AND MajorVersion != "16" AND Platform == "iOS" ) OR
+                    ( EndPoint == "OneNote Android App" AND MajorVersion != "16" AND Platform == "Android" ) OR
+                    ( EndPoint == "Word iOS App" AND MajorVersion != "2" AND Platform == "iOS" ) OR
+                    ( EndPoint == "Word Android App" AND MajorVersion != "16" AND Platform == "Android" ) OR
+                    ( EndPoint == "Excel iOS App" AND MajorVersion != "2" AND Platform == "iOS" ) OR
+                    ( EndPoint == "Excel Android App" AND MajorVersion != "16" AND Platform == "Android" ) OR
+                    ( EndPoint == "PowerPoint iOS App" AND MajorVersion != "2" AND Platform == "iOS" ) OR
+                    ( EndPoint == "PowerPoint Android App" AND MajorVersion != "16" AND Platform == "Android" )
+                  )
+                )
+            ? 1 : 0 ) AS ConnectedSPO_WXPONMobileOldCnt,
+           SUM(
+                ( Application == "SPO" AND
+                  (
+                    ( EndPoint == "OneNote iOS App" AND MajorVersion != "16" AND Platform == "iOS" ) OR
+                    ( EndPoint == "OneNote Android App" AND MajorVersion != "16" AND Platform == "Android" )
+                  )
+                )
+            ? 1 : 0 ) AS ConnectedSPO_OneNoteMobileOldCnt,
+           SUM(
+                ( Application == "SPO" AND
+                  (
+                    ( EndPoint == "Word iOS App" AND MajorVersion != "2" AND Platform == "iOS" ) OR
+                    ( EndPoint == "Word Android App" AND MajorVersion != "16" AND Platform == "Android" )
+                  )
+                )
+            ? 1 : 0 ) AS ConnectedSPO_WordMobileOldCnt,
+           SUM(
+                ( Application == "SPO" AND
+                  (
+                    ( EndPoint == "Excel iOS App" AND MajorVersion != "2" AND Platform == "iOS" ) OR
+                    ( EndPoint == "Excel Android App" AND MajorVersion != "16" AND Platform == "Android" )
+                  )
+                )
+            ? 1 : 0 ) AS ConnectedSPO_ExcelMobileOldCnt,
+           SUM(
+                ( Application == "SPO" AND
+                  (
+                    ( EndPoint == "PowerPoint iOS App" AND MajorVersion != "2" AND Platform == "iOS" ) OR
+                    ( EndPoint == "PowerPoint Android App" AND MajorVersion != "16" AND Platform == "Android" )
+                  )
+                )
+            ? 1 : 0 ) AS ConnectedSPO_PptMobileOldCnt,
+           SUM(
+                (
+                    Application == "SPO" AND EndPoint == "Office Online"
+                )
+            ? 1 : 0 ) AS ConnectedSPO_OfficeOnlineCnt,
+           
+
+// LYO Flags (connected, modern, platform)
+           SUM(
+                (
+                    Application == "LYO"
+                )
+            ? 1 : 0 ) AS MatchedLYOCnt,
+           SUM(
+                (
+                    Application == "LYO" AND
+                    EndPoint IN ( "Skype for Business", "SfBForMac", "iPhoneLync", "iPadLync", "AndroidLync", "Skype for Business 2015", "Microsoft Lync for Mac 2011", "Microsoft Lync", "Microsoft Lync 2010", "Browser" )
+                )
+            ? 1 : 0 ) AS AppCoveredLYOCnt,
+           SUM(
+                ( Application == "LYO" AND
+                  (
+                    ( EndPoint == "Skype for Business" AND MajorVersion == "16" AND Platform IN ("Windows", "Windows NT", "Windows 10", "Windows 7", "Windows 8", "Windows 8.1", "Windows Vista", "Windows XP") ) OR
+                    ( EndPoint == "SfBForMac" AND MajorVersion == "16" AND Platform IN ("OSX", "Mac OS","Mac OS X") ) OR
+                    ( EndPoint IN ("iPhoneLync", "iPadLync") AND MajorVersion == "6" AND Platform == "iOS" ) OR
+                    ( EndPoint == "AndroidLync" AND MajorVersion == "6" AND Platform == "Android" ) OR
+                    EndPoint == "Browser"
+                  )
+                )
+            ? 1 : 0 ) AS ModernLYOCnt,
+           SUM(
+                ( Application == "LYO" AND
+                  (
+                    ( EndPoint == "Skype for Business" AND MajorVersion == "16" AND Platform IN ("Windows", "Windows NT", "Windows 10", "Windows 7", "Windows 8", "Windows 8.1", "Windows Vista", "Windows XP") ) OR
+                    ( EndPoint == "SfBForMac" AND MajorVersion == "16" AND Platform IN ("OSX", "Mac OS","Mac OS X") )
+                  )
+                )
+            ? 1 : 0 ) AS ConnectedLYO_SfBDesktop16Cnt,
+           SUM(
+                ( Application == "LYO" AND
+                  (
+                    ( EndPoint == "Skype for Business" AND MajorVersion == "16" AND Platform IN ("Windows", "Windows NT", "Windows 10", "Windows 7", "Windows 8", "Windows 8.1", "Windows Vista", "Windows XP") )
+                  )
+                )
+            ? 1 : 0 ) AS ConnectedLYO_SfBPc16Cnt,
+           SUM(
+                ( Application == "LYO" AND
+                  (
+                    ( EndPoint == "SfBForMac" AND MajorVersion == "16" AND Platform IN ("OSX", "Mac OS","Mac OS X") )
+                  )
+                )
+            ? 1 : 0 ) AS ConnectedLYO_SfBMac16Cnt,
+           SUM(
+                ( Application == "LYO" AND EndPoint == "Browser" )
+            ? 1 : 0 ) AS ConnectedLYO_BrowserCnt,
+           SUM(
+                ( Application == "LYO" AND
+                  (
+                    ( EndPoint IN ("iPhoneLync", "iPadLync") AND MajorVersion == "6" AND Platform == "iOS" ) OR
+                    ( EndPoint == "AndroidLync" AND MajorVersion == "6" AND Platform == "Android" )
+                  )
+                )
+            ? 1 : 0 ) AS ConnectedLYO_SfBMobileNewCnt,
+           SUM(
+                ( Application == "LYO" AND
+                  (
+                    ( EndPoint == "Skype for Business" AND MajorVersion != "16" AND Platform IN ("Windows", "Windows NT", "Windows 10", "Windows 7", "Windows 8", "Windows 8.1", "Windows Vista", "Windows XP") ) OR
+                    ( EndPoint == "SfBForMac" AND MajorVersion != "16" AND Platform IN ("OSX", "Mac OS","Mac OS X") ) OR
+                    EndPoint IN ( "Skype for Business 2015", "Microsoft Lync for Mac 2011", "Microsoft Lync", "Microsoft Lync 2010" )
+                  )
+                )
+            ? 1 : 0 ) AS ConnectedLYO_SfBDesktopOldCnt,
+           SUM(
+                ( Application == "LYO" AND
+                  (
+                    ( EndPoint == "Skype for Business" AND MajorVersion != "16" AND Platform IN ("Windows", "Windows NT", "Windows 10", "Windows 7", "Windows 8", "Windows 8.1", "Windows Vista", "Windows XP") ) OR
+                    EndPoint IN ( "Skype for Business 2015", "Microsoft Lync", "Microsoft Lync 2010" )
+                  )
+                )
+            ? 1 : 0 ) AS ConnectedLYO_SfBPcOldCnt,
+           SUM(
+                ( Application == "LYO" AND
+                  (
+                    ( EndPoint == "SfBForMac" AND MajorVersion != "16" AND Platform IN ("OSX", "Mac OS","Mac OS X") ) OR
+                    EndPoint == "Microsoft Lync for Mac 2011"
+                  )
+                )
+            ? 1 : 0 ) AS ConnectedLYO_SfBMacOldCnt,
+           SUM(
+                ( Application == "LYO" AND
+                  (
+                    ( EndPoint IN ("iPhoneLync", "iPadLync") AND MajorVersion != "6" AND Platform == "iOS" ) OR
+                    ( EndPoint == "AndroidLync" AND MajorVersion != "6" AND Platform == "Android" )
+                  )
+                )
+            ? 1 : 0 ) AS ConnectedLYO_SfBMobileOldCnt
+           
+    FROM appServiceData
+    GROUP BY SnapShotDate,
+            TenantId,
+            userid;
+
+Puid_flags =
+    SELECT SnapShotDate,
+            TenantId,
+            userid,
+           
+           ( MatchedEXOCnt > 0 ? 1 : 0 ) AS MatchedEXO,
+           ( ConnectedEXO_OLDesktop16Cnt > 0 ? 1 : 0 ) AS ConnectedEXO_OLDesktop16,
+           ( ConnectedEXO_OLPc16Cnt > 0 ? 1 : 0 ) AS ConnectedEXO_OLPc16,
+           ( ConnectedEXO_OLMac16Cnt > 0 ? 1 : 0 ) AS ConnectedEXO_OLMac16,
+           ( ConnectedEXO_OWACnt > 0 ? 1 : 0 ) AS ConnectedEXO_OWA,
+           ( ConnectedEXO_OLMobileNewCnt > 0 ? 1 : 0 ) AS ConnectedEXO_OLMobileNew,
+           ( ConnectedEXO_OLDesktopOldCnt > 0 ? 1 : 0 ) AS ConnectedEXO_OLDesktopOld,
+           ( ConnectedEXO_OLPcOldCnt > 0 ? 1 : 0 ) AS ConnectedEXO_OLPcOld,
+           ( ConnectedEXO_OLMacOldCnt > 0 ? 1 : 0 ) AS ConnectedEXO_OLMacOld,
+           ( ConnectedEXO_OLMobileOldCnt > 0 ? 1 : 0 ) AS ConnectedEXO_OLMobileOld,
+           
+           ( MatchedSPOCnt > 0 ? 1 : 0 ) AS MatchedSPO,
+           ( AppCoveredSPOCnt > 0 ? 1 : 0 ) AS AppCoveredSPO,
+           ( ConnectedSPO_WXPONDesktop16Cnt > 0 ? 1 : 0 ) AS ConnectedSPO_WXPONDesktop16,
+           ( ConnectedSPO_WXPONPc16Cnt > 0 ? 1 : 0 ) AS ConnectedSPO_WXPONPc16,
+           ( ConnectedSPO_OneNotePc16Cnt > 0 ? 1 : 0 ) AS ConnectedSPO_OneNotePc16,
+           ( ConnectedSPO_WordPc16Cnt > 0 ? 1 : 0 ) AS ConnectedSPO_WordPc16,
+           ( ConnectedSPO_ExcelPc16Cnt > 0 ? 1 : 0 ) AS ConnectedSPO_ExcelPc16,
+           ( ConnectedSPO_PptPc16Cnt > 0 ? 1 : 0 ) AS ConnectedSPO_PptPc16,
+           ( ConnectedSPO_OutlookPc16Cnt > 0 ? 1 : 0 ) AS ConnectedSPO_OutlookPc16,
+           ( ConnectedSPO_WXPONMac16Cnt > 0 ? 1 : 0 ) AS ConnectedSPO_WXPONMac16,
+           ( ConnectedSPO_OneNoteMac16Cnt > 0 ? 1 : 0 ) AS ConnectedSPO_OneNoteMac16,
+           ( ConnectedSPO_WordMac16Cnt > 0 ? 1 : 0 ) AS ConnectedSPO_WordMac16,
+           ( ConnectedSPO_ExcelMac16Cnt > 0 ? 1 : 0 ) AS ConnectedSPO_ExcelMac16,
+           ( ConnectedSPO_PptMac16Cnt > 0 ? 1 : 0 ) AS ConnectedSPO_PptMac16,
+           ( ConnectedSPO_ODSync17Cnt > 0 ? 1 : 0 ) AS ConnectedSPO_ODSync17,
+           ( ConnectedSPO_ODSyncPc17Cnt > 0 ? 1 : 0 ) AS ConnectedSPO_ODSyncPc17,
+           ( ConnectedSPO_ODSyncMac17Cnt > 0 ? 1 : 0 ) AS ConnectedSPO_ODSyncMac17,
+           ( ConnectedSPO_BrowserCnt > 0 ? 1 : 0 ) AS ConnectedSPO_Browser,
+           ( ConnectedSPO_OWACnt > 0 ? 1 : 0 ) AS ConnectedSPO_OWA,
+           ( ConnectedSPO_WXPONMobileNewCnt > 0 ? 1 : 0 ) AS ConnectedSPO_WXPONMobileNew,
+           ( ConnectedSPO_OneNoteMobileNewCnt > 0 ? 1 : 0 ) AS ConnectedSPO_OneNoteMobileNew,
+           ( ConnectedSPO_WordMobileNewCnt > 0 ? 1 : 0 ) AS ConnectedSPO_WordMobileNew,
+           ( ConnectedSPO_ExcelMobileNewCnt > 0 ? 1 : 0 ) AS ConnectedSPO_ExcelMobileNew,
+           ( ConnectedSPO_PptMobileNewCnt > 0 ? 1 : 0 ) AS ConnectedSPO_PptMobileNew,
+           ( ConnectedSPO_WXPONDesktopOldCnt > 0 ? 1 : 0 ) AS ConnectedSPO_WXPONDesktopOld,
+           ( ConnectedSPO_WXPONPcOldCnt > 0 ? 1 : 0 ) AS ConnectedSPO_WXPONPcOld,
+           ( ConnectedSPO_OneNotePcOldCnt > 0 ? 1 : 0 ) AS ConnectedSPO_OneNotePcOld,
+           ( ConnectedSPO_WordPcOldCnt > 0 ? 1 : 0 ) AS ConnectedSPO_WordPcOld,
+           ( ConnectedSPO_ExcelPcOldCnt > 0 ? 1 : 0 ) AS ConnectedSPO_ExcelPcOld,
+           ( ConnectedSPO_PptPcOldCnt > 0 ? 1 : 0 ) AS ConnectedSPO_PptPcOld,
+           ( ConnectedSPO_OutlookPcOldCnt > 0 ? 1 : 0 ) AS ConnectedSPO_OutlookPcOld,
+           ( ConnectedSPO_WXPONMacOldCnt > 0 ? 1 : 0 ) AS ConnectedSPO_WXPONMacOld,
+           ( ConnectedSPO_OneNoteMacOldCnt > 0 ? 1 : 0 ) AS ConnectedSPO_OneNoteMacOld,
+           ( ConnectedSPO_WordMacOldCnt > 0 ? 1 : 0 ) AS ConnectedSPO_WordMacOld,
+           ( ConnectedSPO_ExcelMacOldCnt > 0 ? 1 : 0 ) AS ConnectedSPO_ExcelMacOld,
+           ( ConnectedSPO_PptMacOldCnt > 0 ? 1 : 0 ) AS ConnectedSPO_PptMacOld,
+           ( ConnectedSPO_ODSyncOldCnt > 0 ? 1 : 0 ) AS ConnectedSPO_ODSyncOld,
+           ( ConnectedSPO_ODSyncPcOldCnt > 0 ? 1 : 0 ) AS ConnectedSPO_ODSyncPcOld,
+           ( ConnectedSPO_ODSyncMacOldCnt > 0 ? 1 : 0 ) AS ConnectedSPO_ODSyncMacOld,
+           ( ConnectedSPO_WXPONMobileOldCnt > 0 ? 1 : 0 ) AS ConnectedSPO_WXPONMobileOld,
+           ( ConnectedSPO_OneNoteMobileOldCnt > 0 ? 1 : 0 ) AS ConnectedSPO_OneNoteMobileOld,
+           ( ConnectedSPO_WordMobileOldCnt > 0 ? 1 : 0 ) AS ConnectedSPO_WordMobileOld,
+           ( ConnectedSPO_ExcelMobileOldCnt > 0 ? 1 : 0 ) AS ConnectedSPO_ExcelMobileOld,
+           ( ConnectedSPO_PptMobileOldCnt > 0 ? 1 : 0 ) AS ConnectedSPO_PptMobileOld,
+           ( ConnectedSPO_OfficeOnlineCnt > 0 ? 1 : 0 ) AS ConnectedSPO_OfficeOnline,
+           
+           ( MatchedLYOCnt > 0 ? 1 : 0 ) AS MatchedLYO,
+           ( AppCoveredLYOCnt > 0 ? 1 : 0 ) AS AppCoveredLYO,
+          
+           ( ConnectedLYO_SfBDesktop16Cnt > 0 ? 1 : 0 ) AS ConnectedLYO_SfBDesktop16,
+           ( ConnectedLYO_SfBPc16Cnt > 0 ? 1 : 0 ) AS ConnectedLYO_SfBPc16,
+           ( ConnectedLYO_SfBMac16Cnt > 0 ? 1 : 0 ) AS ConnectedLYO_SfBMac16,
+           ( ConnectedLYO_BrowserCnt > 0 ? 1 : 0 ) AS ConnectedLYO_Browser,
+           ( ConnectedLYO_SfBMobileNewCnt > 0 ? 1 : 0 ) AS ConnectedLYO_SfBMobileNew,
+           ( ConnectedLYO_SfBDesktopOldCnt > 0 ? 1 : 0 ) AS ConnectedLYO_SfBDesktopOld,
+           ( ConnectedLYO_SfBPcOldCnt > 0 ? 1 : 0 ) AS ConnectedLYO_SfBPcOld,
+           ( ConnectedLYO_SfBMacOldCnt > 0 ? 1 : 0 ) AS ConnectedLYO_SfBMacOld,
+           ( ConnectedLYO_SfBMobileOldCnt > 0 ? 1 : 0 ) AS ConnectedLYO_SfBMobileOld
+           
+    FROM Puid_flags;
+
+[Privacy.Asset.NonPersonal] // GDPR asset tagging
+[Privacy.Column.TenantId(Column="TenantId")] // GDPR column tagging
+
+OUTPUT Puid_flags TO SSTREAM @wlplatformflags_output
+    CLUSTERED BY TenantId, userid
+    SORTED BY TenantId
+        WITH STREAMEXPIRY @"365";

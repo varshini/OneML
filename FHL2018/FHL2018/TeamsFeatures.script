@@ -1,0 +1,155 @@
+﻿//Script GUID:5b171cdf-dcbf-449a-bd35-e0d5ee987210
+//Used for tracking history
+
+
+ink_data =
+    SSTREAM @"/my/FHL2018/InkData.ss";
+
+puid_sqm_mapping =
+    SSTREAM @"/shares/ACE.proc/local/Campaigns/Core/OfficeClients/2018/09/Win32WXPActiveUsers_30_RL30D.ss";
+
+//map the sep puids to sqm user id 
+ink_data =
+    SELECT OfficeUserId.ToString() AS OfficeUserId, "1" AS InkLabel
+    FROM ink_data
+    WHERE MonthYear == "2018-09";
+
+ink_data =
+    SELECT puid_sqm_mapping.Puid,
+           ink_data.OfficeUserId, 
+           ink_data.InkLabel
+    FROM ink_data
+         INNER JOIN
+             puid_sqm_mapping
+         ON puid_sqm_mapping.SqmUserId == ink_data.OfficeUserId;
+
+//for sep
+aug_teams_data =
+    SSTREAM @"/shares/ACE.proc/local/Campaigns/Teams/Features/2018/08/O365UserFeatures_31_RL28D.ss";
+
+sep_18 =
+    SELECT aug_teams_data. *, ink_data.InkLabel
+    FROM aug_teams_data
+         LEFT JOIN
+             ink_data
+         ON ink_data.Puid == aug_teams_data.Puid;
+
+features =
+    SELECT sep_18. *,
+           String.IsNullOrEmpty(InkLabel) ? "0" : InkLabel AS FinalLabel
+    FROM sep_18;
+
+OUTPUT features
+TO SSTREAM @"/my/FHL2018/SepModelFeatures.ss"
+   CLUSTERED BY Puid;
+
+////march
+//feb_teams_data =
+//    SSTREAM @"/local/Campaigns/Teams/Features/2018/02/O365UserFeatures_28_RL28D.ss";
+//
+//mar_18 =
+//    SELECT *, "1" AS InkLabel
+//    FROM ink_data
+//    WHERE MonthYear == "2018-03";
+//
+//mar_18 =
+//    SELECT feb_teams_data. *, sep_18.InkLabel
+//    FROM feb_teams_data
+//         LEFT JOIN
+//             mar_18
+//         ON mar_18.Puid == feb_teams_data.Puid;
+//
+////april
+//mar_teams_data =
+//    SSTREAM @"/local/Campaigns/Teams/Features/2018/03/O365UserFeatures_31_RL28D.ss";
+//
+//apr_18 =
+//    SELECT *, "1" AS InkLabel
+//    FROM ink_data
+//    WHERE MonthYear == "2018-04";
+//
+//apr_18 =
+//    SELECT mar_teams_data. *, sep_18.InkLabel
+//    FROM mar_teams_data
+//         LEFT JOIN
+//             apr_18
+//         ON apr_18.Puid == mar_teams_data.Puid;
+//
+////may
+//apr_teams_data =
+//    SSTREAM @"/local/Campaigns/Teams/Features/2018/04/O365UserFeatures_30_RL28D.ss";
+//
+//may_18 =
+//    SELECT *, "1" AS InkLabel
+//    FROM ink_data
+//    WHERE MonthYear == "2018-05";
+//
+//may_18 =
+//    SELECT apr_teams_data. *, sep_18.InkLabel
+//    FROM apr_teams_data
+//         LEFT JOIN
+//             may_18
+//         ON may_18.Puid == apr_teams_data.Puid;
+//
+////june
+//may_teams_data =
+//    SSTREAM @"/local/Campaigns/Teams/Features/2018/05/O365UserFeatures_31_RL28D.ss";
+//
+//jun_18 =
+//    SELECT *, "1" AS InkLabel
+//    FROM ink_data
+//    WHERE MonthYear == "2018-06";
+//
+//jun_18 =
+//    SELECT may_teams_data. *, sep_18.InkLabel
+//    FROM may_teams_data
+//         LEFT JOIN
+//             jun_18
+//         ON jun_18.Puid == may_teams_data.Puid;
+//
+////july
+//june_teams_data =
+//    SSTREAM @"/local/Campaigns/Teams/Features/2018/06/O365UserFeatures_30_RL28D.ss";
+//
+//jul_18 =
+//    SELECT *, "1" AS InkLabel
+//    FROM ink_data
+//    WHERE MonthYear == "2018-07";
+//
+//jul_18 =
+//    SELECT june_teams_data. *, sep_18.InkLabel
+//    FROM june_teams_data
+//         LEFT JOIN
+//             jul_18
+//         ON jul_18.Puid == june_teams_data.Puid;
+//
+////august
+//july_teams_data =
+//    SSTREAM @"/local/Campaigns/Teams/Features/2018/07/O365UserFeatures_31_RL28D.ss";
+//
+//aug_18 =
+//    SELECT *, "1" AS InkLabel
+//    FROM ink_data
+//    WHERE MonthYear == "2018-08";
+//
+//aug_18 =
+//    SELECT july_teams_data. *, sep_18.InkLabel
+//    FROM july_teams_data
+//         LEFT JOIN
+//             aug_18
+//         ON aug_18.Puid == july_teams_data.Puid;
+
+
+
+//features =
+//    SELECT *
+//    FROM mar_18
+//    UNION ALL
+//    SELECT *
+//    FROM apr_18
+//    UNION ALL  SELECT * FROM may_18 UNION ALL  SELECT * FROM jun_18 UNION ALL SELECT * FROM jul_18 UNION ALL SELECT * FROM aug_18 UNION ALL SELECT * FROM sep_18;
+
+
+
+
+

@@ -1,0 +1,142 @@
+﻿//Script GUID:46919c0c-4771-46e7-865a-73602859e2a6
+//Used for tracking history
+
+// Author: Rui Hu
+// Last Updated: Oct 22, 2018
+// This script computes all user ids that we observed on Win32 WXP clients
+ 
+// References
+MODULE "/shares/OSIAdhoc/local/Resources/Modules/SystemHealth.Partners.module"; 
+ 
+// Parameters
+#DECLARE TargetDate   DateTime = DateTime.Parse(@@TARGET_DATE@@);
+#DECLARE RollingWindowSize int = @@ROLLING_WINDOW_SIZE@@;
+#DECLARE EndDate      DateTime = @TargetDate;
+#DECLARE StartDate    DateTime = @EndDate.AddDays(-@RollingWindowSize+1);
+ 
+// Output
+#DECLARE WXPUsersStreamPath          string = string.Format(@"/shares/ACE.proc/local/Campaigns/Core/OfficeClients/{0:yyyy/MM}/Win32WXPActiveUsers_{0:dd}_RL{1}D.ss",                    @TargetDate, @RollingWindowSize);
+#DECLARE WXPUsersSummaryStreamPath   string = string.Format(@"/shares/ACE.proc/local/Campaigns/Core/OfficeClients/{0:yyyy/MM}/Validations/Win32WXPActiveUsersSummary_{0:dd}_RL{1}D.ss", @TargetDate, @RollingWindowSize);
+ 
+// Step 1: Read client sessions.
+WXPClientActiveUsers = SystemHealthPartners.ViewClientProcessSessions (StartDate = @StartDate, EndDate = @EndDate);
+ 
+// Step 2: Load user session data.
+WXPClientActiveUsers =  
+    SELECT DISTINCT 
+                    CID                                                                           AS Cid,
+                    SqmUserId.Value.ToString() AS SqmUserId,
+                    Utility.GetIds(IdentityMap, "_ADAL", 4)                                       AS ADALIds
+
+    FROM WXPClientActiveUsers
+    WHERE AudienceGroup NOT IN ("Dogfood", "Microsoft") 
+          AND (OsEnvironment == 10)     // Win32
+          AND MsoAppId IN (0, 1, 3) // Word 0, Excel 1, PPT 3
+          AND (AppMajorVer == 16)  // Office 2016
+          AND SqmUserId.HasValue;
+
+WXPClientActiveUsers = 
+    SELECT  SqmUserId, Cid AS Id FROM WXPClientActiveUsers WHERE !string.IsNullOrWhiteSpace(Cid)
+    UNION ALL
+    SELECT  SqmUserId, SplitADALIds AS Id FROM WXPClientActiveUsers CROSS APPLY ADALIds.Split(';') AS SplitADALIds;
+ 
+WXPClientActiveUsers = 
+    SELECT DISTINCT 
+
+                    SqmUserId,
+                    Id.Split('_')[0] AS Id
+
+    FROM WXPClientActiveUsers
+    WHERE !string.IsNullOrWhiteSpace(Id)
+    HAVING !string.IsNullOrWhiteSpace(Id);
+ 
+WXPClientActiveUsers = 
+    SELECT    DISTINCT  
+                     Id AS UserObjectId,
+                     SqmUserId
+    FROM WXPClientActiveUsers;
+ 
+// Step 3: Map ADALId to Puid
+IdMappings =
+    VIEW @"/shares/bus.prod/local/office/Odin/User/OfficeDataUser.view"
+    PARAMS
+    (
+        StartSnapshotTime = @EndDate.ToString("yyyy-MM-dd"),
+        EndSnapshotTime = @EndDate.ToString("yyyy-MM-dd"),
+        Dataset = "Worldwide.Commercial"
+   );
+ 
+IdMappings =
+    SELECT DISTINCT OMSTenantId,
+                    Ids.OrgIdPUID.ToUpper() AS Puid,
+                    Id.ToLower()            AS UserObjectId
+    FROM IdMappings
+    WHERE !Deleted AND !SoftDeleted AND !string.IsNullOrWhiteSpace(Ids.OrgIdPUID) AND !string.IsNullOrWhiteSpace(Id); 
+ 
+IdMappings = 
+    SELECT OMSTenantId,
+           UserObjectId,
+           MAX(Puid)    AS Puid
+    FROM IdMappings;
+ 
+WXPClientActiveUsers = 
+    SELECT 
+           WXPClientActiveUsers.UserObjectId,
+           WXPClientActiveUsers.SqmUserId,
+           IdMappings.Puid,
+           IdMappings.OMSTenantId  
+
+    FROM WXPClientActiveUsers
+    INNER JOIN IdMappings ON WXPClientActiveUsers.UserObjectId == IdMappings.UserObjectId;
+
+    
+OUTPUT WXPClientActiveUsers
+TO SSTREAM @WXPUsersStreamPath
+CLUSTERED BY UserObjectId, Puid, OMSTenantId
+SORTED BY UserObjectId, Puid, OMSTenantId;
+
+ 
+#CS
+using Microsoft.SCOPE.Types;
+using System.Text;
+using System.Linq;
+ 
+public static class Utility
+{
+ 
+    public const uint Unknown = 0;
+ 
+    public const uint LiveId = 1;
+ 
+    public const uint OrgId = 2;
+ 
+    public const uint ActiveDirectory = 3;
+ 
+    public const uint ADAL = 4;
+ 
+    public const uint SSPI = 5;
+ 
+    public const uint OAuth2 = 6;
+ 
+    public static string GetIds(ScopeMap<string, uint?> identityMap, string type, uint code)
+    {
+        if (identityMap == null)
+        {
+            return string.Empty;
+        }
+        var cids = identityMap.Keys.Where(id => !string.IsNullOrWhiteSpace(id) && identityMap[id] == code).Select(id => id.Trim()).Distinct();
+        StringBuilder sb = new StringBuilder();
+        foreach (string cid in cids)
+        {
+            string core = cid.Split('_')[0];
+            sb.Append(core + ";");
+        }
+        return sb.ToString();
+    }
+ 
+    public static int CountIds(ScopeMap<string, uint?> identityMap, string type, uint code)
+    {
+        return identityMap.Keys.Where(id => !string.IsNullOrWhiteSpace(id) && identityMap[id] == code).Select(id => id.Trim()).Distinct().Count();
+    }
+}    
+#ENDCS

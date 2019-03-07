@@ -1,0 +1,104 @@
+﻿//Script GUID:61c30b96-e62a-41fd-a29e-1cb0014e9471
+//Used for tracking history
+
+//Using Tenant Availability All Farms
+
+//Tenant Reliability 
+
+#DECLARE In_path string = "/shares/spo.prod/local/AggregatedUnified/Datasets/Public/Reliability/TenantAvailability/";
+#DECLARE In_patt string = "%Y/%m/TenantAvailability_%Y_%m_%d.ss";
+#DECLARE startString string = "2018-04-01";
+#DECLARE endString string = "2018-04-30";
+
+tenant_data =
+     SSTREAM @"/local/Projects/StrategicTenants/2018-03-31_TenantCohort.ss";
+
+tenantid_siteid_mapping =
+    SSTREAM @"/my/SPOReliability/TenantSiteMapping_v1.ss";
+
+//Read the Reliability Streams
+AppActivity =
+    SSTREAM STREAMSET @In_path
+            PATTERN   @In_patt
+            RANGE __date = [@startString, @endString];
+
+AppActivity_proc =
+    SELECT AppActivity. *,
+           tenantid_siteid_mapping.OMSTenantId AS OMSTenantId
+    FROM AppActivity
+         INNER JOIN
+             tenantid_siteid_mapping
+         ON AppActivity.SiteSubscriptionId == tenantid_siteid_mapping.SiteSubscriptionId;
+
+/*
+//final spo tenant data 
+tenants_data =
+    SELECT AppActivity_proc. *
+    FROM AppActivity_proc
+         INNER JOIN
+             tenant_data
+         ON tenant_data.OMSTenantId == AppActivity_proc.OMSTenantId;
+*/
+
+tenants_data_proc =
+    SELECT DISTINCT DataDate,
+                    OMSTenantId,
+                    SiteSubscriptionId,
+                    TenantId,
+                    OrganizationName,
+                    TenantAvailabilityAllFarms
+    FROM AppActivity_proc;
+
+//***Find the minimum availability *** - METRIC 1//
+min_data =
+    SELECT OMSTenantId,
+           MIN(TenantAvailabilityAllFarms) AS MinTenantAvailability
+    FROM tenants_data_proc
+    GROUP BY OMSTenantId;
+
+//getting the data for reliability <= 99.9
+lower_reliability =
+    SELECT *
+    FROM tenants_data_proc
+    WHERE TenantAvailabilityAllFarms <= 99.9;
+
+//METRIC 2//
+avg_outage =
+    SELECT OMSTenantId,
+           AVG(TenantAvailabilityAllFarms) AS LowAvgTenantAvailabilityAllFarms
+    FROM lower_reliability
+    GROUP BY OMSTenantId;
+
+//***No of days the tenant had an outage*** - METRIC 3//
+outage_days =
+    SELECT OMSTenantId,
+           COUNT(DISTINCT DataDate) AS DaysOfOutage
+    FROM lower_reliability
+    GROUP BY OMSTenantId;
+
+final_data =
+    SELECT min_data.OMSTenantId, min_data.MinTenantAvailability AS MinumumFarmAvailability,avg_outage.LowAvgTenantAvailabilityAllFarms,outage_days.DaysOfOutage
+    FROM min_data
+         LEFT JOIN
+             avg_outage
+         ON min_data.OMSTenantId == avg_outage.OMSTenantId
+         LEFT JOIN
+             outage_days
+         ON min_data.OMSTenantId == outage_days.OMSTenantId;
+
+final_tenant_data =
+    SELECT final_data. *
+    FROM tenant_data
+         LEFT JOIN
+             final_data
+         ON tenant_data.OMSTenantId == final_data.OMSTenantId;
+
+OUTPUT final_data
+TO SSTREAM @"/my/SPOReliability/SPOReliability_Apr_2018.ss";
+
+
+
+
+
+
+

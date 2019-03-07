@@ -1,0 +1,140 @@
+﻿//Script GUID:98191692-af56-429b-9fad-438131b530e8
+//Used for tracking history
+
+//getting total number of Win10 devices per tenant/TPID per month - putting together all data for joining 
+
+#DECLARE TenantOutput string = @"/my/SlackCompete/Win10DeviceCounts/Win10counts_Jan2017_Jan2018.ss";
+
+device_count_jan = SSTREAM "/my/SlackCompete/Win10DeviceCounts/2017/01_Device_Count.ss";
+device_count_feb = SSTREAM "/my/SlackCompete/Win10DeviceCounts/2017/02_Device_Count.ss";
+device_count_mar = SSTREAM "/my/SlackCompete/Win10DeviceCounts/2017/03_Device_Count.ss";
+device_count_apr = SSTREAM "/my/SlackCompete/Win10DeviceCounts/2017/04_Device_Count.ss";
+device_count_may = SSTREAM "/my/SlackCompete/Win10DeviceCounts/2017/05_Device_Count.ss";
+device_count_jun = SSTREAM "/my/SlackCompete/Win10DeviceCounts/2017/06_Device_Count.ss";
+device_count_jul = SSTREAM "/my/SlackCompete/Win10DeviceCounts/2017/07_Device_Count.ss";
+device_count_aug = SSTREAM "/my/SlackCompete/Win10DeviceCounts/2017/08_Device_Count.ss";
+device_count_sep = SSTREAM "/my/SlackCompete/Win10DeviceCounts/2017/09_Device_Count.ss";
+device_count_oct = SSTREAM "/my/SlackCompete/Win10DeviceCounts/2017/10_Device_Count.ss";
+device_count_nov = SSTREAM "/my/SlackCompete/Win10DeviceCounts/2017/11_Device_Count.ss";
+device_count_dec = SSTREAM "/my/SlackCompete/Win10DeviceCounts/2017/12_Device_Count.ss";
+device_count_jan_2018 = SSTREAM "/my/SlackCompete/Win10DeviceCounts/2018/01_Device_Count.ss";
+
+data_jan =
+    SELECT TPId AS TPID,
+           TotalDevices AS Win10Devices,
+           "201701" AS YrMo
+    FROM device_count_jan;
+
+data_feb =
+    SELECT TPId AS TPID,
+           TotalDevices AS Win10Devices,
+           "201702" AS YrMo
+    FROM device_count_feb
+    UNION
+    SELECT *
+    FROM data_jan;
+
+data_mar =
+    SELECT TPId AS TPID,
+           TotalDevices AS Win10Devices,
+           "201703" AS YrMo
+    FROM device_count_mar
+    UNION
+    SELECT *
+    FROM data_feb;
+
+data_apr =
+    SELECT TPId AS TPID,
+           TotalDevices AS Win10Devices,
+           "201704" AS YrMo
+    FROM device_count_apr
+    UNION
+    SELECT *
+    FROM data_mar;
+
+data_may =
+    SELECT TPId AS TPID,
+           TotalDevices AS Win10Devices,
+           "201705" AS YrMo
+    FROM device_count_may
+    UNION
+    SELECT *
+    FROM data_apr;
+
+data_jun =
+    SELECT TPId AS TPID,
+           TotalDevices AS Win10Devices,
+           "201706" AS YrMo
+    FROM device_count_jun
+    UNION
+    SELECT *
+    FROM data_may;
+
+data_jul =
+    SELECT TPId AS TPID,
+           TotalDevices AS Win10Devices,
+           "201707" AS YrMo
+    FROM device_count_jul
+    UNION
+    SELECT *
+    FROM data_jun;
+
+
+data_aug =
+    SELECT TPId AS TPID,
+           TotalDevices AS Win10Devices,
+           "201708" AS YrMo
+    FROM device_count_aug
+    UNION
+    SELECT *
+    FROM data_jul;
+
+data_sep =
+    SELECT TPId AS TPID,
+           TotalDevices AS Win10Devices,
+           "201709" AS YrMo
+    FROM device_count_sep
+    UNION
+    SELECT *
+    FROM data_aug;
+
+data_oct =
+    SELECT TPId AS TPID,
+           TotalDevices AS Win10Devices,
+           "201710" AS YrMo
+    FROM device_count_oct
+    UNION
+    SELECT *
+    FROM data_sep;
+
+data_nov =
+    SELECT TPId AS TPID,
+           TotalDevices AS Win10Devices,
+           "201711" AS YrMo
+    FROM device_count_nov
+    UNION
+    SELECT *
+    FROM data_oct;
+
+data_dec =
+    SELECT TPId AS TPID,
+           TotalDevices AS Win10Devices,
+           "201712" AS YrMo
+    FROM device_count_dec
+    UNION
+    SELECT *
+    FROM data_nov;
+
+data_jan_2018 =
+    SELECT TPId AS TPID,
+           TotalDevices AS Win10Devices,
+           "201801" AS YrMo
+    FROM device_count_jan_2018
+    UNION
+    SELECT *
+    FROM data_dec;
+
+OUTPUT data_jan_2018
+TO SSTREAM @TenantOutput;
+           
+           

@@ -1,0 +1,318 @@
+﻿//Script GUID:b74139fb-6802-4c5a-8a03-0d5a53edd01e
+//Used for tracking history
+
+// This script does feature engineering for the Teams engagement model.
+// Author: Rui Hu
+// Last Updated: 2018-06-17
+
+// Parameters:
+#DECLARE TargetDate   DateTime = DateTime.Parse(@@TARGET_DATE@@);
+#DECLARE RollingWindowSize int = @@ROLLING_WINDOW_SIZE@@;
+#DECLARE EndDate      DateTime = @TargetDate;
+#DECLARE StartDate    DateTime = @EndDate.AddDays(-@RollingWindowSize + 1);
+
+// Input Streams.
+#DECLARE UserInfoViewPath                   string = @"/shares/bus.prod/local/office/Odin/User/OfficeDataUser.view";
+#DECLARE EXONodeUsageStreamPath             string = string.Format(@"/shares/IDEAs.Prod/UserCollaborationNetworks/EXO/Graphs/Commercial/{0:yyyy/MM/dd}/NodeUsageAttributes_Worldwide_RL28D.ss", @TargetDate);
+#DECLARE SPOProdNodeUsageStreamPath         string = string.Format(@"/shares/IDEAs.Prod/UserCollaborationNetworks/SPO/Graphs/{0:yyyy/MM/dd}/NodeUsageAttributes_Prod_RL28D.ss", @TargetDate);
+#DECLARE SPOMSITNodeUsageStreamPath         string = string.Format(@"/shares/IDEAs.Prod/UserCollaborationNetworks/SPO/Graphs/{0:yyyy/MM/dd}/NodeUsageAttributes_MSIT_RL28D.ss", @TargetDate);
+#DECLARE WordProficiencyScoreStreamPath     string = string.Format(@"/shares/OCE.proc/OCEAnalytics/ProgressiveSegments/Production/Current/{0:yyyy/MM/dd}/AdjustedUserSegments_Word_{0:yyyy-MM-dd}.ss", @TargetDate.AddDays(-7)); // THe input stream has a 5 days of delay. It won't matter much because the score is inerita.
+#DECLARE ExcelProficiencyScoreStreamPath    string = string.Format(@"/shares/OCE.proc/OCEAnalytics/ProgressiveSegments/Production/Current/{0:yyyy/MM/dd}/AdjustedUserSegments_Excel_{0:yyyy-MM-dd}.ss", @TargetDate.AddDays(-7)); // THe input stream has a 5 days of delay. It won't matter much because the score is inerita.
+#DECLARE PPTProficiencyScoreStreamPath      string = string.Format(@"/shares/OCE.proc/OCEAnalytics/ProgressiveSegments/Production/Current/{0:yyyy/MM/dd}/AdjustedUserSegments_PowerPoint_{0:yyyy-MM-dd}.ss", @TargetDate.AddDays(-7)); // THe input stream has a 5 days of delay. It won't matter much because the score is inerita.
+#DECLARE EXOEmailSentStreamPath             string = string.Format(@"/shares/IDEAs.Prod/UserCollaborationNetworks/EXO/Daily/Commercial/%Y/%m/EmailSent_Worldwide_%d.ss?date={0:yyyy-MM-dd}..{1:yyyy-MM-dd}", @StartDate, @EndDate);
+#DECLARE SPOProdWeightedGraphStreamPath     string = string.Format(@"/shares/IDEAs.Prod/UserCollaborationNetworks/SPO/Graphs/{0:yyyy/MM/dd}/CoauthorPairs_Prod_RL{1}D.ss", @TargetDate, @RollingWindowSize);
+#DECLARE SPOMSITWeightedGraphStreamPath     string = string.Format(@"/shares/IDEAs.Prod/UserCollaborationNetworks/SPO/Graphs/{0:yyyy/MM/dd}/CoauthorPairs_MSIT_RL{1}D.ss", @TargetDate, @RollingWindowSize);
+#DECLARE EXOWeightedGraphStreamPath         string = string.Format(@"/shares/IDEAs.Prod/UserCollaborationNetworks/EXO/Graphs/Commercial/{0:yyyy/MM/dd}/WeightedGraph_Worldwide_RL{1}D.ss",  @TargetDate, @RollingWindowSize);
+//#DECLARE TeamsNFADHistoryStreamPath         string = string.Format(@"/shares/ACE.proc/local/Campaigns/Core/Teams/{0:yyyy/MM}/ActiveUsers_{0:dd}_RL{1}D.ss", @TargetDate, @RollingWindowSize);
+#DECLARE TenantProfileViewPath              string = @"/shares/IDEAs.Prod/Release/Profiles/Tenant/IDEAsTenantProfile.view";
+
+// Output Streams.
+#DECLARE O365UserFeaturesStreamPath         string = string.Format(@"/my/FHL2018/TeamsData/{0:yyyy/MM}/O365UserFeatures_{0:dd}_RL{1}D.ss", @TargetDate, @RollingWindowSize);
+//#DECLARE O365UserFeaturesSummaryStreamPath  string = string.Format(@"/my/FHL2018/TeamsData/{0:yyyy/MM}/Validations/O365UserFeaturesSummary_{0:dd}_RL{1}D.ss", @TargetDate, @RollingWindowSize);
+
+// Step 1: Load all users, get active flags and Sfb features.
+Users =
+    VIEW @UserInfoViewPath
+    PARAMS
+    (
+        StartSnapshotTime = @StartDate.ToString("yyyy-MM-dd"),
+        EndSnapshotTime = @EndDate.ToString("yyyy-MM-dd"),
+        Dataset = "Worldwide.Commercial",
+        ExtensionColumnSets = "ActiveFlags,SfBStatistics"
+    );
+
+Users = 
+    SELECT OMSTenantId,
+           Ids.OrgIdPUID            AS Puid,
+           HasEDU,
+           SnapshotTime,
+           IsEXOActive,
+           IsSPOActive,
+           IsLYOActive              AS IsSfbActive,
+           SfBP2pAudioMinutes,
+           SfBConfAVMinutes,
+           SfBConfPhoneMinutes,
+           SfBMeetingMinutes,
+           SfBP2pIMCount
+    FROM Users
+    WHERE !string.IsNullOrWhiteSpace(Ids.OrgIdPUID) AND 
+          !string.IsNullOrWhiteSpace(OMSTenantId) AND
+          UserType IN ("Member") AND 
+          Office365Category IN ("Commercial") AND
+          !Deleted AND !SoftDeleted AND
+          MicrosoftTeamsEnabled;    // Must be Teams enabled.
+
+Users = 
+    SELECT OMSTenantId,
+           Puid,
+           (MAX(HasEDU) ? 1 : 0)                                                    AS TenantHasEducation,
+           COUNT(DISTINCT IsEXOActive ? SnapshotTime.ToString("yyyyMMdd") : null)   AS NumEXOActiveDays,
+           COUNT(DISTINCT IsSPOActive ? SnapshotTime.ToString("yyyyMMdd") : null)   AS NumSPOActiveDays,
+           COUNT(DISTINCT IsSfbActive ? SnapshotTime.ToString("yyyyMMdd") : null)   AS NumSfbActiveDays,
+           SUM(SfBP2pAudioMinutes)                                                  AS SfBP2pAudioMinutes,
+           SUM(SfBConfAVMinutes)                                                    AS SfBConfAVMinutes,
+           SUM(SfBConfPhoneMinutes)                                                 AS SfBConfPhoneMinutes,
+           SUM(SfBMeetingMinutes)                                                   AS SfBMeetingMinutes,
+           SUM(SfBP2pIMCount)                                                       AS SfBP2pIMCount
+    FROM Users
+    GROUP BY OMSTenantId, Puid;
+
+// Step 2: EXO Node Usage
+EXONodeUsage = 
+    SELECT OMSTenantId,
+           Puid,
+           NumEmailsSent,
+           NumWordStreamAttachmentsSent,
+           NumExcelStreamAttachmentsSent,
+           NumPowerPointStreamAttachmentsSent,
+           NumPDFStreamAttachmentsSent,
+           NumInboundEmailsReceived,
+           NumInboundInboxEmailsReceived,
+           NumInboundEmailsRead,
+           NumWordStreamAttachmentOpened,
+           NumExcelStreamAttachmentOpened,
+           NumPowerPointStreamAttachmentOpened,
+           NumPDFStreamAttachmentOpened
+    FROM (SSTREAM @EXONodeUsageStreamPath);
+
+Users = 
+    SELECT Users.*,
+           EXONodeUsage.NumEmailsSent ?? 0                          AS NumEmailsSent,
+           EXONodeUsage.NumWordStreamAttachmentsSent ?? 0           AS NumWordStreamAttachmentsSent,
+           EXONodeUsage.NumExcelStreamAttachmentsSent ?? 0          AS NumExcelStreamAttachmentsSent,
+           EXONodeUsage.NumPowerPointStreamAttachmentsSent ?? 0     AS NumPowerPointStreamAttachmentsSent,
+           EXONodeUsage.NumPDFStreamAttachmentsSent ?? 0            AS NumPDFStreamAttachmentsSent,
+           EXONodeUsage.NumInboundEmailsReceived ?? 0               AS NumInboundEmailsReceived,
+           EXONodeUsage.NumInboundInboxEmailsReceived ?? 0          AS NumInboundInboxEmailsReceived,
+           EXONodeUsage.NumInboundEmailsRead ?? 0                   AS NumInboundEmailsRead,
+           EXONodeUsage.NumWordStreamAttachmentOpened ?? 0          AS NumWordStreamAttachmentOpened,
+           EXONodeUsage.NumExcelStreamAttachmentOpened ?? 0         AS NumExcelStreamAttachmentOpened,
+           EXONodeUsage.NumPowerPointStreamAttachmentOpened ?? 0    AS NumPowerPointStreamAttachmentOpened,
+           EXONodeUsage.NumPDFStreamAttachmentOpened ?? 0           AS NumPDFStreamAttachmentOpened           
+    FROM Users
+    LEFT OUTER JOIN EXONodeUsage ON Users.OMSTenantId == EXONodeUsage.OMSTenantId AND Users.Puid == EXONodeUsage.Puid;
+
+// Step 3: SPO Node Usage
+SPONodeUsage = 
+    SELECT Puid,
+           NumWXPDocumentEdited,
+           NumWXPDocumentRead,
+           NumSharedWXPDocumentEdited,
+           NumSharedWXPDocumentRead,
+           NumWXPActiveDays
+    FROM (SSTREAM @SPOProdNodeUsageStreamPath)
+    UNION
+    SELECT Puid,
+           NumWXPDocumentEdited,
+           NumWXPDocumentRead,
+           NumSharedWXPDocumentEdited,
+           NumSharedWXPDocumentRead,
+           NumWXPActiveDays
+    FROM (SSTREAM @SPOMSITNodeUsageStreamPath);
+
+SPONodeUsage = 
+    SELECT Puid,
+           MAX(NumWXPDocumentEdited)        AS NumWXPDocumentEdited,
+           MAX(NumWXPDocumentRead)          AS NumWXPDocumentRead,
+           MAX(NumSharedWXPDocumentEdited)  AS NumSharedWXPDocumentEdited,
+           MAX(NumSharedWXPDocumentRead)    AS NumSharedWXPDocumentRead, 
+           MAX(NumWXPActiveDays)            AS NumWXPActiveDays       
+    FROM SPONodeUsage
+    GROUP BY Puid;
+
+Users = 
+    SELECT Users.*,
+           SPONodeUsage.NumWXPDocumentEdited ?? 0       AS NumWXPCloudDocumentEdited,
+           SPONodeUsage.NumWXPDocumentRead ?? 0         AS NumWXPCloudDocumentRead,
+           SPONodeUsage.NumSharedWXPDocumentEdited ?? 0 AS NumWXPSharedCloudDocumentEdited,
+           SPONodeUsage.NumSharedWXPDocumentRead ?? 0   AS NumWXPSharedCloudDocumentRead,
+           SPONodeUsage.NumWXPActiveDays ?? 0           AS NumWXPActiveDays
+    FROM Users
+    LEFT OUTER JOIN SPONodeUsage ON Users.Puid == SPONodeUsage.Puid;
+
+// Step 4: Calculate proficiency score 
+WordProficiencyScore = 
+    SELECT UserId AS Puid,
+           segment           
+    FROM (SSTREAM @WordProficiencyScoreStreamPath);
+
+ExcelProficiencyScore = 
+    SELECT UserId AS Puid,
+           segment
+    FROM (SSTREAM @ExcelProficiencyScoreStreamPath);
+
+PPTProficiencyScore = 
+    SELECT UserId AS Puid,
+           segment
+    FROM (SSTREAM @PPTProficiencyScoreStreamPath);
+
+Users = 
+    SELECT Users.*,
+           WordProficiencyScore.segment ?? 0    AS WordProficiencySegment,
+           ExcelProficiencyScore.segment ?? 0   AS ExcelProficiencySegment,
+           PPTProficiencyScore.segment ?? 0     AS PPTProficiencySegment        
+    FROM Users
+    LEFT OUTER JOIN WordProficiencyScore ON Users.Puid == WordProficiencyScore.Puid
+    LEFT OUTER JOIN ExcelProficiencyScore ON Users.Puid == ExcelProficiencyScore.Puid
+    LEFT OUTER JOIN PPTProficiencyScore ON Users.Puid == PPTProficiencyScore.Puid;
+
+// Step 5: DL and GM usage
+EmailSent = 
+    SELECT OMSTenantId,
+           Puid,
+           COUNT(DISTINCT DLRecipients)                                                         AS NumDLRecipientsSentEmailsTo,
+           COUNT(DISTINCT !string.IsNullOrWhiteSpace(DLRecipients) ? InternetMessageId : null)  AS NumEmailsSentToDLRecipients
+    FROM (SSTREAM @EXOEmailSentStreamPath)
+    GROUP BY OMSTenantId, Puid;
+
+Users = 
+    SELECT Users.*,
+           EmailSent.NumDLRecipientsSentEmailsTo ?? 0                   AS NumDLRecipientsSentEmailsTo,
+           EmailSent.NumEmailsSentToDLRecipients ?? 0                   AS NumEmailsSentToDLRecipients
+    FROM Users
+    LEFT OUTER JOIN EmailSent ON Users.OMSTenantId == EmailSent.OMSTenantId AND Users.Puid == EmailSent.Puid;
+
+//// Step 6: Neighbor Teams NFAD usage
+//SPONeighbors = 
+//    SELECT FromPuid AS Puid, ToPuid   AS Neighbor FROM (SSTREAM @SPOProdWeightedGraphStreamPath) WHERE NumWXPDocs > 0
+//    UNION
+//    SELECT ToPuid   AS Puid, FromPuid AS Neighbor FROM (SSTREAM @SPOProdWeightedGraphStreamPath) WHERE NumWXPDocs > 0
+//    UNION
+//    SELECT FromPuid AS Puid, ToPuid   AS Neighbor FROM (SSTREAM @SPOMSITWeightedGraphStreamPath) WHERE NumWXPDocs > 0
+//    UNION
+//    SELECT ToPuid   AS Puid, FromPuid AS Neighbor FROM (SSTREAM @SPOMSITWeightedGraphStreamPath) WHERE NumWXPDocs > 0;
+//
+//EXONeighbors = 
+//    SELECT FromPuid,
+//           ToPuid
+//    FROM (SSTREAM @EXOWeightedGraphStreamPath)
+//    WHERE FromOMSTenantId == ToOMSTenantId AND FromPuid != ToPuid;
+//
+//EXONeighbors1 = 
+//    SELECT *
+//    FROM EXONeighbors;
+//
+//EXONeighbors = 
+//    SELECT FromPuid,
+//           ToPuid
+//    FROM EXONeighbors
+//    LEFT SEMIJOIN EXONeighbors1 ON EXONeighbors.FromPuid == EXONeighbors1.ToPuid AND EXONeighbors.ToPuid == EXONeighbors1.FromPuid;
+//
+//EXONeighbors =
+//    SELECT FromPuid AS Puid, ToPuid   AS Neighbor FROM EXONeighbors
+//    UNION
+//    SELECT ToPuid   AS Puid, FromPuid AS Neighbor FROM EXONeighbors;
+//
+//Neighbors = 
+//    SELECT Puid, Neighbor, true AS IsDocDocNeighbor, false AS IsEmailNeighbor FROM SPONeighbors
+//    UNION
+//    SELECT Puid, Neighbor, false AS IsDocDocNeighbor, true AS IsEmailNeighbor FROM EXONeighbors;
+//
+//Neighbors = 
+//    SELECT Puid,
+//           Neighbor,
+//           MAX(IsDocDocNeighbor) AS IsDocDocNeighbor,
+//           MAX(IsEmailNeighbor)  AS IsEmailNeighbor
+//    FROM Neighbors
+//    GROUP BY Puid, Neighbor;
+
+//TeamsNFADUsage = 
+//    SELECT DISTINCT OMSTenantId,
+//                    Puid
+//    FROM (SSTREAM @TeamsNFADHistoryStreamPath)
+//    WHERE !string.IsNullOrWhiteSpace(Puid) AND Timestamp.Date >= @StartDate.Date AND Timestamp.Date <= @EndDate.Date;
+//
+//Neighbors = 
+//    SELECT Neighbors.*,
+//           !string.IsNullOrWhiteSpace(TeamsNFADUsage.Puid) AS IsNeighborTeamsActive
+//    FROM Neighbors
+//    LEFT OUTER JOIN TeamsNFADUsage ON Neighbors.Neighbor == TeamsNFADUsage.Puid;
+
+//Neighbors = 
+//    SELECT Puid,
+//           COUNT(DISTINCT IsDocDocNeighbor ? Neighbor : null)                           AS NumDocNeighbors,
+//           COUNT(DISTINCT IsEmailNeighbor  ? Neighbor : null)                           AS NumEmailNeighbors,           
+//           //COUNT(DISTINCT IsDocDocNeighbor AND IsNeighborTeamsActive ? Neighbor : null) AS NumDocNeighborsTeamsActive,           
+//           COUNT(DISTINCT IsEmailNeighbor  AND IsNeighborTeamsActive ? Neighbor : null) AS NumEmailNeighborsTeamsActive           
+//    FROM Neighbors
+//    GROUP BY Puid;
+
+//Users = 
+//    SELECT Users.*,
+//           Neighbors.NumDocNeighbors ?? 0               AS NumDocNeighbors,
+//           Neighbors.NumDocNeighborsTeamsActive ?? 0    AS NumDocNeighborsTeamsActive,
+//           Neighbors.NumEmailNeighbors ?? 0             AS NumEmailNeighbors, 
+//           Neighbors.NumEmailNeighborsTeamsActive ?? 0  AS NumEmailNeighborsTeamsActive         
+//    FROM Users
+//    LEFT OUTER JOIN Neighbors ON Users.Puid == Neighbors.Puid;
+
+// Step 7: Tenant Teams NFAD usage
+//TenantTeamsUsage = 
+//    SELECT OMSTenantId,
+//           COUNT(DISTINCT Puid) AS NumTeamsNFADUsersWithinTheTenant
+//    FROM TeamsNFADUsage;
+//
+//Users = 
+//    SELECT Users.*,
+//           TenantTeamsUsage.NumTeamsNFADUsersWithinTheTenant ?? 0 AS NumTeamsNFADUsersWithinTheTenant
+//    FROM Users
+//    LEFT OUTER JOIN TenantTeamsUsage ON Users.OMSTenantId == TenantTeamsUsage.OMSTenantId;
+//
+//TenantProfile = 
+//    VIEW @TenantProfileViewPath
+//    PARAMS
+//    (
+//        HistoryDate = @TargetDate
+//    );
+//
+//TenantProfile =
+//    SELECT DISTINCT OMSTenantId.ToLower()   AS OMSTenantId,
+//                    TeamEnabledUsers        AS MicrosoftTeamsEnabledUsers
+//    FROM TenantProfile
+//    WHERE !string.IsNullOrWhiteSpace(OMSTenantId);
+//
+//TenantProfile = 
+//    SELECT OMSTenantId,
+//           MAX(MicrosoftTeamsEnabledUsers) AS MicrosoftTeamsEnabledUsers
+//    FROM TenantProfile;
+
+//Users = 
+//    SELECT Users.*
+//           //(TenantProfile.MicrosoftTeamsEnabledUsers > 0 ? (double)NumTeamsNFADUsersWithinTheTenant/(double)TenantProfile.MicrosoftTeamsEnabledUsers : 0d) AS PercentTeamsNFADUsersWithinTheTenant
+//    FROM Users
+//    LEFT OUTER JOIN TenantProfile ON Users.OMSTenantId == TenantProfile.OMSTenantId;
+
+OUTPUT Users
+TO SSTREAM @O365UserFeaturesStreamPath
+CLUSTERED BY Puid, OMSTenantId
+SORTED BY Puid, OMSTenantId;
+
+//UsersSummary = 
+//    SELECT COUNT()                      AS NumRows,
+//           COUNT(DISTINCT Puid)         AS NumUsers,
+//           COUNT(DISTINCT OMSTenantId)  AS NumTenants
+//    FROM Users;
+//
+//OUTPUT UsersSummary
+//TO SSTREAM @O365UserFeaturesSummaryStreamPath
+//CLUSTERED BY NumRows;

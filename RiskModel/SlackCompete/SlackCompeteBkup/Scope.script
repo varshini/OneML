@@ -1,0 +1,66 @@
+﻿//Script GUID:d254d7a7-7c25-4161-8421-75ef1d756d30
+//Used for tracking history
+
+//Getting the slack compete signals 
+
+#DECLARE TenantOutput string = @"/my/SlackCompete/1_tenants_SlackCompete_2018-01-31.ss";
+
+slack_data =
+    SSTREAM "/users/mialdea/StrategicTenants/SlackCompete_2018-01-31.ss";
+
+strategic_tenants_ss =
+    SSTREAM "/users/mialdea/CapOneInvestigation/400Strategic50kPlusSeats_TenantTpid.ss";
+
+//pre-processing both the tables to handle the mismatch in the datatypes in the TPID
+
+/*
+pre_process_slack =
+    SELECT Date,
+           DeviceId,
+           ProcessName,
+           EngagementTime,
+           OfficeTenantId,
+           HasTPId,
+           (int) TPIdInt AS TPIdInt,
+           OMSTenantId,
+           YrMo
+    FROM slack_data;
+
+pre_process_tenants =
+    SELECT (int) PrimaryTPID AS PrimaryTPID,TenantName,OMSTenantId
+    FROM strategic_tenants_ss;
+
+*/
+
+//joining on either tenant id or TPID
+
+required_data_tenant_id =
+    SELECT slack_data.*
+    FROM slack_data
+         INNER JOIN
+             strategic_tenants_ss
+         ON slack_data.OMSTenantId == strategic_tenants_ss.OMSTenantId;
+
+
+/*
+required_data_tpid =
+    SELECT pre_process_slack. *
+    FROM pre_process_slack
+         INNER JOIN
+             pre_process_tenants
+         ON pre_process_slack.TPIdInt == pre_process_tenants.PrimaryTPID;
+
+required_data =
+    SELECT *
+    FROM required_data_tenant_id
+    UNION ALL
+    SELECT *
+    FROM required_data_tpid;
+*/
+
+
+OUTPUT required_data_tenant_id
+TO SSTREAM @TenantOutput;
+ 
+
+ 

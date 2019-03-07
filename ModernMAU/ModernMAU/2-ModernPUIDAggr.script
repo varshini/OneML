@@ -1,0 +1,538 @@
+﻿//Script GUID:cc0760a8-2cc4-41c6-a6f5-ee789d0e2eeb
+//Used for tracking history
+
+// ====================================================================================================================
+// <copyright company="Microsoft Inc">
+//   (c) 2018 Microsoft Inc.
+// </copyright>
+// <summary>
+//     WHERE = cosmos14\office.adhoc; runtime
+//       WHY = Aggregating across apps and workloads to get all up Modern MAU numbers
+// </summary>
+// <history>  
+//    [varamase]   :  2018-07-19: imported from previous version (https://microsoft.sharepoint.com/teams/IDEAsV-Teams/Shared%20Documents/Forms/AllItems.aspx?id=%2Fteams%2FIDEAsV%2DTeams%2FShared%20Documents%2FManaged%20and%20Tenant%20Insights%2FTransition%2F201803%5FNidhi%2FModernMAU%2Fscripts%2FOI%20Data)
+//    [varamase] : 2018-07-19: Parameterizing  and cleaning up
+// </history>
+// ====================================================================================================================
+// Tools for GDPR tagging
+MODULE "/shares/PXSCosmos14.Prod/PXS.DeleteSignal.PROD/PrivacyAnnotation/PrivacyAnnotation.module";
+USING Privacy;
+// ====================================================================================================================
+
+// Script Parameters
+#DECLARE outputRoot     string   = @"/shares/ACE.proc/local/Projects/EntTenantRiskModel/ModernMAU/"; // if running on ACE.proc "/local/Projects/"; if running on office.adhoc "/shares/ACE.proc/local/Projects/"
+#DECLARE snapDate       DateTime = DateTime.Parse(@@PROCESS_DATE_START@@);
+#DECLARE snapDateStr    string   = @snapDate.ToString("yyyy-MM-dd");
+
+// Inputs
+#DECLARE PUS_month      DateTime = @snapDate.AddMonths(1);
+#DECLARE PUS_str         string = string.Format("/shares/modpim.prod/modpimprodvcshare/O365MarketingDatasets/Commercial/SegmentationModel/PUIDSummary/V2/ModernMAU_PUIDUsageSegmentation_{0:yyyy_MM}_01.ss",@PUS_month);
+#DECLARE Wlplatformflags_str string = string.Format("{0}WLService_ESLT_Puid_{1:yyyyMM}.ss", @outputRoot, @snapDate);
+#DECLARE CoreApps_str        string = string.Format("{0}CoreApps_Puid_{1:yyyyMM}.ss", @outputRoot, @snapDate);
+
+// Output
+#DECLARE aggrOutput          string = string.Format("{0}ModernMAU_TenantLevel_{1:yyyyMM}.ss", @outputRoot, @snapDate);
+
+// ====================================================================================================================
+
+PUS = SSTREAM @PUS_str;
+Wlplatformflags = SSTREAM @Wlplatformflags_str;
+CoreApps = SSTREAM @CoreApps_str;
+
+CoreApps_Puid =
+    SELECT TenantId.ToUpper() AS TenantId2, UserId.ToUpper() AS UserId2, * 
+    FROM CoreApps
+    WHERE TenantId IS NOT NULL AND UserId IS NOT NULL;
+
+ModernMAUAppVersionWLPuid_AllCheck1a =
+        SELECT a.SnapShotDate, a.TenantId, a.OrgIDPUID,
+
+///// Tenant Summary Attributes
+           EXOEnabled,
+           SPOEnabled,
+           LYOEnabled,
+           MicrosoftTeamsEnabled,
+           ( ( EXOEnabled == 1 OR SPOEnabled == 1 OR LYOEnabled == 1 OR MicrosoftTeamsEnabled == 1) ? 1 : 0 ) AS ESLT_Enabled,
+           ( ( EXOEnabled == 1 OR SPOEnabled == 1 OR LYOEnabled == 1 ) ? 1 : 0 ) AS EXOSPOLYO_Enabled,
+           ( ( EXOEnabled == 1 OR SPOEnabled == 1 ) ? 1 : 0 ) AS EXOSPO_Enabled,
+           EXOActlst28Days,
+           SPOActlst28Days, 
+           LYOActlst28Days,
+           TeamsActlst28Days,
+           SPOOnlyActlst28Days , OD4BActlst28Days,
+           ( ( WXPOOWin32Active == 1 OR WXPOOMacActive == 1 OR WXPOOWebActive == 1 OR WXPOOiosActive == 1 OR WXPOOAndroidActive == 1 OR WXPOOUniversalActive == 1 ) ? 1 : 0 ) AS ProPlusActive,
+           ( ( WXPOOWin32Active == 1 OR WXPOOMacActive == 1 OR WXPOOiosActive == 1 OR WXPOOAndroidActive == 1 ) ? 1 : 0 ) AS ProPlusActive4,
+           ( ( WXPOOWin32Active == 1 OR WXPOOMacActive == 1) ? 1 : 0 ) AS ProPlusActive2,            
+//from exo aggr   
+           WXPOOAndroidActive,
+           WXPOOMacActive,
+           WXPOOUniversalActive,
+           WXPOOWebActive,           WXPOOWin32Active,
+           WXPOOiosActive,
+           ( ( EXOActlst28Days == 1 OR SPOActlst28Days == 1 OR LYOActlst28Days == 1 OR TeamsActlst28Days == 1) ? 1 : 0 ) AS ESLT_Act,
+           ( ( EXOActlst28Days == 1 OR SPOActlst28Days == 1 OR LYOActlst28Days == 1 ) ? 1 : 0 ) AS EXOSPOLYO_Act,
+           ( ( EXOActlst28Days == 1 OR SPOActlst28Days == 1 ) ? 1 : 0 ) AS EXOSPO_Act,
+           ( ( ProPlusDeployed != 1 AND ( WXPOOWin32Active > 0 OR WXPOOMacActive > 0 ) ) ? 1 : 0 ) AS PerpetualCalcFlg2,
+           ((EXOActlst28Days == 1 OR SPOActlst28Days == 1 OR LYOActlst28Days == 1 OR TeamsActlst28Days == 1 OR
+                WXPOOWin32Active == 1 OR WXPOOMacActive == 1 OR WXPOOiosActive == 1  OR WXPOOAndroidActive == 1  OR 
+                WXPOOWebActive == 1 OR WXPOOUniversalActive == 1) ? 1 : 0) AS Activefilter,
+           
+///// Connected Attributes
+///// Connected Attributes EXO
+           ( MatchedEXO > 0 ? 1 : 0 ) AS MatchedEXO,
+           ( ConnectedEXO_OLDesktop16 > 0 ? 1 : 0 ) AS ConnectedEXO_OLDesktop16,
+           ( ConnectedEXO_OLPc16 > 0 ? 1 : 0 ) AS ConnectedEXO_OLPc16,
+           ( ConnectedEXO_OLMac16 > 0 ? 1 : 0 ) AS ConnectedEXO_OLMac16,
+           ( ConnectedEXO_OWA > 0 ? 1 : 0 ) AS ConnectedEXO_OWA,
+           ( ConnectedEXO_OLMobileNew > 0 ? 1 : 0 ) AS ConnectedEXO_OLMobileNew,
+           ( ConnectedEXO_OLDesktopOld > 0 ? 1 : 0 ) AS ConnectedEXO_OLDesktopOld,
+           ( ConnectedEXO_OLPcOld > 0 ? 1 : 0 ) AS ConnectedEXO_OLPcOld,
+           ( ConnectedEXO_OLMacOld > 0 ? 1 : 0 ) AS ConnectedEXO_OLMacOld,
+           ( ConnectedEXO_OLMobileOld > 0 ? 1 : 0 ) AS ConnectedEXO_OLMobileOld,
+
+///// Connected Attributes SPO
+           ( MatchedSPO > 0 ? 1 : 0 ) AS MatchedSPO,
+           ( ConnectedSPO_WXPONDesktop16 > 0 ? 1 : 0 ) AS ConnectedSPO_WXPONDesktop16,
+           ( ConnectedSPO_WXPONPc16 > 0 ? 1 : 0 ) AS ConnectedSPO_WXPONPc16,
+           ( ConnectedSPO_WXPONMac16 > 0 ? 1 : 0 ) AS ConnectedSPO_WXPONMac16,
+           ( ConnectedSPO_ODSync17 > 0 ? 1 : 0 ) AS ConnectedSPO_ODSync17,
+           ( ConnectedSPO_ODSyncPc17 > 0 ? 1 : 0 ) AS ConnectedSPO_ODSyncPc17,
+           ( ConnectedSPO_ODSyncMac17 > 0 ? 1 : 0 ) AS ConnectedSPO_ODSyncMac17,
+           ( ConnectedSPO_Browser > 0 ? 1 : 0 ) AS ConnectedSPO_Browser,
+           ( ConnectedSPO_WXPONMobileNew > 0 ? 1 : 0 ) AS ConnectedSPO_WXPONMobileNew,
+           ( ConnectedSPO_WXPONDesktopOld > 0 ? 1 : 0 ) AS ConnectedSPO_WXPONDesktopOld,
+           ( ConnectedSPO_WXPONPcOld > 0 ? 1 : 0 ) AS ConnectedSPO_WXPONPcOld,
+           ( ConnectedSPO_WXPONMacOld > 0 ? 1 : 0 ) AS ConnectedSPO_WXPONMacOld,
+           ( ConnectedSPO_ODSyncOld > 0 ? 1 : 0 ) AS ConnectedSPO_ODSyncOld,
+           ( ConnectedSPO_ODSyncPcOld > 0 ? 1 : 0 ) AS ConnectedSPO_ODSyncPcOld,
+           ( ConnectedSPO_ODSyncMacOld > 0 ? 1 : 0 ) AS ConnectedSPO_ODSyncMacOld,
+           ( ConnectedSPO_WXPONMobileOld > 0 ? 1 : 0 ) AS ConnectedSPO_WXPONMobileOld,
+           ( ConnectedSPO_OfficeOnline > 0 ? 1 : 0 ) AS ConnectedSPO_OfficeOnline,
+
+///// Connected Attributes LYO
+           ( MatchedLYO > 0 ? 1 : 0 ) AS MatchedLYO,
+           ( ConnectedLYO_SfBDesktop16 > 0 ? 1 : 0 ) AS ConnectedLYO_SfBDesktop16,
+           ( ConnectedLYO_SfBPc16 > 0 ? 1 : 0 ) AS ConnectedLYO_SfBPc16,
+           ( ConnectedLYO_SfBMac16 > 0 ? 1 : 0 ) AS ConnectedLYO_SfBMac16, 
+           ( ConnectedLYO_Browser > 0 ? 1 : 0 ) AS ConnectedLYO_Browser,
+           ( ConnectedLYO_SfBMobileNew > 0 ? 1 : 0 ) AS ConnectedLYO_SfBMobileNew,
+           ( ConnectedLYO_SfBDesktopOld > 0 ? 1 : 0 ) AS ConnectedLYO_SfBDesktopOld,
+           ( ConnectedLYO_SfBPcOld > 0 ? 1 : 0 ) AS ConnectedLYO_SfBPcOld,
+           ( ConnectedLYO_SfBMacOld > 0 ? 1 : 0 ) AS ConnectedLYO_SfBMacOld,
+           ( ConnectedLYO_SfBMobileOld > 0 ? 1 : 0 ) AS ConnectedLYO_SfBMobileOld,
+           
+///// Connected Attributes Allup EXOSPOLYO without LYO
+           ( MatchedEXO > 0 OR MatchedSPO > 0 OR MatchedLYO > 0 ? 1 : 0 ) AS MatchedEXOSPOLYO,
+           ( MatchedEXO > 0 OR MatchedSPO > 0 ? 1 : 0 ) AS MatchedEXOSPO,
+           ( ConnectedEXO_OLDesktop16 > 0 OR ConnectedSPO_WXPONDesktop16 > 0 ? 1 : 0 ) AS Connected_WXPOODesktop16,
+           ( ConnectedEXO_OLPc16 > 0 OR ConnectedSPO_WXPONPc16 > 0 ? 1 : 0 ) AS Connected_WXPOOPc16,
+           ( ConnectedEXO_OLMac16 > 0 OR ConnectedSPO_WXPONMac16 > 0 ? 1 : 0 ) AS Connected_WXPOOMac16,
+           ( ConnectedEXO_OWA > 0 OR ConnectedSPO_OfficeOnline > 0 ? 1 : 0 ) AS Connected_WXPOOWeb,
+           ( ConnectedEXO_OLMobileNew > 0 OR ConnectedSPO_WXPONMobileNew > 0 ? 1 : 0 ) AS Connected_WXPOOMobileNew,
+           ( ConnectedEXO_OLDesktopOld > 0 OR ConnectedSPO_WXPONDesktopOld > 0 ? 1 : 0 ) AS Connected_WXPOODesktopOld,
+           ( ConnectedEXO_OLPcOld > 0 OR ConnectedSPO_WXPONPcOld > 0 ? 1 : 0 ) AS Connected_WXPOOPcOld,
+           ( ConnectedEXO_OLMacOld > 0 OR ConnectedSPO_WXPONMacOld > 0 ? 1 : 0 ) AS Connected_WXPOOMacOld,
+           ( ConnectedEXO_OLMobileOld > 0 OR ConnectedSPO_WXPONMobileOld > 0 ? 1 : 0 ) AS Connected_WXPOOMobileOld,
+///// Connected Attributes Allup EXOSPOLYO with LYO
+           ( ConnectedEXO_OLDesktop16 > 0 OR ConnectedSPO_WXPONDesktop16 > 0 OR ConnectedLYO_SfBDesktop16 > 0 ? 1 : 0 ) AS Connected_WXPOOSDesktop16,
+           ( ConnectedEXO_OLPc16 > 0 OR ConnectedSPO_WXPONPc16 > 0 OR ConnectedLYO_SfBPc16 > 0 ? 1 : 0 ) AS Connected_WXPOOSPc16,
+           ( ConnectedEXO_OLMac16 > 0 OR ConnectedSPO_WXPONMac16 > 0 OR ConnectedLYO_SfBMac16 > 0 ? 1 : 0 ) AS Connected_WXPOOSMac16,
+           ( ConnectedEXO_OWA > 0 OR ConnectedSPO_OfficeOnline > 0 OR ConnectedLYO_Browser > 0 ? 1 : 0 ) AS Connected_WXPOOSWeb,
+           ( ConnectedEXO_OLMobileNew > 0 OR ConnectedSPO_WXPONMobileNew > 0 OR ConnectedLYO_SfBMobileNew > 0 ? 1 : 0 ) AS Connected_WXPOOSMobileNew,
+           ( ConnectedEXO_OLDesktopOld > 0 OR ConnectedSPO_WXPONDesktopOld > 0 OR ConnectedLYO_SfBDesktopOld > 0 ? 1 : 0 ) AS Connected_WXPOOSDesktopOld,
+           ( ConnectedEXO_OLPcOld > 0 OR ConnectedSPO_WXPONPcOld > 0 OR ConnectedLYO_SfBPcOld > 0 ? 1 : 0 ) AS Connected_WXPOOSPcOld,
+           ( ConnectedEXO_OLMacOld > 0 OR ConnectedSPO_WXPONMacOld > 0 OR ConnectedLYO_SfBMacOld > 0 ? 1 : 0 ) AS Connected_WXPOOSMacOld,
+           ( ConnectedEXO_OLMobileOld > 0 OR ConnectedSPO_WXPONMobileOld > 0 OR ConnectedLYO_SfBMobileOld > 0 ? 1 : 0 ) AS Connected_WXPOOSMobileOld,
+
+///// Core App & Not Connected Attributes
+///// Core App & Not Connected Attributes EXO
+           ( ( OutlookPc16 > 0 ) ? 1 : 0 ) AS OutlookPc16Flg,
+           ( ( OutlookPcOld > 0 ) ? 1 : 0 ) AS OutlookPcOldFlg,
+           ( ( OutlookMac16 > 0 ) ? 1 : 0 ) AS OutlookMac16Flg,
+           ( ( OutlookMacOld > 0 ) ? 1 : 0 ) AS OutlookMacOldFlg,
+           ( ( OutlookDesktop16 > 0 ) ? 1 : 0 ) AS OutlookDesktop16Flg,
+           ( ( OutlookDesktopOld > 0 ) ? 1 : 0 ) AS OutlookDesktopOldFlg,
+           ( ( OutlookWebAll > 0 ) ? 1 : 0 ) AS OutlookWebAllFlg,
+           ( ( OutlookWebSPO > 0 ) ? 1 : 0 ) AS OutlookWebSPOFlg,
+           ( ( OutlookWebEXO > 0 ) ? 1 : 0 ) AS OutlookWebEXOFlg,
+           ( ( WXPOWebEXO > 0 ) ? 1 : 0 ) AS WXPOWebEXOFlg,
+           ( ( WXPOOWebEXO > 0 ) ? 1 : 0 ) AS WXPOOWebEXOFlg,          
+           
+///// Not Connected Attributes SPO
+           ( ( WXPOPc16 > 0 ) ? 1 : 0 ) AS WXPOPc16Flg,
+           ( ( WXPOPcOld > 0 ) ? 1 : 0 ) AS WXPOPcOldFlg,   
+           ( ( WXPOMac16 > 0 ) ? 1 : 0 ) AS WXPOMac16Flg,
+           ( ( WXPOMacOld > 0 ) ? 1 : 0 ) AS WXPOMacOldFlg,   
+           ( ( WXPODesktop16 > 0 ) ? 1 : 0 ) AS WXPODesktop16Flg,
+           ( ( WXPODesktopOld > 0 ) ? 1 : 0 ) AS WXPODesktopOldFlg,
+           ( ( WXPOWebSPO > 0 ) ? 1 : 0 ) AS WXPOWebSPOFlg,
+           ( ( WXPOOWebSPO > 0 ) ? 1 : 0 ) AS WXPOOWebSPOFlg,
+           
+///// Core App & Not Connected Attributes Allup
+           ( ( WXPOODesktop16 > 0 ) ? 1 : 0 ) AS WXPOODesktop16Flg,
+           ( ( WXPOODesktopOld > 0 ) ? 1 : 0 ) AS WXPOODesktopOld,
+           ( ( WXPOWebAll > 0 ) ? 1 : 0 ) AS WXPOWebAllFlg,
+           ( ( WXPOOWebAll > 0 ) ? 1 : 0 ) AS WXPOOWebAllFlg
+           
+///// Office Online Attributes - deleted
+
+    FROM PUS AS a
+    LEFT OUTER JOIN Wlplatformflags AS b
+    ON a.SnapShotDate == b.SnapShotDate AND a.TenantId == b.TenantId AND a.OrgIDPUID == b.userid
+    LEFT OUTER JOIN CoreApps_Puid AS c
+    ON a.SnapShotDate == c.AsOfDate AND a.TenantId == c.TenantId2 AND a.OrgIDPUID == c.UserId2;
+
+///*----------------------
+
+ModernPUID =
+    SELECT SnapShotDate,
+           TenantId, 
+           OrgIDPUID,
+            (Activefilter == 1) ? 1 : 0 AS TotalMAUFlag,
+           (EXOSPOLYO_Act == 1)? 1 : 0 AS ConnectedMAUFlag,
+          //All up aggregates 
+          (EXOActlst28Days == 1 AND PerpetualCalcFlg2 == 0) ? 1 : 0 AS EXOActive,
+           (EXOSPOLYO_Act == 1 AND 
+            (
+              (PerpetualCalcFlg2 == 0 AND Connected_WXPOOSDesktop16 == 1) OR 
+              (Connected_WXPOOSDesktop16 == 0 AND (Connected_WXPOOSMobileNew == 1 OR Connected_WXPOOSWeb == 1))
+            ))? 1:0 AS Allup_ModernFlag,
+        // all up total counts       
+            (EXOSPOLYO_Act == 1 AND (PerpetualCalcFlg2 == 0 AND Connected_WXPOOSDesktop16 == 1))? 1:0 AS Allup_Desktop16ModernFlag, 
+            (EXOSPOLYO_Act == 1 AND Connected_WXPOOSWeb == 1 )? 1: 0 AS Allup_WebModernFlag,
+            (EXOSPOLYO_Act == 1 AND Connected_WXPOOSMobileNew == 1) ? 1:0 AS Allup_MobileModernFlag,        
+            (EXOSPOLYO_Act == 1 AND (PerpetualCalcFlg2 == 0 AND Connected_WXPOOSDesktopOld == 1))? 1:0 AS Allup_DesktopOldFlag,       
+            (EXOSPOLYO_Act == 1 AND PerpetualCalcFlg2 == 1)? 1:0 AS Allup_PerpetualFlag,
+            (EXOSPOLYO_Act == 0 AND EXOSPOLYO_Enabled == 1)? 1:0 AS Allup_EnabledNotActiveFlag,
+            (EXOSPOLYO_Act == 0 AND PerpetualCalcFlg2 == 0 AND (WXPOODesktop16Flg == 1 OR WXPOODesktopOld == 1))? 1:0 AS Allup_NotConnectedFlag,
+           //allup incremental counts
+            (EXOSPOLYO_Act == 1 AND Connected_WXPOOSDesktop16 == 0 AND Connected_WXPOOSWeb == 1)? 1:0 AS Allup_WebModernFlag_incr,
+            (EXOSPOLYO_Act == 1 AND Connected_WXPOOSDesktop16 == 0 AND Connected_WXPOOSWeb == 0 AND Connected_WXPOOSMobileNew == 1)? 1:0 AS Allup_MobileModernFlag_incr,    
+            
+            (EXOSPOLYO_Act == 1 AND PerpetualCalcFlg2 == 0 AND Connected_WXPOOSDesktop16 == 0 AND Connected_WXPOOSWeb == 1)? 1:0 AS Allup_Web_Perp0_ModernFlag_incr,
+            (EXOSPOLYO_Act == 1 AND PerpetualCalcFlg2 == 0 AND Connected_WXPOOSDesktop16 == 0 AND Connected_WXPOOSWeb == 0 AND Connected_WXPOOSMobileNew == 1)? 1:0 AS Allup_Mobile_Perp0_ModernFlag_incr,               
+            
+            (EXOSPOLYO_Act == 1 AND (PerpetualCalcFlg2 == 0 AND Connected_WXPOOSDesktop16 == 0 AND Connected_WXPOOSMobileNew == 0 AND Connected_WXPOOSWeb == 0)
+           AND Connected_WXPOOSDesktopOld == 1)? 1:0 AS Allup_DesktopOldFlag_incr,
+            (EXOSPOLYO_Act == 1 AND (PerpetualCalcFlg2 == 0 AND Connected_WXPOOSDesktop16 == 0 AND Connected_WXPOOSMobileNew == 0 AND Connected_WXPOOSWeb == 0 AND Connected_WXPOOSDesktopOld == 0)
+            )? 1:0 AS Allup_OtherFlag_incr,  
+            
+            //AllUp Overlaps
+           (EXOSPOLYO_Act == 1 AND PerpetualCalcFlg2 == 0 AND Connected_WXPOOSDesktop16 == 1 AND Connected_WXPOOSWeb == 1)? 1:0 AS Allup_Web_Desktop16ModernFlag_overlap,
+           (EXOSPOLYO_Act == 1 AND PerpetualCalcFlg2 == 0 AND Connected_WXPOOSDesktop16 == 1 AND Connected_WXPOOSWeb == 0 AND Connected_WXPOOSMobileNew == 1)? 1:0 AS Allup_Mobile_Desktop16ModernFlag_overlap,
+           (EXOSPOLYO_Act == 1 AND Connected_WXPOOSDesktop16 == 0 AND Connected_WXPOOSWeb == 1 AND Connected_WXPOOSMobileNew == 1)? 1:0 AS Allup_Mobile_WebModernFlag_overlap,
+           (EXOSPOLYO_Act == 1 AND PerpetualCalcFlg2 == 0 AND Connected_WXPOOSDesktop16 == 1 AND Connected_WXPOOSWeb == 1 AND Connected_WXPOOSMobileNew == 1)? 1:0 AS Allup_Mobile_Web_Desktop16ModernFlag_overlap,
+           (EXOSPOLYO_Act == 1 AND PerpetualCalcFlg2 == 0 AND Connected_WXPOOSDesktop16 == 1 AND Connected_WXPOOSWeb == 0 AND Connected_WXPOOSMobileNew == 0 AND Connected_WXPOOSDesktopOld == 1)? 1:0 AS Allup_Desktop16_DesktopOldModernFlag_overlap,
+           (EXOSPOLYO_Act == 1 AND PerpetualCalcFlg2 == 0 AND Connected_WXPOOSDesktop16 == 1 AND Connected_WXPOOSWeb == 0 AND Connected_WXPOOSMobileNew == 1 AND Connected_WXPOOSDesktopOld == 1)? 1:0 AS Allup_Desktop16_DesktopOld_MobileModernFlag_overlap,
+           (EXOSPOLYO_Act == 1 AND PerpetualCalcFlg2 == 0 AND Connected_WXPOOSDesktop16 == 1 AND Connected_WXPOOSWeb == 1 AND Connected_WXPOOSMobileNew == 1 AND Connected_WXPOOSDesktopOld == 1)? 1:0 AS Allup_Desktop16_DesktopOld_Mobile_WebModernFlag_overlap,
+           (EXOSPOLYO_Act == 1 AND PerpetualCalcFlg2 == 0 AND Connected_WXPOOSDesktop16 == 0 AND Connected_WXPOOSWeb == 1 AND Connected_WXPOOSMobileNew == 0 AND Connected_WXPOOSDesktopOld == 1)? 1:0 AS Allup_Web_DesktopOldModernFlag_overlap,
+           (EXOSPOLYO_Act == 1 AND PerpetualCalcFlg2 == 0 AND Connected_WXPOOSDesktop16 == 0 AND Connected_WXPOOSWeb == 1 AND Connected_WXPOOSMobileNew == 1 AND Connected_WXPOOSDesktopOld == 1)? 1:0 AS Allup_Web_DesktopOld_MobileModernFlag_overlap,
+           (EXOSPOLYO_Act == 1 AND PerpetualCalcFlg2 == 0 AND Connected_WXPOOSDesktop16 == 0 AND Connected_WXPOOSWeb == 0 AND Connected_WXPOOSMobileNew == 1 AND Connected_WXPOOSDesktopOld == 1)? 1:0 AS Allup_Mobile_DesktopOldModernFlag_overlap,
+           (EXOSPOLYO_Act == 1 AND PerpetualCalcFlg2 == 0 AND Connected_WXPOOSDesktop16 == 1 AND Connected_WXPOOSWeb == 1 AND Connected_WXPOOSMobileNew == 0 AND Connected_WXPOOSDesktopOld == 1)? 1:0 AS Allup_Desktop16_DesktopOld_WebModernFlag_overlap,
+           
+           
+           //LYO aggr total
+            (LYOActlst28Days == 1 AND PerpetualCalcFlg2 == 0) ? 1 : 0 AS LYOActive,
+           (LYOActlst28Days == 1 AND 
+            (
+              (PerpetualCalcFlg2 == 0 AND ConnectedLYO_SfBDesktop16 == 1) OR 
+              (ConnectedLYO_SfBDesktop16 == 0 AND (ConnectedLYO_SfBMobileNew == 1 OR ConnectedLYO_Browser == 1))
+            ))? 1:0 AS ModernFlagLYO,
+            (LYOActlst28Days == 1 AND (PerpetualCalcFlg2 == 0 AND ConnectedLYO_SfBDesktop16 == 1))? 1:0 AS LYO_Desktop16ModernFlag,            
+            (LYOActlst28Days == 1 AND ConnectedLYO_Browser == 1 )? 1: 0 AS LYO_WebModernFlag,
+            (LYOActlst28Days == 1 AND ConnectedLYO_SfBMobileNew == 1) ? 1:0 AS LYO_MobileModernFlag,        
+            (LYOActlst28Days == 1 AND (PerpetualCalcFlg2 == 0 AND ConnectedLYO_SfBDesktopOld == 1))? 1:0 AS LYO_DesktopOldFlag,       
+            (LYOActlst28Days == 1 AND PerpetualCalcFlg2 == 1)? 1:0 AS LYO_PerpetualFlag,
+            (LYOActlst28Days == 0 AND LYOEnabled == 1)? 1:0 AS LYO_EnabledNotActiveFlag,
+           //lyo increment counts
+            (LYOActlst28Days == 1 AND ConnectedLYO_SfBDesktop16 == 0 AND ConnectedLYO_Browser == 1)? 1:0 AS LYO_WebModernFlag_incr,
+            (LYOActlst28Days == 1 AND ConnectedLYO_SfBDesktop16 == 0 AND ConnectedLYO_Browser == 0 AND ConnectedLYO_SfBMobileNew == 1)? 1:0 AS LYO_MobileModernFlag_incr,    
+            (LYOActlst28Days == 1 AND PerpetualCalcFlg2 == 0 AND ConnectedLYO_SfBDesktop16 == 0 AND ConnectedLYO_Browser == 1)? 1:0 AS LYO_Web_Perp0_ModernFlag_incr,
+            (LYOActlst28Days == 1 AND PerpetualCalcFlg2 == 0 AND ConnectedLYO_SfBDesktop16 == 0 AND ConnectedLYO_Browser == 0 AND ConnectedLYO_SfBMobileNew == 1)? 1:0 AS LYO_Mobile_Perp0_ModernFlag_incr,              
+            
+            (LYOActlst28Days == 1 AND (PerpetualCalcFlg2 == 0 AND ConnectedLYO_SfBDesktop16 == 0 AND ConnectedLYO_SfBMobileNew == 0 AND ConnectedLYO_Browser == 0)
+                    AND ConnectedLYO_SfBDesktopOld == 1)? 1:0 AS LYO_DesktopOldFlag_incr,
+            (LYOActlst28Days == 1 AND (PerpetualCalcFlg2 == 0 AND ConnectedLYO_SfBDesktop16 == 0 AND ConnectedLYO_SfBMobileNew == 0 AND ConnectedLYO_Browser == 0 AND ConnectedLYO_SfBDesktopOld == 0)
+            )? 1:0 AS LYO_OtherFlag_incr,          
+           
+           //LYO Overlaps
+           (LYOActlst28Days == 1 AND PerpetualCalcFlg2 == 0 AND ConnectedLYO_SfBDesktop16 == 1 AND ConnectedLYO_Browser == 1)? 1:0 AS LYO_Desktop16_WebFlag_overlap,
+           (LYOActlst28Days == 1 AND PerpetualCalcFlg2 == 0 AND ConnectedLYO_SfBDesktop16 == 1 AND ConnectedLYO_SfBMobileNew == 1 AND ConnectedLYO_Browser == 0)? 1:0 AS LYO_Desktop16_MobileFlag_overlap,
+           (LYOActlst28Days == 1 AND PerpetualCalcFlg2 == 0 AND ConnectedLYO_SfBDesktop16 == 1 AND ConnectedLYO_SfBMobileNew == 1 AND ConnectedLYO_Browser == 1)? 1:0 AS LYO_Desktop16_Mobile_WebFlag_overlap,
+           (LYOActlst28Days == 1 AND ConnectedLYO_SfBDesktop16 == 0 AND ConnectedLYO_SfBMobileNew == 1 AND ConnectedLYO_Browser == 1)? 1:0 AS LYO_Web_MobileFlag_overlap,
+           (LYOActlst28Days == 1 AND PerpetualCalcFlg2 == 0 AND ConnectedLYO_SfBDesktop16 == 1 AND ConnectedLYO_SfBMobileNew == 0 AND ConnectedLYO_Browser == 0 AND ConnectedLYO_SfBDesktopOld == 1)? 1:0 AS LYO_Desktop16_DesktopOldFlag_overlap,
+           (LYOActlst28Days == 1 AND PerpetualCalcFlg2 == 0 AND ConnectedLYO_SfBDesktop16 == 1 AND ConnectedLYO_SfBMobileNew == 1 AND ConnectedLYO_Browser == 0 AND ConnectedLYO_SfBDesktopOld == 1)? 1:0 AS LYO_Desktop16_DesktopOld_MobileFlag_overlap,
+           (LYOActlst28Days == 1 AND PerpetualCalcFlg2 == 0 AND ConnectedLYO_SfBDesktop16 == 1 AND ConnectedLYO_SfBMobileNew == 0 AND ConnectedLYO_Browser == 1 AND ConnectedLYO_SfBDesktopOld == 1)? 1:0 AS LYO_Desktop16_DesktopOld_WebFlag_overlap,
+           (LYOActlst28Days == 1 AND PerpetualCalcFlg2 == 0 AND ConnectedLYO_SfBDesktop16 == 1 AND ConnectedLYO_SfBMobileNew == 1 AND ConnectedLYO_Browser == 1 AND ConnectedLYO_SfBDesktopOld == 1)? 1:0 AS LYO_Desktop16_DesktopOld_Web_MobileFlag_overlap,
+           (LYOActlst28Days == 1 AND PerpetualCalcFlg2 == 0 AND ConnectedLYO_SfBDesktop16 == 0 AND ConnectedLYO_SfBMobileNew == 0 AND ConnectedLYO_Browser == 1 AND ConnectedLYO_SfBDesktopOld == 1)? 1:0 AS LYO_Web_DesktopOldFlag_overlap,
+           (LYOActlst28Days == 1 AND PerpetualCalcFlg2 == 0 AND ConnectedLYO_SfBDesktop16 == 0 AND ConnectedLYO_SfBMobileNew == 1 AND ConnectedLYO_Browser == 1 AND ConnectedLYO_SfBDesktopOld == 1)? 1:0 AS LYO_Web_Mobile_DesktopOldFlag_overlap,
+           (LYOActlst28Days == 1 AND PerpetualCalcFlg2 == 0 AND ConnectedLYO_SfBDesktop16 == 0 AND ConnectedLYO_SfBMobileNew == 1 AND ConnectedLYO_Browser == 0 AND ConnectedLYO_SfBDesktopOld == 1)? 1:0 AS LYO_Mobile_DesktopOldFlag_overlap,
+           
+           
+//EXO aggr total
+           
+           (EXOActlst28Days == 1 AND 
+            (
+              (PerpetualCalcFlg2 == 0 AND ConnectedEXO_OLDesktop16 == 1) OR 
+              (ConnectedEXO_OLDesktop16 == 0 AND (ConnectedEXO_OLMobileNew == 1 OR ConnectedEXO_OWA == 1))
+            ))? 1:0 AS ModernFlagEXO,   
+            (EXOActlst28Days == 1 AND (PerpetualCalcFlg2 == 0 AND ConnectedEXO_OLDesktop16 == 1))? 1:0 AS EXO_Desktop16ModernFlag,            
+            (EXOActlst28Days == 1 AND ConnectedEXO_OWA == 1 )? 1: 0 AS EXO_WebModernFlag,
+            (EXOActlst28Days == 1 AND ConnectedEXO_OLMobileNew == 1) ? 1:0 AS EXO_MobileModernFlag,        
+            (EXOActlst28Days == 1 AND (PerpetualCalcFlg2 == 0 AND ConnectedEXO_OLDesktopOld == 1))? 1:0 AS EXO_DesktopOldFlag,       
+            (EXOActlst28Days == 1 AND PerpetualCalcFlg2 == 1)? 1:0 AS EXO_PerpetualFlag,
+            (EXOActlst28Days == 0 AND EXOEnabled == 1)? 1:0 AS EXO_EnabledNotActiveFlag,
+            (EXOActlst28Days == 0 AND PerpetualCalcFlg2 == 0 AND (OutlookDesktop16Flg == 1 OR OutlookDesktopOldFlg == 1 ))? 1:0 AS EXO_NotConnectedFlag,       
+//EXO incremental counts
+            (EXOActlst28Days == 1 AND ConnectedEXO_OLDesktop16 == 0 AND ConnectedEXO_OWA == 1)? 1:0 AS EXO_WebModernFlag_incr,
+            (EXOActlst28Days == 1 AND ConnectedEXO_OLDesktop16 == 0 AND ConnectedEXO_OWA == 0 AND ConnectedEXO_OLMobileNew == 1)? 1:0 AS EXO_MobileModernFlag_incr,    
+            (EXOActlst28Days == 1 AND PerpetualCalcFlg2 == 0 AND ConnectedEXO_OLDesktop16 == 0 AND ConnectedEXO_OWA == 1)? 1:0 AS EXO_Web_Perp0_ModernFlag_incr,
+            (EXOActlst28Days == 1 AND PerpetualCalcFlg2 == 0 AND ConnectedEXO_OLDesktop16 == 0 AND ConnectedEXO_OWA == 0 AND ConnectedEXO_OLMobileNew == 1)? 1:0 AS EXO_Mobile_Perp0_ModernFlag_incr,               
+            
+            (EXOActlst28Days == 1 AND (PerpetualCalcFlg2 == 0 AND ConnectedEXO_OLDesktop16 == 0 AND ConnectedEXO_OLMobileNew == 0 AND ConnectedEXO_OWA == 0)
+           AND ConnectedEXO_OLDesktopOld == 1)? 1:0 AS EXO_DesktopOldFlag_incr,
+            (EXOActlst28Days == 1 AND (PerpetualCalcFlg2 == 0 AND ConnectedEXO_OLDesktop16 == 0 AND ConnectedEXO_OLMobileNew == 0 AND ConnectedEXO_OWA == 0 AND ConnectedEXO_OLDesktopOld == 0)
+            )? 1:0 AS EXO_OtherFlag_incr,          
+           
+//EXO Overlaps
+            (EXOActlst28Days == 1 AND PerpetualCalcFlg2 == 0 AND ConnectedEXO_OLDesktop16 == 1 AND ConnectedEXO_OWA == 1)? 1:0 AS EXO_Desktop16_WebFlag_overlap,
+            (EXOActlst28Days == 1 AND PerpetualCalcFlg2 == 0 AND ConnectedEXO_OLDesktop16 == 1 AND ConnectedEXO_OLMobileNew == 1 AND ConnectedEXO_OWA == 0)? 1:0 AS EXO_Desktop16_MobileFlag_overlap,
+            (EXOActlst28Days == 1 AND ConnectedEXO_OLDesktop16 == 0 AND ConnectedEXO_OLMobileNew == 1 AND ConnectedEXO_OWA == 1)? 1:0 AS EXO_Web_MobileFlag_overlap,
+           (EXOActlst28Days == 1 AND PerpetualCalcFlg2 == 0 AND ConnectedEXO_OLDesktop16 == 1 AND ConnectedEXO_OLMobileNew == 1 AND ConnectedEXO_OWA == 1)? 1:0 AS EXO_Desktop16_Web_MobileFlag_overlap,
+            (EXOActlst28Days == 1 AND PerpetualCalcFlg2 == 0 AND ConnectedEXO_OLDesktop16 == 1 AND ConnectedEXO_OLMobileNew == 0 AND ConnectedEXO_OWA == 0 AND ConnectedEXO_OLDesktopOld == 1)? 1:0 AS EXO_DesktopOld_Desktop16Flag_overlap,
+           (EXOActlst28Days == 1 AND PerpetualCalcFlg2 == 0 AND ConnectedEXO_OLDesktop16 == 1 AND ConnectedEXO_OLMobileNew == 1 AND ConnectedEXO_OWA == 0 AND ConnectedEXO_OLDesktopOld == 1)? 1:0 AS EXO_DesktopOld_Desktop16_MobileFlag_overlap,    
+           (EXOActlst28Days == 1 AND PerpetualCalcFlg2 == 0 AND ConnectedEXO_OLDesktop16 == 1 AND ConnectedEXO_OLMobileNew == 1 AND ConnectedEXO_OWA == 1 AND ConnectedEXO_OLDesktopOld == 1)? 1:0 AS EXO_DesktopOld_Desktop16_Mobile_WebFlag_overlap,
+           (EXOActlst28Days == 1 AND PerpetualCalcFlg2 == 0 AND ConnectedEXO_OLDesktop16 == 0 AND ConnectedEXO_OLMobileNew == 0 AND ConnectedEXO_OWA == 1 AND ConnectedEXO_OLDesktopOld == 1)? 1:0 AS EXO_DesktopOld_WebFlag_overlap,
+           (EXOActlst28Days == 1 AND PerpetualCalcFlg2 == 0 AND ConnectedEXO_OLDesktop16 == 0 AND ConnectedEXO_OLMobileNew == 1 AND ConnectedEXO_OWA == 1 AND ConnectedEXO_OLDesktopOld == 1)? 1:0 AS EXO_DesktopOld_Web_MobileFlag_overlap,
+           (EXOActlst28Days == 1 AND PerpetualCalcFlg2 == 0 AND ConnectedEXO_OLDesktop16 == 0 AND ConnectedEXO_OLMobileNew == 1 AND ConnectedEXO_OWA == 0 AND ConnectedEXO_OLDesktopOld == 1)? 1:0 AS EXO_DesktopOld_MobileFlag_overlap,
+                      
+//SPO aggr total
+            (SPOActlst28Days == 1 AND PerpetualCalcFlg2 == 0) ? 1 : 0 AS SPOActive,
+            (SPOActlst28Days == 1 AND 
+            (
+              (PerpetualCalcFlg2 == 0 AND ConnectedSPO_WXPONDesktop16 == 1) OR 
+              (ConnectedSPO_WXPONDesktop16 == 0 AND (ConnectedSPO_WXPONMobileNew == 1 OR ConnectedSPO_OfficeOnline == 1))
+            ))? 1:0 AS ModernFlagSPO,
+            (SPOActlst28Days == 1 AND (PerpetualCalcFlg2 == 0 AND ConnectedSPO_WXPONDesktop16 == 1))? 1:0 AS SPO_Desktop16ModernFlag,            
+            (SPOActlst28Days == 1 AND ConnectedSPO_OfficeOnline == 1 )? 1: 0 AS SPO_WebModernFlag,
+            (SPOActlst28Days == 1 AND ConnectedSPO_WXPONMobileNew == 1) ? 1:0 AS SPO_MobileModernFlag,   
+           (SPOActlst28Days == 1 AND ConnectedSPO_ODSync17 == 1) ? 1:0 AS SPO_ODSyncModernFlag,   
+           (SPOActlst28Days == 1 AND ConnectedSPO_Browser == 1) ? 1:0 AS SPO_BrowserModernFlag,   
+            (SPOActlst28Days == 1 AND (PerpetualCalcFlg2 == 0 AND ConnectedSPO_WXPONDesktopOld == 1))? 1:0 AS SPO_DesktopOldFlag,       
+            (SPOActlst28Days == 1 AND PerpetualCalcFlg2 == 1)? 1:0 AS SPO_PerpetualFlag,
+            (SPOActlst28Days == 0 AND SPOEnabled == 1)? 1:0 AS SPO_EnabledNotActiveFlag,
+            (SPOActlst28Days == 0 AND PerpetualCalcFlg2 == 0 AND (WXPODesktop16Flg == 1 OR WXPODesktopOldFlg == 1))? 1:0 AS SPO_NotConnectedFlag,                   
+//SPO incremental counts
+            (SPOActlst28Days == 1 AND ConnectedSPO_WXPONDesktop16 == 0 AND ConnectedSPO_OfficeOnline == 1)? 1:0 AS SPO_WebModernFlag_incr,
+            (SPOActlst28Days == 1 AND ConnectedSPO_WXPONDesktop16 == 0 AND ConnectedSPO_OfficeOnline == 0 AND ConnectedSPO_WXPONMobileNew == 1)? 1:0 AS SPO_MobileModernFlag_incr,  
+            
+            (SPOActlst28Days == 1 AND PerpetualCalcFlg2 == 0 AND ConnectedSPO_WXPONDesktop16 == 0 AND ConnectedSPO_OfficeOnline == 1 )? 1:0 AS SPO_Web_Perp0_ModernFlag_incr,//updated
+            (SPOActlst28Days == 1 AND PerpetualCalcFlg2 == 0 AND ConnectedSPO_WXPONDesktop16 == 0 AND ConnectedSPO_OfficeOnline == 0 AND ConnectedSPO_WXPONMobileNew == 1)? 1:0 AS SPO_Mobile_Perp0_ModernFlag_incr,  
+
+            (SPOActlst28Days == 1 AND (PerpetualCalcFlg2 == 0 AND ConnectedSPO_WXPONDesktop16 == 0 AND ConnectedSPO_WXPONMobileNew == 0 AND ConnectedSPO_OfficeOnline == 0)
+           AND ConnectedSPO_ODSync17 == 1)? 1:0 AS SPO_ODSyncFlag_incr,
+            (SPOActlst28Days == 1 AND (PerpetualCalcFlg2 == 0 AND ConnectedSPO_WXPONDesktop16 == 0 AND ConnectedSPO_WXPONMobileNew == 0 AND ConnectedSPO_OfficeOnline == 0
+           AND ConnectedSPO_ODSync17 == 0) AND ConnectedSPO_Browser == 1)? 1:0 AS SPO_BrowserFlag_incr,
+            (SPOActlst28Days == 1 AND PerpetualCalcFlg2 == 0 AND ConnectedSPO_WXPONDesktop16 == 0 AND ConnectedSPO_WXPONMobileNew == 0 AND ConnectedSPO_OfficeOnline == 0
+           AND ConnectedSPO_WXPONDesktopOld == 0)? 1:0 AS SPO_NonWXPNFlag_incr,       
+            (SPOActlst28Days == 1 AND (PerpetualCalcFlg2 == 0 AND ConnectedSPO_WXPONDesktop16 == 0 AND ConnectedSPO_WXPONMobileNew == 0 AND ConnectedSPO_OfficeOnline == 0)
+           AND ConnectedSPO_ODSync17 == 0 AND ConnectedSPO_Browser == 0 AND ConnectedSPO_WXPONDesktopOld == 1)? 1:0 AS SPO_DesktopOldFlag_incr,
+            (SPOActlst28Days == 1 AND PerpetualCalcFlg2 == 0 AND ConnectedSPO_WXPONDesktop16 == 0 AND ConnectedSPO_WXPONMobileNew == 0 AND ConnectedSPO_OfficeOnline == 0 AND ConnectedSPO_WXPONDesktopOld == 0
+           AND ConnectedSPO_ODSync17 == 0 AND ConnectedSPO_Browser == 0 )? 1:0 AS SPO_OtherFlag_incr,          
+           
+// SPO Overlaps
+            (SPOActlst28Days == 1 AND PerpetualCalcFlg2 == 0 AND ConnectedSPO_WXPONDesktop16 == 1 AND ConnectedSPO_OfficeOnline == 1)? 1:0 AS SPO_Desktop16_WebFlag_overlap,
+            (SPOActlst28Days == 1 AND PerpetualCalcFlg2 == 0 AND ConnectedSPO_WXPONDesktop16 == 1 AND ConnectedSPO_WXPONMobileNew == 1 AND ConnectedSPO_OfficeOnline == 0)? 1:0 AS SPO_Desktop16_MobileFlag_overlap,
+           (SPOActlst28Days == 1 AND ConnectedSPO_WXPONDesktop16 == 0 AND ConnectedSPO_WXPONMobileNew == 1 AND ConnectedSPO_OfficeOnline == 1)? 1:0 AS SPO_Web_MobileFlag_overlap,            
+           (SPOActlst28Days == 1 AND PerpetualCalcFlg2 == 0 AND ConnectedSPO_WXPONDesktop16 == 1 AND ConnectedSPO_WXPONMobileNew == 1 AND ConnectedSPO_OfficeOnline == 1)? 1:0 AS SPO_Desktop16_Mobile_WebFlag_overlap,
+           
+           (SPOActlst28Days == 1 AND PerpetualCalcFlg2 == 0 AND ConnectedSPO_WXPONDesktop16 == 0 AND ConnectedSPO_WXPONMobileNew == 0 AND ConnectedSPO_OfficeOnline == 0
+           AND ConnectedSPO_ODSync17 == 0 AND ConnectedSPO_Browser == 1 AND ConnectedSPO_WXPONDesktopOld == 1 )? 1:0 AS SPO_DesktopOld_BrowserFlag_overlap,
+           (SPOActlst28Days == 1 AND PerpetualCalcFlg2 == 0 AND ConnectedSPO_WXPONDesktop16 == 0 AND ConnectedSPO_WXPONMobileNew == 0 AND ConnectedSPO_OfficeOnline == 0
+           AND ConnectedSPO_ODSync17 == 1 AND ConnectedSPO_Browser == 1 AND ConnectedSPO_WXPONDesktopOld == 1 )? 1:0 AS SPO_DesktopOld_Browser_ODSyncFlag_overlap,
+           
+           (SPOActlst28Days == 1 AND PerpetualCalcFlg2 == 0 AND ConnectedSPO_WXPONDesktop16 == 0 AND ConnectedSPO_WXPONMobileNew == 0 AND ConnectedSPO_OfficeOnline == 0
+           AND ConnectedSPO_ODSync17 == 1 AND ConnectedSPO_Browser == 0 AND ConnectedSPO_WXPONDesktopOld == 1 )? 1:0 AS SPO_DesktopOld_ODSyncFlag_overlap,
+           
+           (SPOActlst28Days == 1 AND PerpetualCalcFlg2 == 0 AND ConnectedSPO_WXPONDesktop16 == 1 AND ConnectedSPO_WXPONMobileNew == 0 AND ConnectedSPO_OfficeOnline == 0
+           AND ConnectedSPO_ODSync17 == 1 AND ConnectedSPO_Browser == 1 )? 1:0 AS SPO_Desktop16_ODSync_BrowserFlag_overlap,
+           
+           (SPOActlst28Days == 1 AND PerpetualCalcFlg2 == 0 AND ConnectedSPO_WXPONDesktop16 == 1 AND ConnectedSPO_WXPONMobileNew == 1 AND ConnectedSPO_OfficeOnline == 0
+           AND ConnectedSPO_ODSync17 == 1 AND ConnectedSPO_Browser == 1 )? 1:0 AS SPO_Desktop16_ODSync_Browser_MobileFlag_overlap,
+                      
+           (SPOActlst28Days == 1 AND PerpetualCalcFlg2 == 0 AND ConnectedSPO_WXPONDesktop16 == 0 AND ConnectedSPO_WXPONMobileNew == 0 AND ConnectedSPO_OfficeOnline == 1
+           AND ConnectedSPO_ODSync17 == 1 AND ConnectedSPO_Browser == 1 )? 1:0 AS SPO_Web_ODSync_BrowserFlag_overlap,
+           
+           (SPOActlst28Days == 1 AND PerpetualCalcFlg2 == 0 AND ConnectedSPO_WXPONDesktop16 == 1 AND ConnectedSPO_WXPONMobileNew == 0 AND ConnectedSPO_OfficeOnline == 1
+           AND ConnectedSPO_ODSync17 == 1 AND ConnectedSPO_Browser == 1 )? 1:0 AS SPO_Desktop16_Web_ODSync_BrowserFlag_overlap,        
+           
+           (SPOActlst28Days == 1 AND PerpetualCalcFlg2 == 0 AND ConnectedSPO_WXPONDesktop16 == 0 AND ConnectedSPO_WXPONMobileNew == 0 AND ConnectedSPO_OfficeOnline == 1
+           AND ConnectedSPO_ODSync17 == 0 AND ConnectedSPO_Browser == 1 AND ConnectedSPO_WXPONDesktopOld == 1) ? 1 : 0  AS SPO_DesktopOld_WebFlag_overlap 
+
+    FROM ModernMAUAppVersionWLPuid_AllCheck1a;
+
+aggr =
+    SELECT SnapShotDate,
+           TenantId,
+            SUM(TotalMAUFlag) AS TotalMAUFlag,
+            SUM(ConnectedMAUFlag) AS ConnectedMAUFlag,
+           COUNT(DISTINCT Allup_ModernFlag == 1 ? OrgIDPUID : NULL) AS Allup_ModernFlag,
+
+           // all up total counts       
+           SUM(Allup_Desktop16ModernFlag) AS Allup_Desktop16ModernFlag,
+           SUM(Allup_WebModernFlag) AS Allup_WebModernFlag,
+           SUM(Allup_MobileModernFlag) AS Allup_MobileModernFlag,
+           SUM(Allup_DesktopOldFlag) AS Allup_DesktopOldFlag,
+           SUM(Allup_PerpetualFlag) AS Allup_PerpetualFlag,
+           SUM(Allup_EnabledNotActiveFlag) AS Allup_EnabledNotActiveFlag,
+           //allup incremental counts
+           SUM(Allup_WebModernFlag_incr) AS Allup_WebModernFlag_incr,
+           SUM(Allup_MobileModernFlag_incr) AS Allup_MobileModernFlag_incr,
+           SUM(Allup_PerpetualFlag) - ((SUM(Allup_WebModernFlag_incr) - SUM(Allup_Web_Perp0_ModernFlag_incr)) + 
+                                          (SUM(Allup_MobileModernFlag_incr) - SUM(Allup_Mobile_Perp0_ModernFlag_incr))
+                                          )AS Allup_Perpetual_Flag_incr,
+
+           SUM(Allup_DesktopOldFlag_incr) AS Allup_DesktopOldFlag_incr,
+
+           SUM(Allup_OtherFlag_incr) AS Allup_OtherFlag_incr,
+
+           //AllUp Overlaps
+           SUM(Allup_Web_Desktop16ModernFlag_overlap) AS Allup_Web_Desktop16ModernFlag_overlap,
+           SUM(Allup_Mobile_Desktop16ModernFlag_overlap) AS Allup_Mobile_Desktop16ModernFlag_overlap,
+           SUM(Allup_Mobile_WebModernFlag_overlap) AS Allup_Mobile_WebModernFlag_overlap,
+           SUM(Allup_Mobile_Web_Desktop16ModernFlag_overlap) AS Allup_Mobile_Web_Desktop16ModernFlag_overlap,
+           SUM(Allup_Desktop16_DesktopOldModernFlag_overlap) AS Allup_Desktop16_DesktopOldModernFlag_overlap,
+           SUM(Allup_Desktop16_DesktopOld_MobileModernFlag_overlap) AS Allup_Desktop16_DesktopOld_MobileModernFlag_overlap,
+           SUM(Allup_Desktop16_DesktopOld_Mobile_WebModernFlag_overlap) AS Allup_Desktop16_DesktopOld_Mobile_WebModernFlag_overlap,
+           SUM(Allup_Web_DesktopOldModernFlag_overlap) AS Allup_Web_DesktopOldModernFlag_overlap,
+           SUM(Allup_Web_DesktopOld_MobileModernFlag_overlap) AS Allup_Web_DesktopOld_MobileModernFlag_overlap,
+           SUM(Allup_Mobile_DesktopOldModernFlag_overlap) AS Allup_Mobile_DesktopOldModernFlag_overlap,
+           SUM(Allup_Desktop16_DesktopOld_WebModernFlag_overlap) AS Allup_Desktop16_DesktopOld_WebModernFlag_overlap,
+
+
+           //LYO aggr total
+           SUM(LYOActive) AS LYOActive,
+           SUM(ModernFlagLYO) AS ModernFlagLYO,
+           SUM(LYO_Desktop16ModernFlag) AS LYO_Desktop16ModernFlag,
+           SUM(LYO_WebModernFlag) AS LYO_WebModernFlag,
+           SUM(LYO_MobileModernFlag) AS LYO_MobileModernFlag,
+           SUM(LYO_DesktopOldFlag) AS LYO_DesktopOldFlag,
+           SUM(LYO_PerpetualFlag) AS LYO_PerpetualFlag,
+           SUM(LYO_EnabledNotActiveFlag) AS LYO_EnabledNotActiveFlag,
+           //lyo increment counts
+           SUM(LYO_WebModernFlag_incr) AS LYO_WebModernFlag_incr,
+           SUM(LYO_MobileModernFlag_incr) AS LYO_MobileModernFlag_incr,
+           SUM(LYO_PerpetualFlag) - ((SUM(LYO_WebModernFlag_incr) - SUM(LYO_Web_Perp0_ModernFlag_incr)) + 
+                                          (SUM(LYO_MobileModernFlag_incr) - SUM(LYO_Mobile_Perp0_ModernFlag_incr))
+                                          )AS LYO_Perpetual_Flag_incr,
+
+           SUM(LYO_DesktopOldFlag_incr) AS LYO_DesktopOldFlag_incr,
+
+           SUM(LYO_OtherFlag_incr) AS LYO_OtherFlag_incr,
+
+           //LYO Overlaps
+           SUM(LYO_Desktop16_WebFlag_overlap) AS LYO_Desktop16_WebFlag_overlap,
+           SUM(LYO_Desktop16_MobileFlag_overlap) AS LYO_Desktop16_MobileFlag_overlap,
+           SUM(LYO_Desktop16_Mobile_WebFlag_overlap) AS LYO_Desktop16_Mobile_WebFlag_overlap,
+           SUM(LYO_Web_MobileFlag_overlap) AS LYO_Web_MobileFlag_overlap,
+           SUM(LYO_Desktop16_DesktopOldFlag_overlap) AS LYO_Desktop16_DesktopOldFlag_overlap,
+           SUM(LYO_Desktop16_DesktopOld_MobileFlag_overlap) AS LYO_Desktop16_DesktopOld_MobileFlag_overlap,
+           SUM(LYO_Desktop16_DesktopOld_WebFlag_overlap) AS LYO_Desktop16_DesktopOld_WebFlag_overlap,
+           SUM(LYO_Desktop16_DesktopOld_Web_MobileFlag_overlap) AS LYO_Desktop16_DesktopOld_Web_MobileFlag_overlap,
+           SUM(LYO_Web_DesktopOldFlag_overlap) AS LYO_Web_DesktopOldFlag_overlap,
+           SUM(LYO_Web_Mobile_DesktopOldFlag_overlap) AS LYO_Web_Mobile_DesktopOldFlag_overlap,
+           SUM(LYO_Mobile_DesktopOldFlag_overlap) AS LYO_Mobile_DesktopOldFlag_overlap,
+
+
+           //EXO aggr total
+           SUM(EXOActive) AS EXOActive,
+           SUM(ModernFlagEXO) AS ModernFlagEXO,
+           SUM(EXO_Desktop16ModernFlag) AS EXO_Desktop16ModernFlag,
+           SUM(EXO_WebModernFlag) AS EXO_WebModernFlag,
+           SUM(EXO_MobileModernFlag) AS EXO_MobileModernFlag,
+           SUM(EXO_DesktopOldFlag) AS EXO_DesktopOldFlag,
+           SUM(EXO_PerpetualFlag) AS EXO_PerpetualFlag,
+           SUM(EXO_EnabledNotActiveFlag) AS EXO_EnabledNotActiveFlag,
+           SUM(EXO_NotConnectedFlag) AS EXO_NotConnectedFlag,
+           //EXO incremental counts
+           SUM(EXO_WebModernFlag_incr) AS EXO_WebModernFlag_incr,
+           SUM(EXO_MobileModernFlag_incr) AS EXO_MobileModernFlag_incr,
+           SUM(EXO_PerpetualFlag) - ((SUM(EXO_WebModernFlag_incr) - SUM(EXO_Web_Perp0_ModernFlag_incr)) + 
+                                          (SUM(EXO_MobileModernFlag_incr) - SUM(EXO_Mobile_Perp0_ModernFlag_incr))
+                                          )AS EXO_Perpetual_Flag_incr,
+
+           SUM(EXO_DesktopOldFlag_incr) AS EXO_DesktopOldFlag_incr,
+
+           SUM(EXO_OtherFlag_incr) AS EXO_OtherFlag_incr,
+
+           //EXO Overlaps
+           SUM(EXO_Desktop16_WebFlag_overlap) AS EXO_Desktop16_WebFlag_overlap,
+           SUM(EXO_Desktop16_MobileFlag_overlap) AS EXO_Desktop16_MobileFlag_overlap,
+           SUM(EXO_Web_MobileFlag_overlap) AS EXO_Web_MobileFlag_overlap,
+           SUM(EXO_Desktop16_Web_MobileFlag_overlap) AS EXO_Desktop16_Web_MobileFlag_overlap,
+           SUM(EXO_DesktopOld_Desktop16Flag_overlap) AS EXO_DesktopOld_Desktop16Flag_overlap,
+           SUM(EXO_DesktopOld_Desktop16_MobileFlag_overlap) AS EXO_DesktopOld_Desktop16_MobileFlag_overlap,
+           SUM(EXO_DesktopOld_Desktop16_Mobile_WebFlag_overlap) AS EXO_DesktopOld_Desktop16_Mobile_WebFlag_overlap,
+           SUM(EXO_DesktopOld_WebFlag_overlap) AS EXO_DesktopOld_WebFlag_overlap,
+           SUM(EXO_DesktopOld_Web_MobileFlag_overlap) AS EXO_DesktopOld_Web_MobileFlag_overlap,
+           SUM(EXO_DesktopOld_MobileFlag_overlap) AS EXO_DesktopOld_MobileFlag_overlap,
+
+           //SPO aggr total 
+           SUM(SPOActive) AS SPOActive,
+           SUM(ModernFlagSPO) AS ModernFlagSPO,
+           SUM(SPO_Desktop16ModernFlag) AS SPO_Desktop16ModernFlag,
+           SUM(SPO_WebModernFlag) AS SPO_WebModernFlag,
+           SUM(SPO_MobileModernFlag) AS SPO_MobileModernFlag,
+           SUM(SPO_ODSyncModernFlag) AS SPO_ODSyncModernFlag,
+           SUM(SPO_BrowserModernFlag) AS SPO_BrowserModernFlag,
+           SUM(SPO_DesktopOldFlag) AS SPO_DesktopOldFlag,
+           SUM(SPO_PerpetualFlag) AS SPO_PerpetualFlag,
+           SUM(SPO_EnabledNotActiveFlag) AS SPO_EnabledNotActiveFlag,
+           SUM(SPO_NotConnectedFlag) AS SPO_NotConnectedFlag,
+           //SPO incremental counts
+           SUM(SPO_WebModernFlag_incr) AS SPO_WebModernFlag_incr,
+           SUM(SPO_MobileModernFlag_incr) AS SPO_MobileModernFlag_incr,
+           SUM(SPO_PerpetualFlag) - ((SUM(SPO_WebModernFlag_incr) - SUM(SPO_Web_Perp0_ModernFlag_incr)) + 
+                                          (SUM(SPO_MobileModernFlag_incr) - SUM(SPO_Mobile_Perp0_ModernFlag_incr))
+                                          )AS SPO_Perpetual_Flag_incr,
+
+           SUM(SPO_ODSyncFlag_incr) AS SPO_ODSyncFlag_incr,
+
+           SUM(SPO_BrowserFlag_incr) AS SPO_BrowserFlag_incr,
+
+           SUM(SPO_NonWXPNFlag_incr) AS SPO_NonWXPNFlag_incr,
+
+           SUM(SPO_DesktopOldFlag_incr) AS SPO_DesktopOldFlag_incr,
+
+           SUM(SPO_OtherFlag_incr) AS SPO_OtherFlag_incr,
+
+           // SPO Overlaps
+           SUM(SPO_Desktop16_WebFlag_overlap) AS SPO_Desktop16_WebFlag_overlap,
+           SUM(SPO_Desktop16_MobileFlag_overlap) AS SPO_Desktop16_MobileFlag_overlap,
+           SUM(SPO_Web_MobileFlag_overlap) AS SPO_Web_MobileFlag_overlap,
+           SUM(SPO_Desktop16_Mobile_WebFlag_overlap) AS SPO_Desktop16_Mobile_WebFlag_overlap,
+
+           SUM(SPO_DesktopOld_BrowserFlag_overlap) AS SPO_DesktopOld_BrowserFlag_overlap,
+
+           SUM(SPO_DesktopOld_Browser_ODSyncFlag_overlap) AS SPO_DesktopOld_Browser_ODSyncFlag_overlap,
+
+           SUM(SPO_DesktopOld_ODSyncFlag_overlap) AS SPO_DesktopOld_ODSyncFlag_overlap,
+
+           SUM(SPO_Desktop16_ODSync_BrowserFlag_overlap) AS SPO_Desktop16_ODSync_BrowserFlag_overlap,
+
+           SUM(SPO_Desktop16_ODSync_Browser_MobileFlag_overlap) AS SPO_Desktop16_ODSync_Browser_MobileFlag_overlap,
+
+          // SUM(SPO_Desktop16_ODSync_Browser_Mobile_WebFlag_overlap) AS SPO_Desktop16_ODSync_Browser_Mobile_WebFlag_overlap,
+
+           SUM(SPO_Web_ODSync_BrowserFlag_overlap) AS SPO_Web_ODSync_BrowserFlag_overlap,
+
+           SUM(SPO_Desktop16_Web_ODSync_BrowserFlag_overlap) AS SPO_Desktop16_Web_ODSync_BrowserFlag_overlap,
+            SUM(SPO_DesktopOld_WebFlag_overlap)  AS SPO_DesktopOld_WebFlag_overlap 
+
+    FROM ModernPUID;
+
+OUTPUT aggr TO SSTREAM @aggrOutput
+    CLUSTERED BY TenantId
+    SORTED BY TenantId
+        WITH STREAMEXPIRY @"365";
+           

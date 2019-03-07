@@ -1,0 +1,22 @@
+﻿//Script GUID:50d7a974-2111-4102-9443-98323469da88
+//Used for tracking history
+
+final_data =
+    SSTREAM @"/my/Compete/All_compete_1year.ss";
+
+tenants_data =
+    SSTREAM @"/shares/ACE.proc/local/Projects/StrategicTenants/2018-03-31_TenantCohort.ss";
+
+tenants_data =
+    SELECT DISTINCT (int) PrimaryTPID AS PrimaryTPID
+    FROM tenants_data;
+
+final_data_tenants =
+    SELECT final_data.*
+    FROM final_data
+         INNER JOIN
+             tenants_data
+         ON final_data.TPId == tenants_data.PrimaryTPID;
+
+OUTPUT final_data_tenants
+TO SSTREAM "/my/Compete/All_compete_1year_tenants.ss";

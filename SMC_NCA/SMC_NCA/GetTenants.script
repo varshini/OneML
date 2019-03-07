@@ -1,0 +1,13 @@
+﻿//Script GUID:8366e6a7-1369-4434-9c01-96098329977e
+//Used for tracking history
+
+
+data_csv = 
+    EXTRACT 
+        TPId     : int
+    FROM
+    @"/my/SMC_NCA/SMC_TPID.csv"
+    USING DefaultTextExtractor(delimiter: ',');
+
+OUTPUT data_csv
+TO SSTREAM @"/my/SMC_NCA/SMC_TPID.ss";

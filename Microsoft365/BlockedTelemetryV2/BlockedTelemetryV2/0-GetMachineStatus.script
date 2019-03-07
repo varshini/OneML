@@ -1,0 +1,57 @@
+﻿//Script GUID:71afd8ea-5e1a-46fe-b2ef-9f36d95a0a7a
+//Used for tracking history
+
+//Script GUID:bd32a0e8-167b-4e13-902b-1b3e7e2a2c6f
+//Used for tracking history
+
+data = SSTREAM @"/shares/OSIPartner.prod/local/partners/OLS/Prod/Private/DataStream/Current/Events/MachineStatus.ss";
+
+data =
+    SELECT DateTimeLastHeartBeat, LicenseId,
+           EntitlementId,
+           ClientName,
+           OfficeMajorVersion
+    FROM data
+    WHERE DateTimeLastHeartBeat != NULL;
+
+//for last 28 days
+data =
+    SELECT DISTINCT LicenseId, 
+                    EntitlementId,
+                    ClientName,
+                    OfficeMajorVersion
+    FROM data
+    WHERE DateTimeLastHeartBeat >= DateTime.Parse("2018-11-03") & DateTimeLastHeartBeat <= DateTime.Parse("2018-11-30");
+
+OLSPings =
+    SELECT DISTINCT LicenseId,
+           EntitlementId,
+           IF(ClientName.StartsWith("PC"), "PC", IF(ClientName.StartsWith("MAC"), "MAC", "Unknown")) AS Platform,
+           ClientName,
+           OfficeMajorVersion
+    FROM data
+    WHERE ClientName IN("PC-winword.exe",
+          "PC-excel.exe",
+          "PC-outlook.exe",
+          "MAC-Office",
+          "PC-powerpnt.exe",
+          "PC-onenote.exe",
+          "PC-wordim.exe",
+          "PC-pptim.exe",
+          "PC-word",
+          "PC-excel",
+          "PC-powerpoint",
+          "PC-onenoteim.exe",
+          "PC-_winword.exe")
+/*
+          "Mobile-Android-Office",
+          "Mobile-iPhone-Office",
+          "Mobile-iPad-Office"
+          )
+*/
+          AND !string.IsNullOrWhiteSpace(LicenseId) AND !string.IsNullOrWhiteSpace(ClientName);  //included all client names with high counts 
+           
+           
+OUTPUT OLSPings 
+TO SSTREAM @"/my/BlockedTelemetry/Monthly/Nov/OLSPings.ss"
+CLUSTERED BY LicenseId;

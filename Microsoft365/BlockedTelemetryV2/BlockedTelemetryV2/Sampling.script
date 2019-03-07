@@ -1,0 +1,80 @@
+﻿//Script GUID:b5c6f303-e535-4d7e-88d0-7542ed50be4f
+//Used for tracking history
+
+//Script GUID:eb6dad22-158b-446f-b4b2-192d31e8fe58
+//Used for tracking history
+
+/* Entitlement check 
+entitlement_user_mapping = VIEW @"/shares/IDEAs.Prod/Public/Views/IDEAsEntitlementProfile.view"
+    PARAMS( HistoryDate = DateTime.Parse( "2018-11-30" ) );
+
+data =
+    SELECT *
+    FROM entitlement_user_mapping
+    WHERE OMSTenantId == "bde4dffc-4b60-4cf6-8b04-a5eeb25f5c4f";
+
+
+ms  = SSTREAM @"/shares/OSIPartner.prod/local/partners/OLS/Prod/Private/DataStream/Current/Events/MachineStatus.ss";
+
+ms =
+    SELECT ms.*
+    FROM ms
+         INNER JOIN
+             data
+         ON ms.EntitlementId == data.EntitlementId;
+
+OUTPUT ms
+TO SSTREAM @"/my/BlockedTelemetry/Checks/OneTenant.ss";
+*/
+
+/* License check */
+license_tenant_mapping = VIEW @"/shares/IDEAs.Prod/Public/Views/IDEAsOlsLicensesProfile.view"
+    PARAMS( HistoryDate = DateTime.Parse( "2018-11-30" ) );
+
+licenses =
+    SELECT *
+    FROM license_tenant_mapping
+    WHERE OMSTenantId == "f2372b85-8802-490c-b196-7b96c73fee3b"; //"bde4dffc-4b60-4cf6-8b04-a5eeb25f5c4f";
+
+OUTPUT licenses
+TO SSTREAM @"/my/BlockedTelemetry/Checks/OneTenant_1.ss";
+
+ms  = SSTREAM @"/shares/OSIPartner.prod/local/partners/OLS/Prod/Private/DataStream/Current/Events/MachineStatus.ss";
+
+ms =
+    SELECT ms.*
+    FROM ms
+         INNER JOIN
+             licenses
+         ON ms.LicenseId == licenses.OlsLicenseId;
+
+OUTPUT ms
+TO SSTREAM @"/my/BlockedTelemetry/Checks/OneTenant_2.ss";
+
+
+/*License to Entitlement Check 
+
+entitlement_lic_mapping = VIEW @"/shares/IDEAs.Prod/Public/Views/IDEAsDeviceLicenses.view"
+    PARAMS( HistoryDate = DateTime.Parse( "2018-11-30" ) );
+
+data =
+    SELECT OlsEntitlementId, OlsLicenseId
+    FROM entitlement_lic_mapping
+    WHERE OMSTenantId == "bde4dffc-4b60-4cf6-8b04-a5eeb25f5c4f";
+
+OUTPUT data
+TO SSTREAM @"/my/BlockedTelemetry/Checks/OneTenant_Ent.ss";
+
+ms  = SSTREAM @"/shares/OSIPartner.prod/local/partners/OLS/Prod/Private/DataStream/Current/Events/MachineStatus.ss";
+
+ms =
+    SELECT data.*
+    FROM ms
+         INNER JOIN
+             data
+         ON ms.LicenseId == data.OlsLicenseId;
+
+OUTPUT ms
+TO SSTREAM @"/my/BlockedTelemetry/Checks/OneTenant.ss";
+
+//get license id, map to ent id from ideas, map to user, to tenant*/

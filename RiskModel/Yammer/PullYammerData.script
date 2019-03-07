@@ -1,0 +1,120 @@
+﻿//Script GUID:af3fabf9-58c4-4702-96fb-d710a2521e2c
+//Used for tracking history
+
+
+#DECLARE TenantOutput string = @"/local/Projects/TenantHealthMetric/" + "2018-03_Yammer.ss";
+
+yammer_tenant_apr2017_ss = SSTREAM "/shares/modpim.anfield/O365MarketingDatasets/Commercial/SegmentationModel/TenantSummary/V2/2017/TenantSummary_2017_04_30.ss";
+yammer_tenant_may2017_ss = SSTREAM "/shares/modpim.anfield/O365MarketingDatasets/Commercial/SegmentationModel/TenantSummary/V2/2017/TenantSummary_2017_05_31.ss";
+yammer_tenant_jun2017_ss = SSTREAM "/shares/modpim.anfield/O365MarketingDatasets/Commercial/SegmentationModel/TenantSummary/V2/2017/TenantSummary_2017_06_30.ss";
+yammer_tenant_jul2017_ss = SSTREAM "/shares/modpim.anfield/O365MarketingDatasets/Commercial/SegmentationModel/TenantSummary/V2/2017/TenantSummary_2017_07_31.ss";
+yammer_tenant_aug2017_ss = SSTREAM "/shares/modpim.anfield/O365MarketingDatasets/Commercial/SegmentationModel/TenantSummary/V2/2017/TenantSummary_2017_08_31.ss";
+yammer_tenant_sep2017_ss = SSTREAM "/shares/modpim.anfield/O365MarketingDatasets/Commercial/SegmentationModel/TenantSummary/V2/2017/TenantSummary_2017_09_30.ss";
+yammer_tenant_oct2017_ss = SSTREAM "/shares/modpim.anfield/O365MarketingDatasets/Commercial/SegmentationModel/TenantSummary/V2/2017/TenantSummary_2017_10_31.ss";
+yammer_tenant_nov2017_ss = SSTREAM "/shares/modpim.anfield/O365MarketingDatasets/Commercial/SegmentationModel/TenantSummary/V2/2017/TenantSummary_2017_11_30.ss";
+yammer_tenant_dec2017_ss = SSTREAM "/shares/modpim.anfield/O365MarketingDatasets/Commercial/SegmentationModel/TenantSummary/V2/2017/TenantSummary_2017_12_31.ss";
+yammer_tenant_jan2018_ss = SSTREAM "/shares/modpim.anfield/O365MarketingDatasets/Commercial/SegmentationModel/TenantSummary/V2/2018/TenantSummary_2018_01_31.ss";
+yammer_tenant_feb2018_ss = SSTREAM "/shares/modpim.anfield/O365MarketingDatasets/Commercial/SegmentationModel/TenantSummary/V2/2018/TenantSummary_2018_02_28.ss";
+yammer_tenant_mar2018_ss = SSTREAM "/shares/modpim.anfield/O365MarketingDatasets/Commercial/SegmentationModel/TenantSummary/V2/2018/TenantSummary_2018_03_31.ss";
+
+
+tenant_data =
+     SSTREAM @"/local/Projects/TenantHealthMetric/2018-03_TenantCohort.ss";
+
+
+yammer_data =
+    SELECT TenantId,
+           YammerAvailableUnits,
+           YammerActUserslst28,
+           YammerEnabledUsers,
+           Snapshotdate
+    FROM yammer_tenant_apr2017_ss
+    UNION ALL
+    SELECT TenantId,
+           YammerAvailableUnits,
+           YammerActUserslst28,
+           YammerEnabledUsers,
+           Snapshotdate
+    FROM yammer_tenant_may2017_ss
+    UNION ALL 
+    SELECT TenantId,
+           YammerAvailableUnits,
+           YammerActUserslst28,
+           YammerEnabledUsers,
+           Snapshotdate
+    FROM yammer_tenant_jun2017_ss
+    UNION ALL 
+    SELECT TenantId,
+           YammerAvailableUnits,
+           YammerActUserslst28,
+           YammerEnabledUsers,
+           Snapshotdate
+    FROM yammer_tenant_jul2017_ss
+    UNION ALL 
+    SELECT TenantId,
+           YammerAvailableUnits,
+           YammerActUserslst28,
+           YammerEnabledUsers,
+           Snapshotdate
+    FROM yammer_tenant_aug2017_ss
+    UNION ALL 
+    SELECT TenantId,
+           YammerAvailableUnits,
+           YammerActUserslst28,
+           YammerEnabledUsers,
+           Snapshotdate
+    FROM yammer_tenant_sep2017_ss
+    UNION ALL 
+    SELECT TenantId,
+           YammerAvailableUnits,
+           YammerActUserslst28,
+           YammerEnabledUsers,
+           Snapshotdate
+    FROM yammer_tenant_oct2017_ss
+    UNION ALL 
+    SELECT TenantId,
+           YammerAvailableUnits,
+           YammerActUserslst28,
+           YammerEnabledUsers,
+           Snapshotdate
+    FROM yammer_tenant_nov2017_ss
+    UNION ALL 
+    SELECT TenantId,
+           YammerAvailableUnits,
+           YammerActUserslst28,
+           YammerEnabledUsers,
+           Snapshotdate
+    FROM yammer_tenant_dec2017_ss
+    UNION ALL 
+    SELECT TenantId,
+           YammerAvailableUnits,
+           YammerActUserslst28,
+           YammerEnabledUsers,
+           Snapshotdate
+    FROM yammer_tenant_jan2018_ss
+    UNION ALL 
+    SELECT TenantId,
+           YammerAvailableUnits,
+           YammerActUserslst28,
+           YammerEnabledUsers,
+           Snapshotdate
+    FROM yammer_tenant_feb2018_ss
+    UNION ALL 
+    SELECT TenantId,
+           YammerAvailableUnits,
+           YammerActUserslst28,
+           YammerEnabledUsers,
+           Snapshotdate
+    FROM yammer_tenant_mar2018_ss;
+
+
+yammer_tenants =
+    SELECT yammer_data. *
+    FROM tenant_data
+         LEFT JOIN
+             yammer_data
+         ON tenant_data.OMSTenantId == yammer_data.TenantId;
+
+OUTPUT yammer_tenants TO SSTREAM @TenantOutput;
+
+

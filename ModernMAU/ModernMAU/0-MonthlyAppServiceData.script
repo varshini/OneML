@@ -1,0 +1,106 @@
+﻿//Script GUID:674465cf-67b9-44f7-b91b-74e8b9622fdc
+//Used for tracking history
+
+// ====================================================================================================================
+// <copyright company="Microsoft Inc">
+//   (c) 2018 Microsoft Inc.
+// </copyright>
+// <summary>
+//     WHERE = cosmos14\office.adhoc; runtime 
+//       WHY = Extracting WL level platform and major version related attributes
+// </summary>
+// <history>  
+//    [varamase]   :  2018-07-19: imported from previous version (https://microsoft.sharepoint.com/teams/IDEAsV-Teams/Shared%20Documents/Forms/AllItems.aspx?id=%2Fteams%2FIDEAsV%2DTeams%2FShared%20Documents%2FManaged%20and%20Tenant%20Insights%2FTransition%2F201803%5FNidhi%2FModernMAU%2Fscripts%2FOI%20Data)
+//    [varamase] : 2018-07-19: Parameterizing  and cleaning up
+// </history>
+// ====================================================================================================================
+// Tools for GDPR tagging
+MODULE "/shares/PXSCosmos14.Prod/PXS.DeleteSignal.PROD/PrivacyAnnotation/PrivacyAnnotation.module";
+USING Privacy;
+// ====================================================================================================================
+
+// Script Parameters
+#DECLARE outputRoot     string   = @"/shares/ACE.proc/local/Projects/EntTenantRiskModel/ModernMAU/"; // if running on ACE.proc "/local/Projects/"; if running on office.adhoc "/shares/ACE.proc/local/Projects/"
+#DECLARE snapDate       DateTime = DateTime.Parse(@@PROCESS_DATE_START@@);
+#DECLARE snapDateStr    string   = @snapDate.ToString("yyyy-MM-dd");
+
+// Inputs
+#DECLARE EXO_str   string   = string.Format("/shares/modpim.anfield/O365MarketingDatasets/Commercial/Usage/EXO/L1_BaseDataset/{0:yyyy}/{0:MM}/UserMonthlyUsageSummaryByActionAndDeviceType_{0:yyyy_MM_dd}.ss",@snapDate);
+#DECLARE LYO_str   string   = string.Format("/shares/modpim.anfield/O365MarketingDatasets/Commercial/Usage/LYO/L1_BaseDataset/{0:yyyy}/{0:MM}/UserMonthlyUsageSummaryByActionAndDeviceType_{0:yyyy_MM_dd}.ss",@snapDate);
+#DECLARE SPO_str   string   = string.Format("/shares/modpim.anfield/O365MarketingDatasets/Commercial/Usage/SPO/L1_BaseDataset/{0:yyyy}/{0:MM}/UserMonthlyUsageSummaryByActionAndDeviceType_{0:yyyy_MM_dd}.ss",@snapDate);
+
+// Output
+#DECLARE servdataoutput          string = string.Format("{0}WLService_ESLT_{1:yyyyMM}.ss", @outputRoot, @snapDate);
+
+// ====================================================================================================================
+
+EXO = SSTREAM @EXO_str;
+LYO = SSTREAM @LYO_str;
+SPO = SSTREAM @SPO_str;
+
+detailEXO =
+    SELECT DISTINCT TenantId,
+                    UserId,
+                    Application,
+                    EmailProtocol,
+                    EndPoint,
+                    Platform,
+                    (!string.IsNullOrWhiteSpace(AppBuild) ? (AppBuild).Split('.') [0] : string.Empty) AS MajorVersion
+    FROM EXO
+    WHERE Office365Instance == "Worldwide" AND L28UsageDays > 0 AND IsIntentional == true;
+
+
+detailLYO =
+    SELECT DISTINCT TenantId,
+                    UserId,
+                    Application,
+                    "" AS EmailProtocol,
+                    EndPoint,
+                    Platform,
+                    (!string.IsNullOrWhiteSpace(AppBuild) ? (AppBuild).Split('.') [0] : string.Empty) AS MajorVersion
+    FROM LYO
+    WHERE Office365Instance == "Worldwide" AND L28UsageDays > 0;
+
+
+
+detailSPO =
+    SELECT DISTINCT TenantId,
+                    UserId,
+                    Application,
+                    "" AS EmailProtocol,
+                    EndPoint,
+                    Platform,
+                    (!string.IsNullOrWhiteSpace(AppBuild) ? (AppBuild).Split('.') [0] : string.Empty) AS MajorVersion
+    FROM SPO
+    WHERE Office365Instance == "Worldwide" AND L28UsageDays > 0;
+
+Usage =
+    SELECT *
+    FROM detailEXO
+    UNION ALL
+    SELECT *
+    FROM detailLYO
+    UNION ALL
+    SELECT *
+    FROM detailSPO;
+
+Usage2 =
+    SELECT DISTINCT TenantId,
+                    UserId,
+                    Application,
+                    EmailProtocol,
+                    EndPoint,
+                    Platform,
+                    MajorVersion
+    FROM Usage;
+
+[Privacy.Asset.NonPersonal] // GDPR asset tagging
+[Privacy.Column.TenantId(Column="TenantId")] // GDPR column tagging
+
+OUTPUT Usage2 TO SSTREAM @servdataoutput
+    CLUSTERED BY TenantId, UserId
+    SORTED BY TenantId
+        WITH STREAMEXPIRY @"365";
+
+
+

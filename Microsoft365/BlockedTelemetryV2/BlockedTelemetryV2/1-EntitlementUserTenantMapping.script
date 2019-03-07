@@ -1,0 +1,26 @@
+﻿//Script GUID:1d3504e8-f733-4a09-9766-8c251049fb01
+//Used for tracking history
+
+//maps the entitlement ids from machine status to user and further tenants
+
+licenses =
+    SSTREAM @"/my/BlockedTelemetry/Monthly/Nov/OLSPings.ss";
+
+entitlement_user_mapping = VIEW @"/shares/IDEAs.Prod/Public/Views/IDEAsEntitlementProfile.view"
+    PARAMS( HistoryDate = DateTime.Parse( "2018-11-30" ) );
+
+data =
+    SELECT licenses.*, entitlement_user_mapping.UserObjectId, entitlement_user_mapping.OMSTenantId
+    FROM licenses
+         INNER JOIN
+             entitlement_user_mapping
+         ON entitlement_user_mapping.EntitlementId == licenses.EntitlementId;
+
+data =
+    SELECT OMSTenantId, COUNT(DISTINCT UserObjectId) AS UserCount
+    FROM data
+    GROUP BY OMSTenantId;
+
+
+OUTPUT data
+TO SSTREAM @"/my/BlockedTelemetry/Monthly/Nov/TenantUserCount1.ss";

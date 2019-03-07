@@ -1,0 +1,160 @@
+﻿//Script GUID:07f0a016-9e26-48dc-b33f-90fa35f09424
+//Used for tracking history
+
+//GETTING COMPETE DATA
+
+compete_data =
+    SSTREAM @"/local/Projects/Compete/SlackTeamsZoomStrideOneHipFBSpark/SlackTeamsZoomStrideOneHipFBSparkLync/TeamsCompetitorCntDailyJan2017Feb2018wSkype.ss";
+
+data_1year =
+    SELECT Date,
+           ProcessName,
+           TPId,
+           MAD,
+           Date.Month AS Month,
+           Date.Year AS Year
+    FROM compete_data
+    WHERE Date >= DateTime.Parse("03/01/2017") AND Date <= DateTime.Parse("02/28/2018");
+
+counts_1year =
+    SELECT TPId,
+           ProcessName,
+           Month,
+           Year,
+           SUM(MAD) AS MonthlyMAD
+    FROM data_6months
+    GROUP BY TPId,
+             ProcessName,
+             Month,
+             Year;
+
+
+
+//Getting total Win10 MAD from March 2017 to Feb 2018
+
+mar_win10 =
+    SSTREAM @"/shares/asimov.prod.data/UserSensitive.Usage.Partner.Processed.M365.BusinessReporting.Processed/2017/03/M365Reporting_AggTpid_2017_03_31.ss";
+apr_win10 =
+    SSTREAM @"/shares/asimov.prod.data/UserSensitive.Usage.Partner.Processed.M365.BusinessReporting.Processed/2017/04/M365Reporting_AggTpid_2017_04_30.ss";
+may_win10 =
+    SSTREAM @"/shares/asimov.prod.data/UserSensitive.Usage.Partner.Processed.M365.BusinessReporting.Processed/2017/05/M365Reporting_AggTpid_2017_05_31.ss";
+jun_win10 =
+    SSTREAM @"/shares/asimov.prod.data/UserSensitive.Usage.Partner.Processed.M365.BusinessReporting.Processed/2017/06/M365Reporting_AggTpid_2017_06_30.ss";
+jul_win10 =
+    SSTREAM @"/shares/asimov.prod.data/UserSensitive.Usage.Partner.Processed.M365.BusinessReporting.Processed/2017/07/M365Reporting_AggTpid_2017_07_31.ss";
+aug_win10 =
+    SSTREAM @"/shares/asimov.prod.data/UserSensitive.Usage.Partner.Processed.M365.BusinessReporting.Processed/2017/08/M365Reporting_AggTpid_2017_08_31.ss";
+sep_win10 =
+    SSTREAM @"/shares/asimov.prod.data/UserSensitive.Usage.Partner.Processed.M365.BusinessReporting.Processed/2017/09/M365Reporting_AggTpid_2017_09_30.ss";
+oct_win10 =
+    SSTREAM @"/shares/asimov.prod.data/UserSensitive.Usage.Partner.Processed.M365.BusinessReporting.Processed/2017/10/M365Reporting_AggTpid_2017_10_31.ss";
+nov_win10 =
+    SSTREAM @"/shares/asimov.prod.data/UserSensitive.Usage.Partner.Processed.M365.BusinessReporting.Processed/2017/11/M365Reporting_AggTpid_2017_11_30.ss";
+dec_win10 =
+    SSTREAM @"/shares/asimov.prod.data/UserSensitive.Usage.Partner.Processed.M365.BusinessReporting.Processed/2017/12/M365Reporting_AggTpid_2017_12_31.ss";
+jan_win10 =
+    SSTREAM @"/shares/asimov.prod.data/UserSensitive.Usage.Partner.Processed.M365.BusinessReporting.Processed/2018/01/M365Reporting_AggTpid_2018_01_31.ss";
+feb_win10 =
+    SSTREAM @"/shares/asimov.prod.data/UserSensitive.Usage.Partner.Processed.M365.BusinessReporting.Processed/2018/02/M365Reporting_AggTpid_2018_02_28.ss";
+
+
+//Getting total Win10 MAD for Sep and Oct 
+
+AppActivity =
+    SELECT *
+    FROM mar_win10
+    UNION
+    SELECT *
+    FROM apr_win10 UNION 
+    SELECT * FROM may_win10 UNION 
+    SELECT * FROM jun_win10 UNION 
+    SELECT * FROM jul_win10 UNION 
+    SELECT * FROM aug_win10 UNION    
+    SELECT *
+    FROM sep_win10
+    UNION
+    SELECT *
+    FROM oct_win10
+    UNION 
+    SELECT * 
+    FROM nov_win10
+    UNION 
+    SELECT * 
+    FROM dec_win10
+    UNION 
+    SELECT * 
+    FROM jan_win10
+    UNION 
+    SELECT *
+    FROM feb_win10;
+
+AppActivity =
+    SELECT TPId,
+           IsWin10,
+           IncludeInDeviceCounts,
+           IsWin10MAD,
+           DataDate.ToString() AS DataDate,
+           DeviceCount
+    FROM AppActivity
+    WHERE TPId.HasValue;
+
+win10_MAD =
+    SELECT TPId,
+           GetMonth(DataDate) AS Month,
+           GetYear(DataDate) AS Year,
+           DeviceCount
+    FROM AppActivity
+    WHERE IncludeInDeviceCounts == true AND IsWin10 == true AND IsWin10MAD == true;
+
+
+win10_MAD =
+    SELECT (int) TPId AS TPId,
+           Month,
+           Year,
+           SUM(DeviceCount) AS TotalWin10MAD
+    FROM win10_MAD
+    GROUP BY TPId,
+             Month,
+             Year;
+
+final_data =
+    SELECT counts_1year. *,
+           win10_MAD.TotalWin10MAD
+    FROM counts_1year
+         INNER JOIN
+             win10_MAD
+         ON win10_MAD.TPId == counts_1year.TPId
+         AND win10_MAD.Month == counts_1year.Month
+         AND win10_MAD.Year == counts_1year.Year;
+
+
+tenants_data =
+    SSTREAM @"/shares/ACE.proc/local/Projects/StrategicTenants/2018-03-31_TenantCohort.ss";
+
+tenants_data =
+    SELECT DISTINCT (int) PrimaryTPID AS PrimaryTPID
+    FROM tenants_data;
+
+final_data_tenants =
+    SELECT final_data.*
+    FROM final_data
+         INNER JOIN
+             tenants_data
+         ON final_data.TPId == tenants_data.PrimaryTPID;
+
+
+OUTPUT final_data_tenants
+TO SSTREAM "/my/Compete/All_compete_1year.ss";
+
+#CS
+public static int GetYear(string year)
+{
+        string str = year.Substring(0,4);
+        return Int32.Parse(str);
+}
+public static int GetMonth(string month)
+{
+         string str = month.Substring(4,2);
+         return Int32.Parse(str);
+}
+#ENDCS

@@ -1,0 +1,45 @@
+﻿//Script GUID:a27257ec-dd40-444b-8884-b90dff9ed157
+//Used for tracking history
+
+
+data =
+    SSTREAM @"/local/users/ischepkw/fhl/finalData.ss";
+
+msft_puids =
+    SSTREAM @"/my/FHL2018/MSFTList.ss";
+
+msft_data =
+    SELECT data.*
+    FROM data
+         INNER JOIN
+             msft_puids
+         ON data.userPuid == msft_puids.Puid;
+
+OUTPUT msft_data
+TO SSTREAM @"/my/FHL2018/MSFTTranslatorData_1.ss";
+
+//non_msft =
+//    SELECT *
+//    FROM data
+//    WHERE mapping_OMSTenantId != "72f988bf-86f1-41af-91ab-2d7cd011db47";
+//           
+//pos_data =
+//    SELECT non_msft.*, "1" AS TransLabel
+//    FROM non_msft
+//    WHERE TranslatorCount > 0;
+//
+//neg_data =
+//    SELECT TOP 10000 non_msft. *,
+//               "0" AS TransLabel
+//    FROM non_msft
+//    WHERE !(TranslatorCount.HasValue);
+//
+//training_data =
+//    SELECT *
+//    FROM pos_data
+//    UNION ALL
+//    SELECT *
+//    FROM neg_data;
+//
+//OUTPUT training_data
+//TO SSTREAM @"/my/FHL2018/TranslatorDataTraining.ss";

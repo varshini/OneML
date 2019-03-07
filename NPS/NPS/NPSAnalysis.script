@@ -1,0 +1,16 @@
+﻿//Script GUID:3e18652c-d3f4-4101-b149-3fd22c31a0f9
+//Used for tracking history
+
+tenants =
+    SSTREAM @"/shares/IDEAs.Prod/local/Scheduled/Datasets/Private/CommercialMauDashboard/PerUserApplicationPlatform/Monthly/2018/MonthlyPerUserAndApplicationPropertiesUsageData_2018_06_01.ss";
+
+data =
+    SELECT TenantId,
+           COUNT(DISTINCT UserId) AS AllUpMAU
+    FROM tenants
+    GROUP BY TenantId;
+
+OUTPUT data
+TO SSTREAM @"/my/TenantHealth/Tenant_June_MAU.ss";
+
+

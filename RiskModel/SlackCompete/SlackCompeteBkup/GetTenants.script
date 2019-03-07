@@ -1,0 +1,12 @@
+﻿//Script GUID:caa3be8b-eb62-45e7-9e04-ff8e867f3913
+//Used for tracking history
+
+our_tenants = SSTREAM @"/shares/modpim.anfield/O365MarketingDatasets/Commercial/SegmentationModel/2018/TenantUsageSegmentation_2018_03_01.ss";
+
+our_tenants =
+    SELECT TenantId, FinalTopParentId AS TPId
+    WHERE FinalSegment.Contains("Enterprise") AND ! (FinalSubsegment.Contains("Education")) AND ! (FinalSubsegment.Contains("Government"))
+          AND ! (FinalSubsegment.Contains("Public"));
+
+OUTPUT our_tenants
+TO SSTREAM @"/my/Compete/TenantsList.ss";

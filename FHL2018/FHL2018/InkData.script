@@ -1,0 +1,55 @@
+﻿//Script GUID:ff4c5298-954e-452b-b0bd-6695b687f6e5
+//Used for tracking history
+
+
+//Ink data 
+#DECLARE In_path string = "/shares/Graphics.proc/Graphics_DailyInk/";
+#DECLARE In_patt string = "DailyInkCount_%Y-%m-%d.ss";
+#DECLARE startString string = "2017-12-19";
+#DECLARE endString string = "2018-05-31";
+
+ink_data_1 =
+    SSTREAM STREAMSET @In_path
+            PATTERN   @In_patt
+            RANGE __date = [@startString, @endString];
+
+ink_data_1 =
+    SELECT OfficeUserId,
+           DateTime.Parse(Date) AS Date, Month
+    FROM ink_data_1;
+
+//Ink data 
+#DECLARE In_path1 string = "/shares/Graphics.proc/Graphics_DailyInk/";
+#DECLARE In_patt1 string = "DailyInkCount_%Y-%m-%d.ss";
+#DECLARE startString1 string = "2018-06-01";
+#DECLARE endString1 string = "2018-09-30";
+
+ink_data_2 =
+    SSTREAM STREAMSET @In_path1
+            PATTERN   @In_patt1
+            RANGE __date = [@startString1, @endString1];
+
+ink_data_2 =
+    SELECT OfficeUserId,
+           DateTime.Parse(Date) AS Date, Month
+    FROM ink_data_2;
+
+ink_data =
+    SELECT * FROM ink_data_1 UNION ALL SELECT * FROM ink_data_2;
+
+data =
+    SELECT OfficeUserId,
+           MIN(Date) AS Date
+    FROM ink_data
+    GROUP BY OfficeUserId;
+
+data =
+    SELECT OfficeUserId,
+           Date.ToString("yyyy-MM") AS MonthYear
+    FROM data;
+    
+OUTPUT data
+TO SSTREAM @"/my/FHL2018/InkData.ss"
+CLUSTERED BY OfficeUserId, MonthYear;
+
+

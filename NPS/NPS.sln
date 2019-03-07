@@ -1,0 +1,37 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.27130.2036
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{202899A3-C531-4771-9089-0213D66978AE}") = "NPS", "NPS\NPS.scopeproj", "{C5FABAF3-136A-4112-8A38-57FB4CD01AB2}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|Any CPU = Release|Any CPU
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C5FABAF3-136A-4112-8A38-57FB4CD01AB2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C5FABAF3-136A-4112-8A38-57FB4CD01AB2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C5FABAF3-136A-4112-8A38-57FB4CD01AB2}.Debug|x64.ActiveCfg = Debug|x64
+		{C5FABAF3-136A-4112-8A38-57FB4CD01AB2}.Debug|x64.Build.0 = Debug|x64
+		{C5FABAF3-136A-4112-8A38-57FB4CD01AB2}.Debug|x86.ActiveCfg = Debug|x86
+		{C5FABAF3-136A-4112-8A38-57FB4CD01AB2}.Debug|x86.Build.0 = Debug|x86
+		{C5FABAF3-136A-4112-8A38-57FB4CD01AB2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C5FABAF3-136A-4112-8A38-57FB4CD01AB2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C5FABAF3-136A-4112-8A38-57FB4CD01AB2}.Release|x64.ActiveCfg = Release|x64
+		{C5FABAF3-136A-4112-8A38-57FB4CD01AB2}.Release|x64.Build.0 = Release|x64
+		{C5FABAF3-136A-4112-8A38-57FB4CD01AB2}.Release|x86.ActiveCfg = Release|x86
+		{C5FABAF3-136A-4112-8A38-57FB4CD01AB2}.Release|x86.Build.0 = Release|x86
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {CD85F0C8-D7B0-4AFC-8D2F-DB619610FF65}
+	EndGlobalSection
+EndGlobal

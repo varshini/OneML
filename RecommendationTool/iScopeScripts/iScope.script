@@ -1,0 +1,11 @@
+﻿//Script GUID:2778eb49-de07-443a-949d-9e5dca5132be
+//Used for tracking history
+
+data = SSTREAM @"/shares/modpim.anfield/O365MarketingDatasets/Commercial/SegmentationModel/AllUpTenantSummaryView.ss";
+
+rs =
+    SELECT DISTINCT FinalSegment
+    FROM data;
+
+    
+OUTPUT rs TO CONSOLE;

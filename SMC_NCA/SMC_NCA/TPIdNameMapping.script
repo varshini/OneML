@@ -1,0 +1,21 @@
+﻿//Script GUID:35183115-5c03-4c88-a753-07024361cbc3
+//Used for tracking history
+
+tenant_tpid_mapping_input =
+    SSTREAM @"/shares/IDEAs.Prod/local/Scheduled/Datasets/Public/Profiles/Tenants/MSSalesTenants.ss";
+
+smc_tpid =
+    SSTREAM @"/my/SMC_NCA/SMC_TPID.ss";
+
+data =
+    SELECT DISTINCT
+           smc_tpid.TPId,
+           tenant_tpid_mapping_input.CustomerTopParentOrgName
+    FROM smc_tpid
+         LEFT JOIN
+             tenant_tpid_mapping_input
+         ON smc_tpid.TPId == tenant_tpid_mapping_input.CustomerTopParentOrgId;
+
+
+OUTPUT data
+TO SSTREAM @"/my/SMC_NCA/TPID_Name.ss";

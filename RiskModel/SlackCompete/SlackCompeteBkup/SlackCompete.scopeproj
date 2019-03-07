@@ -1,0 +1,73 @@
+﻿<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>010449c7-9c46-4c4e-aa2e-d92cfb9c252c</ProjectGuid>
+    <OutputType>File</OutputType>
+    <AssemblyName>Algebra.xml</AssemblyName>
+    <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
+    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <Name>SlackCompete</Name>
+    <RootNamespace>SlackCompete</RootNamespace>
+    <VCSelectionInProjectProperty>&lt;Use Current VC in VC Selector&gt;</VCSelectionInProjectProperty>
+    <CosmosRuntimeVersion>Default</CosmosRuntimeVersion>
+    <ScopePath>%24(SCRIPT_DIR);%24(CLUSTER_ROOT);%24(SCOPE_DIR);%24(PROJECT_DIR)</ScopePath>
+    <InputStreamSearchPath>%24(PROJECT_DIR);%24(SCRIPT_DIR);%24(CLUSTER_ROOT)</InputStreamSearchPath>
+    <VertexDebugSolution>false</VertexDebugSolution>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\Debug\</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugSymbols>false</DebugSymbols>
+    <OutputPath>bin\Release\</OutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Script Include="Compete.script" />
+    <Script Include="GetCompeteMetrics.script" />
+    <Script Include="GetTenants.script" />
+    <Script Include="NCA_Compete.script" />
+    <Script Include="New_Compete.script" />
+    <Script Include="New_Modified_Compete.script">
+      <RemoveUselessParameters>True</RemoveUselessParameters>
+      <ScopeOldParameters>PROCESS_DATE_START=(\"2018-01-01\")</ScopeOldParameters>
+    </Script>
+    <Script Include="Sampling.script" />
+    <Script Include="Scope.script" />
+    <Script Include="Scope1.script" />
+    <Script Include="Scope2.script" />
+    <ScriptCode Include="Compete.script.cs">
+      <DependentUpon>Compete.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="GetCompeteMetrics.script.cs">
+      <DependentUpon>GetCompeteMetrics.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="GetTenants.script.cs">
+      <DependentUpon>GetTenants.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="NCA_Compete.script.cs">
+      <DependentUpon>NCA_Compete.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="New_Compete.script.cs">
+      <DependentUpon>New_Compete.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="New_Modified_Compete.script.cs">
+      <DependentUpon>New_Modified_Compete.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="Sampling.script.cs">
+      <DependentUpon>Sampling.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="Scope.script.cs">
+      <DependentUpon>Scope.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="Scope1.script.cs">
+      <DependentUpon>Scope1.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="Scope2.script.cs">
+      <DependentUpon>Scope2.script</DependentUpon>
+    </ScriptCode>
+  </ItemGroup>
+  <Import Project="$(AppData)\Microsoft\ScopeStudio\MsBuild\1.0\Scope.targets" />
+</Project>

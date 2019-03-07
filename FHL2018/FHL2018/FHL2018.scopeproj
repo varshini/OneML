@@ -1,0 +1,73 @@
+﻿<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>4ab0e22b-4263-4775-aaaf-c8cb9772c2fd</ProjectGuid>
+    <OutputType>File</OutputType>
+    <AssemblyName>Algebra.xml</AssemblyName>
+    <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
+    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <Name>FHL2018</Name>
+    <RootNamespace>FHL2018</RootNamespace>
+    <VCSelectionInProjectProperty>&lt;Use Current VC in VC Selector&gt;</VCSelectionInProjectProperty>
+    <CosmosRuntimeVersion>Default</CosmosRuntimeVersion>
+    <ScopePath>%24(SCRIPT_DIR);%24(CLUSTER_ROOT);%24(SCOPE_DIR);%24(PROJECT_DIR)</ScopePath>
+    <InputStreamSearchPath>%24(PROJECT_DIR);%24(SCRIPT_DIR);%24(CLUSTER_ROOT)</InputStreamSearchPath>
+    <VertexDebugSolution>false</VertexDebugSolution>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\Debug\</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugSymbols>false</DebugSymbols>
+    <OutputPath>bin\Release\</OutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Script Include="CreateFeatureTable.script" />
+    <Script Include="FeaturesForMSITScoring.script" />
+    <Script Include="InkData.script" />
+    <Script Include="MSITPuidSqmMapping.script" />
+    <Script Include="PuidUserIdMapping.script">
+      <RemoveUselessParameters>False</RemoveUselessParameters>
+      <ScopeClusterParameters>TARGET_DATE=(\"2018-09-30\"),ROLLING_WINDOW_SIZE=(30)</ScopeClusterParameters>
+    </Script>
+    <Script Include="Sampling.script" />
+    <Script Include="TeamsData.script">
+      <RemoveUselessParameters>False</RemoveUselessParameters>
+      <ScopeOldParameters>TARGET_DATE=(\"2018-08-31\"),ROLLING_WINDOW_SIZE=(28)</ScopeOldParameters>
+      <ScopeClusterParameters>TARGET_DATE=(\"2018-02-28\"),ROLLING_WINDOW_SIZE=(28)</ScopeClusterParameters>
+    </Script>
+    <Script Include="TeamsFeatures.script" />
+    <Script Include="Translator.script" />
+    <ScriptCode Include="CreateFeatureTable.script.cs">
+      <DependentUpon>CreateFeatureTable.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="FeaturesForMSITScoring.script.cs">
+      <DependentUpon>FeaturesForMSITScoring.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="InkData.script.cs">
+      <DependentUpon>InkData.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="MSITPuidSqmMapping.script.cs">
+      <DependentUpon>MSITPuidSqmMapping.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="PuidUserIdMapping.script.cs">
+      <DependentUpon>PuidUserIdMapping.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="Sampling.script.cs">
+      <DependentUpon>Sampling.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="TeamsData.script.cs">
+      <DependentUpon>TeamsData.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="TeamsFeatures.script.cs">
+      <DependentUpon>TeamsFeatures.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="Translator.script.cs">
+      <DependentUpon>Translator.script</DependentUpon>
+    </ScriptCode>
+  </ItemGroup>
+  <Import Project="$(AppData)\Microsoft\ScopeStudio\MsBuild\1.0\Scope.targets" />
+</Project>

@@ -1,0 +1,29 @@
+﻿//Script GUID:38a2ee0e-b200-4df1-b28e-67ab1ebbf555
+//Used for tracking history
+
+#DECLARE msit_id_csv_input string = @"/my/FHL2018/20181002-MSFTFTEInfo.csv";
+
+msit_ids = 
+    EXTRACT 
+        Puid     : string, 
+        UserObjectId : string
+        
+    FROM
+    @msit_id_csv_input
+    USING DefaultTextExtractor(delimiter: ',');
+
+OUTPUT msit_ids
+TO SSTREAM @"/my/FHL2018/MSFTList.ss";
+
+
+//teams_data = SSTREAM @"shares/ACE.proc/local/Campaigns/Teams/Features/2018/09/O365UserFeatures_30_RL28D.ss";
+//
+//features =
+//    SELECT teams_data. *
+//    FROM teams_data
+//         INNER JOIN
+//             msit_ids
+//         ON msit_ids.Puid == teams_data.Puid;
+//
+//OUTPUT features
+//TO SSTREAM @"/my/FHL2018/ScoringFeatures.ss";

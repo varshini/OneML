@@ -1,0 +1,173 @@
+﻿//Script GUID:aaa0494e-d25c-4b03-b0f9-280fcca4029b
+//Used for tracking history
+
+// ====================================================================================================================
+// <copyright company="Microsoft Inc">
+//   (c) 2018 Microsoft Inc.
+// </copyright>
+// <summary>
+//     WHERE = cosmos14\office.adhoc; runtime
+//       WHY = Extracting platform level attributes for Core Apps data and creating flags at platform version level
+// </summary>
+// <history>  
+//    [varamase]   :  2018-07-19: imported from previous version (https://microsoft.sharepoint.com/teams/IDEAsV-Teams/Shared%20Documents/Forms/AllItems.aspx?id=%2Fteams%2FIDEAsV%2DTeams%2FShared%20Documents%2FManaged%20and%20Tenant%20Insights%2FTransition%2F201803%5FNidhi%2FModernMAU%2Fscripts%2FOI%20Data)
+//    [varamase] : 2018-07-19: Parameterizing  and cleaning up
+// </history>
+
+// ====================================================================================================================
+// Tools for GDPR tagging
+MODULE "/shares/PXSCosmos14.Prod/PXS.DeleteSignal.PROD/PrivacyAnnotation/PrivacyAnnotation.module";
+USING Privacy;
+// ====================================================================================================================
+
+// Script Parameters
+#DECLARE outputRoot     string   = @"/shares/ACE.proc/local/Projects/EntTenantRiskModel/ModernMAU/"; // if running on ACE.proc "/local/Projects/"; if running on office.adhoc "/shares/ACE.proc/local/Projects/"
+#DECLARE snapDate       DateTime = DateTime.Parse(@@PROCESS_DATE_START@@);
+#DECLARE snapDateStr    string   = @snapDate.ToString("yyyy-MM-dd");
+
+// Inputs
+#DECLARE CoreApps_str   string   = string.Format("/shares/modpim.anfield/O365MarketingDatasets/Commercial/Usage/CoreApps/{0:yyyy}/{0:MM}/UserUsageSummaryByActionAndDeviceType_{0:yyyy_MM_dd}.ss",@snapDate);
+
+// Output
+#DECLARE coreappsoutput          string = string.Format("{0}CoreApps_Puid_{1:yyyyMM}.ss", @outputRoot, @snapDate);
+
+// ====================================================================================================================
+
+coreapps = SSTREAM @CoreApps_str;
+
+
+CoreAppsPuid =
+    SELECT AsOfDate,
+           UserId,
+           TenantId,
+           SUM( ( Platform == "Win32" AND Application == "Word" AND OfficeMajorVersion == "16" ) ? 1 : 0 ) AS WordPc16_Cnt,
+           SUM( ( Platform == "Win32" AND Application == "Excel" AND OfficeMajorVersion == "16" ) ? 1 : 0 ) AS ExcelPc16_Cnt,
+           SUM( ( Platform == "Win32" AND Application == "PowerPoint" AND OfficeMajorVersion == "16" ) ? 1 : 0 ) AS PptPc16_Cnt,
+           SUM( ( Platform == "Win32" AND Application == "OneNote" AND OfficeMajorVersion == "16" ) ? 1 : 0 ) AS OneNotePc16_Cnt,
+           SUM( ( Platform == "Win32" AND Application == "Outlook" AND OfficeMajorVersion == "16" ) ? 1 : 0 ) AS OutlookPc16_Cnt,
+           SUM( ( Platform == "Win32" AND Application == "Word" AND OfficeMajorVersion != "16" ) ? 1 : 0 ) AS WordPcOld_Cnt,
+           SUM( ( Platform == "Win32" AND Application == "Excel" AND OfficeMajorVersion != "16" ) ? 1 : 0 ) AS ExcelPcOld_Cnt,
+           SUM( ( Platform == "Win32" AND Application == "PowerPoint" AND OfficeMajorVersion != "16" ) ? 1 : 0 ) AS PptPcOld_Cnt,
+           SUM( ( Platform == "Win32" AND Application == "OneNote" AND OfficeMajorVersion != "16" ) ? 1 : 0 ) AS OneNotePcOld_Cnt,
+           SUM( ( Platform == "Win32" AND Application == "Outlook" AND OfficeMajorVersion != "16" ) ? 1 : 0 ) AS OutlookPcOld_Cnt,
+           
+           SUM( ( Platform == "Mac" AND Application == "Word" AND OfficeMajorVersion == "16" ) ? 1 : 0 ) AS WordMac16_Cnt,
+           SUM( ( Platform == "Mac" AND Application == "Excel" AND OfficeMajorVersion == "16" ) ? 1 : 0 ) AS ExcelMac16_Cnt,
+           SUM( ( Platform == "Mac" AND Application == "PowerPoint" AND OfficeMajorVersion == "16" ) ? 1 : 0 ) AS PptMac16_Cnt,
+           SUM( ( Platform == "Mac" AND Application == "OneNote" AND OfficeMajorVersion == "16" ) ? 1 : 0 ) AS OneNoteMac16_Cnt,
+           SUM( ( Platform == "Mac" AND Application == "Outlook" AND OfficeMajorVersion == "16" ) ? 1 : 0 ) AS OutlookMac16_Cnt,
+           SUM( ( Platform == "Mac" AND Application == "Word" AND OfficeMajorVersion != "16" ) ? 1 : 0 ) AS WordMacOld_Cnt,
+           SUM( ( Platform == "Mac" AND Application == "Excel" AND OfficeMajorVersion != "16" ) ? 1 : 0 ) AS ExcelMacOld_Cnt,
+           SUM( ( Platform == "Mac" AND Application == "PowerPoint" AND OfficeMajorVersion != "16" ) ? 1 : 0 ) AS PptMacOld_Cnt,
+           SUM( ( Platform == "Mac" AND Application == "OneNote" AND OfficeMajorVersion != "16" ) ? 1 : 0 ) AS OneNoteMacOld_Cnt,
+           SUM( ( Platform == "Mac" AND Application == "Outlook" AND OfficeMajorVersion != "16" ) ? 1 : 0 ) AS OutlookMacOld_Cnt,
+           
+           SUM( ( Platform == "Web" AND Application == "Word" ) ? 1 : 0 ) AS WordWebAll_Cnt,
+           SUM( ( Platform == "Web" AND Application == "Excel" ) ? 1 : 0 ) AS ExcelWebAll_Cnt,
+           SUM( ( Platform == "Web" AND Application == "PowerPoint" ) ? 1 : 0 ) AS PptWebAll_Cnt,
+           SUM( ( Platform == "Web" AND Application == "OneNote" ) ? 1 : 0 ) AS OneNoteWebAll_Cnt,
+           SUM( ( Platform == "Web" AND Application == "Outlook" ) ? 1 : 0 ) AS OutlookWebAll_Cnt,
+           SUM( ( Platform == "Web" AND Application == "Word" AND WebHost == "Exchange Online" ) ? 1 : 0 ) AS WordWebEXO_Cnt,
+           SUM( ( Platform == "Web" AND Application == "Excel" AND WebHost == "Exchange Online" ) ? 1 : 0 ) AS ExcelWebEXO_Cnt,
+           SUM( ( Platform == "Web" AND Application == "PowerPoint" AND WebHost == "Exchange Online" ) ? 1 : 0 ) AS PptWebEXO_Cnt,
+           SUM( ( Platform == "Web" AND Application == "OneNote" AND WebHost == "Exchange Online" ) ? 1 : 0 ) AS OneNoteWebEXO_Cnt,
+           SUM( ( Platform == "Web" AND Application == "Outlook" AND WebHost == "Exchange Online" ) ? 1 : 0 ) AS OutlookWebEXO_Cnt,
+           SUM( ( Platform == "Web" AND Application == "Word" AND WebHost == "SharePoint Online" ) ? 1 : 0 ) AS WordWebSPO_Cnt,
+           SUM( ( Platform == "Web" AND Application == "Excel" AND WebHost == "SharePoint Online" ) ? 1 : 0 ) AS ExcelWebSPO_Cnt,
+           SUM( ( Platform == "Web" AND Application == "PowerPoint" AND WebHost == "SharePoint Online" ) ? 1 : 0 ) AS PptWebSPO_Cnt,
+           SUM( ( Platform == "Web" AND Application == "OneNote" AND WebHost == "SharePoint Online" ) ? 1 : 0 ) AS OneNoteWebSPO_Cnt,
+           SUM( ( Platform == "Web" AND Application == "Outlook" AND WebHost == "SharePoint Online" ) ? 1 : 0 ) AS OutlookWebSPO_Cnt
+
+    FROM coreapps
+    WHERE L28UsageDays > 0
+    GROUP BY AsOfDate,
+           UserId,
+           TenantId;
+
+
+
+CoreAppsPuid =
+    SELECT AsOfDate,
+           TenantId,
+           UserId,
+           ( ( WordPc16_Cnt > 0 ) ? 1 : 0 ) AS WordPc16,
+           ( ( ExcelPc16_Cnt > 0 ) ? 1 : 0 ) AS ExcelPc16,
+           ( ( PptPc16_Cnt > 0 ) ? 1 : 0 ) AS PptPc16,
+           ( ( OneNotePc16_Cnt > 0 ) ? 1 : 0 ) AS OneNotePc16,
+           ( ( OutlookPc16_Cnt > 0 ) ? 1 : 0 ) AS OutlookPc16,
+           ( ( WordPc16_Cnt > 0 OR ExcelPc16_Cnt > 0 OR PptPc16_Cnt > 0 OR OneNotePc16_Cnt > 0 ) ? 1 : 0 ) AS WXPOPc16,
+           ( ( WordPc16_Cnt > 0 OR ExcelPc16_Cnt > 0 OR PptPc16_Cnt > 0 OR OneNotePc16_Cnt > 0 OR OutlookPc16_Cnt > 0 ) ? 1 : 0 ) AS WXPOOPc16,
+           ( ( WordPcOld_Cnt > 0 ) ? 1 : 0 ) AS WordPcOld,
+           ( ( ExcelPcOld_Cnt > 0 ) ? 1 : 0 ) AS ExcelPcOld,
+           ( ( PptPcOld_Cnt > 0 ) ? 1 : 0 ) AS PptPcOld,
+           ( ( OneNotePcOld_Cnt > 0 ) ? 1 : 0 ) AS OneNotePcOld,
+           ( ( OutlookPcOld_Cnt > 0 ) ? 1 : 0 ) AS OutlookPcOld,
+           ( ( WordPcOld_Cnt > 0 OR ExcelPcOld_Cnt > 0 OR PptPcOld_Cnt > 0 OR OneNotePcOld_Cnt > 0 ) ? 1 : 0 ) AS WXPOPcOld,
+           ( ( WordPcOld_Cnt > 0 OR ExcelPcOld_Cnt > 0 OR PptPcOld_Cnt > 0 OR OneNotePcOld_Cnt > 0 OR OutlookPcOld_Cnt > 0 ) ? 1 : 0 ) AS WXPOOPcOld,              
+           
+           ( ( WordMac16_Cnt > 0 ) ? 1 : 0 ) AS WordMac16,
+           ( ( ExcelMac16_Cnt > 0 ) ? 1 : 0 ) AS ExcelMac16,
+           ( ( PptMac16_Cnt > 0 ) ? 1 : 0 ) AS PptMac16,
+           ( ( OneNoteMac16_Cnt > 0 ) ? 1 : 0 ) AS OneNoteMac16,
+           ( ( OutlookMac16_Cnt > 0 ) ? 1 : 0 ) AS OutlookMac16,
+           ( ( WordMac16_Cnt > 0 OR ExcelMac16_Cnt > 0 OR PptMac16_Cnt > 0 OR OneNoteMac16_Cnt > 0 ) ? 1 : 0 ) AS WXPOMac16,
+           ( ( WordMac16_Cnt > 0 OR ExcelMac16_Cnt > 0 OR PptMac16_Cnt > 0 OR OneNoteMac16_Cnt > 0 OR OutlookMac16_Cnt > 0 ) ? 1 : 0 ) AS WXPOOMac16,
+           ( ( WordMacOld_Cnt > 0 ) ? 1 : 0 ) AS WordMacOld,
+           ( ( ExcelMacOld_Cnt > 0 ) ? 1 : 0 ) AS ExcelMacOld,
+           ( ( PptMacOld_Cnt > 0 ) ? 1 : 0 ) AS PptMacOld,
+           ( ( OneNoteMacOld_Cnt > 0 ) ? 1 : 0 ) AS OneNoteMacOld,
+           ( ( OutlookMacOld_Cnt > 0 ) ? 1 : 0 ) AS OutlookMacOld,
+           ( ( WordMacOld_Cnt > 0 OR ExcelMacOld_Cnt > 0 OR PptMacOld_Cnt > 0 OR OneNoteMacOld_Cnt > 0 ) ? 1 : 0 ) AS WXPOMacOld,
+           ( ( WordMacOld_Cnt > 0 OR ExcelMacOld_Cnt > 0 OR PptMacOld_Cnt > 0 OR OneNoteMacOld_Cnt > 0 OR OutlookMacOld_Cnt > 0 ) ? 1 : 0 ) AS WXPOOMacOld,
+
+           ( ( WordPc16_Cnt > 0 OR WordMac16_Cnt > 0 ) ? 1 : 0 ) AS WordDesktop16,
+           ( ( ExcelPc16_Cnt > 0 OR ExcelMac16_Cnt > 0 ) ? 1 : 0 ) AS ExcelDesktop16,
+           ( ( PptPc16_Cnt > 0 OR PptMac16_Cnt > 0 ) ? 1 : 0 ) AS PptDesktop16,
+           ( ( OneNotePc16_Cnt > 0 OR OneNoteMac16_Cnt > 0 ) ? 1 : 0 ) AS OneNoteDesktop16,
+           ( ( OutlookPc16_Cnt > 0 OR OutlookMac16_Cnt > 0 ) ? 1 : 0 ) AS OutlookDesktop16,
+
+           ( ( WordPcOld_Cnt > 0 OR WordMacOld_Cnt > 0 ) ? 1 : 0 ) AS WordDesktopOld,
+           ( ( ExcelPcOld_Cnt > 0 OR ExcelMacOld_Cnt > 0 ) ? 1 : 0 ) AS ExcelDesktopOld,
+           ( ( PptPcOld_Cnt > 0 OR PptMacOld_Cnt > 0 ) ? 1 : 0 ) AS PptDesktopOld,
+           ( ( OneNotePcOld_Cnt > 0 OR OneNoteMacOld_Cnt > 0 ) ? 1 : 0 ) AS OneNoteDesktopOld,
+           ( ( OutlookPcOld_Cnt > 0 OR OutlookMacOld_Cnt > 0 ) ? 1 : 0 ) AS OutlookDesktopOld,
+
+           ( ( WordPc16_Cnt > 0 OR ExcelPc16_Cnt > 0 OR PptPc16_Cnt > 0 OR OneNotePc16_Cnt > 0 OR WordMac16_Cnt > 0 OR ExcelMac16_Cnt > 0 OR PptMac16_Cnt > 0 OR OneNoteMac16_Cnt > 0 ) ? 1 : 0 ) AS WXPODesktop16,
+           ( ( WordPc16_Cnt > 0 OR ExcelPc16_Cnt > 0 OR PptPc16_Cnt > 0 OR OneNotePc16_Cnt > 0 OR OutlookPc16_Cnt > 0 OR WordMac16_Cnt > 0 OR ExcelMac16_Cnt > 0 OR PptMac16_Cnt > 0 OR OneNoteMac16_Cnt > 0 OR OutlookMac16_Cnt > 0 ) ? 1 : 0 ) AS WXPOODesktop16,
+           ( ( WordPcOld_Cnt > 0 OR ExcelPcOld_Cnt > 0 OR PptPcOld_Cnt > 0 OR OneNotePcOld_Cnt > 0 OR WordMacOld_Cnt > 0 OR ExcelMacOld_Cnt > 0 OR PptMacOld_Cnt > 0 OR OneNoteMacOld_Cnt > 0 ) ? 1 : 0 ) AS WXPODesktopOld,
+           ( ( WordPcOld_Cnt > 0 OR ExcelPcOld_Cnt > 0 OR PptPcOld_Cnt > 0 OR OneNotePcOld_Cnt > 0 OR OutlookPcOld_Cnt > 0 OR WordMacOld_Cnt > 0 OR ExcelMacOld_Cnt > 0 OR PptMacOld_Cnt > 0 OR OneNoteMacOld_Cnt > 0 OR OutlookMacOld_Cnt > 0 ) ? 1 : 0 ) AS WXPOODesktopOld,
+           
+           ( ( WordWebAll_Cnt > 0 ) ? 1 : 0 ) AS WordWebAll,
+           ( ( ExcelWebAll_Cnt > 0 ) ? 1 : 0 ) AS ExcelWebAll,
+           ( ( PptWebAll_Cnt > 0 ) ? 1 : 0 ) AS PptWebAll,
+           ( ( OneNoteWebAll_Cnt > 0 ) ? 1 : 0 ) AS OneNoteWebAll,
+           ( ( OutlookWebAll_Cnt > 0 ) ? 1 : 0 ) AS OutlookWebAll,
+           ( ( WordWebAll_Cnt > 0 OR ExcelWebAll_Cnt > 0 OR PptWebAll_Cnt > 0 OR OneNoteWebAll_Cnt > 0 ) ? 1 : 0 ) AS WXPOWebAll,
+           ( ( WordWebAll_Cnt > 0 OR ExcelWebAll_Cnt > 0 OR PptWebAll_Cnt > 0 OR OneNoteWebAll_Cnt > 0 OR OutlookWebAll_Cnt > 0 ) ? 1 : 0 ) AS WXPOOWebAll,
+           ( ( WordWebEXO_Cnt > 0 ) ? 1 : 0 ) AS WordWebEXO,
+           ( ( ExcelWebEXO_Cnt > 0 ) ? 1 : 0 ) AS ExcelWebEXO,
+           ( ( PptWebEXO_Cnt > 0 ) ? 1 : 0 ) AS PptWebEXO,
+           ( ( OneNoteWebEXO_Cnt > 0 ) ? 1 : 0 ) AS OneNoteWebEXO,
+           ( ( OutlookWebEXO_Cnt > 0 ) ? 1 : 0 ) AS OutlookWebEXO,
+           ( ( WordWebEXO_Cnt > 0 OR ExcelWebEXO_Cnt > 0 OR PptWebEXO_Cnt > 0 OR OneNoteWebEXO_Cnt > 0 ) ? 1 : 0 ) AS WXPOWebEXO,
+           ( ( WordWebEXO_Cnt > 0 OR ExcelWebEXO_Cnt > 0 OR PptWebEXO_Cnt > 0 OR OneNoteWebEXO_Cnt > 0 OR OutlookWebEXO_Cnt > 0 ) ? 1 : 0 ) AS WXPOOWebEXO,
+           ( ( WordWebSPO_Cnt > 0 ) ? 1 : 0 ) AS WordWebSPO,
+           ( ( ExcelWebSPO_Cnt > 0 ) ? 1 : 0 ) AS ExcelWebSPO,
+           ( ( PptWebSPO_Cnt > 0 ) ? 1 : 0 ) AS PptWebSPO,
+           ( ( OneNoteWebSPO_Cnt > 0 ) ? 1 : 0 ) AS OneNoteWebSPO,
+           ( ( OutlookWebSPO_Cnt > 0 ) ? 1 : 0 ) AS OutlookWebSPO,
+           ( ( WordWebSPO_Cnt > 0 OR ExcelWebSPO_Cnt > 0 OR PptWebSPO_Cnt > 0 OR OneNoteWebSPO_Cnt > 0 ) ? 1 : 0 ) AS WXPOWebSPO,
+           ( ( WordWebSPO_Cnt > 0 OR ExcelWebSPO_Cnt > 0 OR PptWebSPO_Cnt > 0 OR OneNoteWebSPO_Cnt > 0 OR OutlookWebSPO_Cnt > 0 ) ? 1 : 0 ) AS WXPOOWebSPO
+
+    FROM CoreAppsPuid;
+
+[Privacy.Asset.NonPersonal] // GDPR asset tagging
+[Privacy.Column.TenantId(Column="TenantId")] // GDPR column tagging
+
+OUTPUT CoreAppsPuid TO SSTREAM @coreappsoutput
+    CLUSTERED BY TenantId, UserId
+    SORTED BY TenantId
+        WITH STREAMEXPIRY @"365";
+
+
+

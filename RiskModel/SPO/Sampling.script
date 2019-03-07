@@ -1,0 +1,29 @@
+﻿//Script GUID:be49314a-ebad-4e99-ac78-44a36aeef330
+//Used for tracking history
+
+#DECLARE In_path string = "/shares/spo.prod/local/AggregatedUnified/Datasets/Public/Reliability/TenantAvailability/";
+#DECLARE In_patt string = "%Y/%m/TenantAvailability_%Y_%m_%d.ss";
+#DECLARE startString string = "2018-04-01";
+#DECLARE endString string = "2018-04-30";
+
+/*Read our strategic tenants data
+tenant_data =
+    SSTREAM @"/users/mialdea/CapOneInvestigation/400Strategic50kPlusSeats_TenantTpid.ss";
+*/
+
+//Read the Reliability Streams
+AppActivity =
+    SSTREAM STREAMSET @In_path
+            PATTERN   @In_patt
+            RANGE __date = [@startString, @endString];
+
+data =
+    SELECT *
+    FROM AppActivity
+    WHERE SiteSubscriptionId == "6e466d2d-ef15-4df6-999a-9e1423bc217c";
+
+OUTPUT data
+TO SSTREAM @"/my/SPOReliability/Sampling1.ss";
+
+
+//1e89417f-ebe6-4fed-ba00-290d1298e8a4

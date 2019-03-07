@@ -1,0 +1,30 @@
+﻿//Script GUID:2687ffd8-c19c-4ee0-865c-6498bfbc3e8c
+//Used for tracking history
+
+//maps the license ids to device ids and further tenants
+
+data =
+    SSTREAM @"/my/BlockedTelemetry/Monthly/Nov/OLSPings.ss";
+
+device_tenant_mapping = VIEW @"/shares/IDEAs.Prod/Public/Views/IDEAsDeviceLicenses.view"
+    PARAMS( HistoryDate = DateTime.Parse( "2018-11-30" ) );
+
+licenses =
+    SELECT data.*, device_tenant_mapping.GlobalDeviceId, device_tenant_mapping.OMSTenantId, device_tenant_mapping.IncludeInDeviceCounts
+    FROM data
+         INNER JOIN
+             device_tenant_mapping
+         ON device_tenant_mapping.OlsLicenseId == data.LicenseId;
+
+licenses =
+    SELECT *
+    FROM licenses
+    WHERE IncludeInDeviceCounts == true;
+
+licenses =
+    SELECT OMSTenantId, COUNT(DISTINCT GlobalDeviceId) AS DeviceCount
+    FROM licenses
+    GROUP BY OMSTenantId;
+
+OUTPUT licenses
+TO SSTREAM @"/my/BlockedTelemetry/Monthly/Nov/TenantDeviceCount.ss";

@@ -1,0 +1,81 @@
+﻿//Script GUID:3628f40a-bb67-4152-994e-ad3c22f04f65
+//Used for tracking history
+
+// Tools for GDPR tagging
+MODULE "/shares/PXSCosmos14.Prod/PXS.DeleteSignal.PROD/PrivacyAnnotation/PrivacyAnnotation.module";
+USING Privacy;
+
+#DECLARE snapDate DateTime = DateTime.Parse(@@PROCESS_DATE_START@@);
+#DECLARE tpid_list_csv_input string = @"/users/varamase/TenantHealth/Strategic_TPID.csv";
+#DECLARE AEview         string   = @"/shares/modpim.anfield/AnfieldPublishedView/Commercial/FieldMetrics/ActiveUsage_HomeGeo.view";
+
+tenant_tpid_mapping_input =
+    SSTREAM @"/shares/modpim.anfield/O365MarketingDatasets/Commercial/Reference/TenantTPIDMapping.ss";
+
+#DECLARE tpid_list_ss_out string = @"/users/varamase/TenantHealth/Strategic_TPID_3.ss";
+#DECLARE tpid_tenant_qe_out string = @"/users/varamase/TenantHealth/TPID_Tenant_Mapping_QE_3.ss";
+
+
+//Uploading the strategic TPID list from csv to ss
+data_ss = 
+    EXTRACT 
+        TPId     : int
+    FROM
+    @tpid_list_csv_input
+    USING DefaultTextExtractor(delimiter: ',');
+
+OUTPUT data_ss
+TO SSTREAM @tpid_list_ss_out;
+
+//Mapping the TPIDs to the tenant ids
+mapped_data =
+    SELECT data_ss.TPId,
+           tenant_tpid_mapping_input.TenantId AS OMSTenantId
+    FROM data_ss
+         LEFT JOIN
+             tenant_tpid_mapping_input
+         ON data_ss.TPId == tenant_tpid_mapping_input.FinalTPID;
+
+//Getting the qualified entitilments
+
+tpid_tenant =
+    SELECT *
+    FROM mapped_data
+    WHERE OMSTenantId != null;
+
+qe = 
+    SELECT *, 
+           TenantID.ToString().ToLower() AS TenantId
+    FROM (VIEW @AEview PARAMS (startDate = @snapDate));
+
+qe =
+    SELECT *
+    FROM qe
+    WHERE TenantId != null
+    AND QualifiedSKU == true
+    AND QualifiedTenant == true
+    AND string.IsNullOrEmpty(SubWorkload) // for all-up numbers
+    AND !(SKU IN ("EXCHANGE ONLINE ADVANCED THREAT PROTECTION"));
+
+qe =
+    SELECT TenantId,
+           SUM(QualifiedEntitlements) AS TotalQualifiedEntitlements
+    FROM qe
+    GROUP BY TenantId;
+
+final_qe_data =
+    SELECT tpid_tenant. *,
+           qe.TotalQualifiedEntitlements
+    FROM tpid_tenant
+         LEFT JOIN
+             qe
+         ON tpid_tenant.OMSTenantId == qe.TenantId;
+
+[Privacy.Asset.NonPersonal] // GDPR asset tagging
+[Privacy.Column.TenantId(Column="OMSTenantId")] // GDPR column tagging
+
+OUTPUT final_qe_data
+TO SSTREAM @tpid_tenant_qe_out
+   CLUSTERED BY OMSTenantId
+       SORTED BY OMSTenantId;
+

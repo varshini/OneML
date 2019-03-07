@@ -1,0 +1,24 @@
+﻿//Script GUID:69e4b9e0-eb72-4231-8afa-33648120168b
+//Used for tracking history
+
+#DECLARE TenantOutput string = @"/my/Compete/try1.ss";
+
+sep_win10 =
+    SSTREAM @"/shares/asimov.prod.data/UserSensitive.Usage.Partner.Processed.M365.BusinessReporting.Processed/2017/09/M365Reporting_AggTpid_2017_09_30.ss";
+;
+
+/*
+data =
+    SELECT *
+    FROM slack_data
+    WHERE (OMSTenantId == "e11a1b8f-8f52-4608-8f76-467ff1d34c96" AND DeviceId == "g:6896136389157779" AND YrMo == "201705")
+          OR (TPIdInt == 522086 AND DeviceId == "g:6896136389157779" AND YrMo == "201705");
+*/
+
+data =
+    SELECT *
+    FROM sep_win10
+    WHERE TPId == 37221201;
+
+OUTPUT data
+TO SSTREAM @TenantOutput;

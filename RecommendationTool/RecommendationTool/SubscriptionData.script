@@ -1,0 +1,152 @@
+﻿//Script GUID:add119eb-cb6d-46e8-aad1-6d1b80b23aaa
+//Used for tracking history
+
+//Script GUID:0f69eb12-f92b-4d34-9b1e-b8e9c798057f
+//Used for tracking history
+
+sub_2 = SSTREAM @"/shares/modpim.anfield/O365MarketingDatasets/Commercial/PaidandTrialSubscriptions/Subscription360Profile/2017/03/CommercialSubscription360View.ss";
+
+//tenants = SELECT DISTINCT omstenantidentifier.ToString().ToUpper() AS TenantId FROM sub_1;
+sub_1 = SELECT *,omstenantidentifier.ToString().ToUpper() AS TenantId, (SubscriptionEndDate IS NULL? 1:0) AS subenddate_flag FROM sub_2;
+sub =
+    SELECT DISTINCT TenantId,
+                    omssubscriptionidentifier AS SubscriptionId,
+                    subenddate_flag,
+                    SubscriptionState,
+                    BillingCycleName,
+                    IsAutoRenew,
+                    SubscriptionEndDate,
+                    IncludedQuantity,
+                    OfferName,
+                    OfferProductName,
+                    OfferProductFamily,
+                    HasTransitioned,
+                    TransitionFromSubscritpionId,
+                    TransitionToSubscriptionId,
+                    TransitionFromType,
+                    TransitionToType,
+                    TrialStartDate,
+                    TrialToPaidConversionDate,
+                    CommitmentLength
+
+    FROM sub_1
+    WHERE OfferIsTrial == false AND 
+              OfferIsAddOn == false AND
+              IsIWSubscription == false AND
+              IsFraud == false AND
+              ((IsEXO == true) OR (IsLYO == true) OR (IsSPO == true) OR (IsYammer == true) OR (IsProPlus == true)) AND
+              SKUPartNumber.Contains("EOP") == false AND
+              SKUPartNumber.Contains("EXCHANGEARCHIVE") == false AND
+              SKUPartNumber.Contains("ECAL_Services") == false;
+
+
+//OUTPUT sub TO SSTREAM @"/my/sub.ss";
+
+sub_enddate_1 = SELECT TenantId,
+               MIN(SubscriptionEndDate) AS MinEndDate
+               FROM sub
+               WHERE SubscriptionEndDate IS NOT NULL;
+
+
+sub_enddate_2 =  SELECT TenantId,
+               MIN(SubscriptionEndDate) AS MinEndDateAfterMar17
+               FROM sub
+               WHERE SubscriptionEndDate IS NOT NULL AND SubscriptionEndDate > DateTime.Parse("09/30/2017 12:00:00 AM") AND SubscriptionEndDate < DateTime.Parse("03/01/2018 12:00:00 AM");
+//OUTPUT sub_enddate_1 TO SSTREAM @"/users/v-vesuri/commercial/Subscriptionchecks/2018/MinEndDate.ss";
+//OUTPUT sub_enddate_1 TO SSTREAM @"/users/v-vesuri/commercial/Subscriptionchecks/2018/MinEndDateAfterMar17.ss";
+
+sub_Active =
+    SELECT TenantId,
+           subenddate_flag,
+           SubscriptionId,
+           SubscriptionState,
+           BillingCycleName,
+           IsAutoRenew,
+           SubscriptionEndDate,
+           IncludedQuantity,
+           OfferName,
+           OfferProductName,
+           HasTransitioned,
+           TransitionFromSubscritpionId,
+           TransitionToSubscriptionId,
+           TransitionFromType,
+           TransitionToType,
+           TrialStartDate,
+           TrialToPaidConversionDate,
+           CommitmentLength
+    FROM sub
+    WHERE SubscriptionState IN ("Active");
+
+//OUTPUT sub_Active TO SSTREAM @"/users/v-vesuri/commercial/Subscriptionchecks/2018/sub_Active.ss";
+
+
+sub_Active_largest_Quantity =
+    SELECT TenantId,
+           MAX(IncludedQuantity) AS MAX_Included_Quantity_Active
+    FROM sub_Active
+    WHERE SubscriptionEndDate IS NOT NULL;;
+
+sub_Active_largest_Quantity_After_Mar17 =
+    SELECT TenantId,
+           MAX(IncludedQuantity) AS MAX_Included_Quantity_Active_After_Mar17
+    FROM sub_Active 
+    WHERE SubscriptionEndDate > DateTime.Parse("09/30/2017 12:00:00 AM")  AND SubscriptionEndDate < DateTime.Parse("03/01/2018 12:00:00 AM") AND SubscriptionEndDate IS NOT NULL;
+
+sub_Active_full = SELECT a.*,
+                         MAX_Included_Quantity_Active,
+                         MAX_Included_Quantity_Active_After_Mar17
+                         FROM sub_Active AS a
+                         LEFT JOIN sub_Active_largest_Quantity AS b ON b.TenantId == a.TenantId
+                         LEFT JOIN sub_Active_largest_Quantity_After_Mar17 AS c ON c.TenantId == a.TenantId;
+
+
+
+sub_Active_enddate_1 =
+    SELECT TenantId,
+           MIN(SubscriptionEndDate) AS MinEndDateLargestActive,
+           1 AS Active_flag
+    FROM sub_Active_full
+    WHERE IncludedQuantity == MAX_Included_Quantity_Active AND SubscriptionEndDate IS NOT NULL;
+
+sub_Active_enddate_2 =
+    SELECT TenantId,
+           MIN(SubscriptionEndDate) AS MinEndDateLargestActiveAfterMar17
+    FROM sub_Active_full
+    WHERE IncludedQuantity == MAX_Included_Quantity_Active_After_Mar17 AND SubscriptionEndDate IS NOT NULL AND SubscriptionEndDate > DateTime.Parse("09/30/2017 12:00:00 AM") AND SubscriptionEndDate < DateTime.Parse("03/01/2018 12:00:00 AM");
+
+
+
+sub_full =
+    SELECT a.*,
+           Active_flag,    
+           MinEndDate,
+           MinEndDateAfterMar17,
+           MinEndDateLargestActive,
+           MinEndDateLargestActiveAfterMar17
+    FROM sub AS a
+         LEFT JOIN
+             sub_enddate_1 AS b
+         ON a.TenantId == b.TenantId
+         LEFT JOIN
+             sub_enddate_2 AS c
+         ON a.TenantId == c.TenantId
+         LEFT JOIN
+             sub_Active_enddate_1 AS d
+         ON a.TenantId == d.TenantId
+         LEFT JOIN
+             sub_Active_enddate_2 AS e
+         ON a.TenantId == e.TenantId;
+
+sub_data =
+    SELECT DISTINCT TenantId,
+                    Active_flag,
+                    MinEndDate,
+                    MinEndDateAfterMar17,
+                    MinEndDateLargestActive,
+                    MinEndDateLargestActiveAfterMar17
+    FROM sub_full;
+
+
+//OUTPUT sub_full TO SSTREAM @"/my/sub_full.ss";
+OUTPUT sub_data TO SSTREAM @"/my/sub_data.ss";
+

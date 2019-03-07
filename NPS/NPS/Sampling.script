@@ -1,0 +1,30 @@
+﻿//Script GUID:a6532bf0-2959-4125-926b-dff6337eab90
+//Used for tracking history
+
+// Tools for GDPR tagging
+
+qe_input =
+    SSTREAM @"/shares/modpim.anfield/O365MarketingDatasets/Commercial/FieldMetrics/ActiveUsage/2018/05/ActiveUsageOutput_2018_05_31.ss";
+
+
+qe =
+    SELECT *
+    FROM qe_input
+    WHERE TenantId != null AND QualifiedSKU == true;
+
+qe =
+    SELECT *,
+           TenantId.ToString() AS OMSTenantId
+    FROM qe;
+
+qe =
+    SELECT *
+    FROM qe
+    WHERE OMSTenantId == "ae35a0e6-b568-43a6-a5d5-2dc4a55dd000";
+
+OUTPUT qe
+TO SSTREAM @"/my/TenantHealth/Sample2.ss";
+
+
+
+

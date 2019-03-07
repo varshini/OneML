@@ -1,0 +1,118 @@
+﻿//Script GUID:5f5add58-bb7b-46e8-a2d0-ec5f587b9273
+//Used for tracking history
+
+//Currently being used as of 2018/06/07
+
+#DECLARE startDate    DateTime = DateTime.Parse(@@PROCESS_DATE_START@@);   // @startString  // @@PROCESS_DATE_START@@    "2017-10-01", "2018-01-15"
+#DECLARE today DateTime = DateTime.Today ;  //DateTime.Parse("2018-02-19"); //DateTime.Today;
+
+#DECLARE monthEnd DateTime = new DateTime(@startDate.Year, @startDate.Month, 1).AddMonths(1).AddDays( @today.Month == @startDate.Month ? - DateTime.DaysInMonth(@startDate.Year, @startDate.Month) +  @startDate.Day - 1 : -1); //-1   
+
+#DECLARE In_dailyMadPath      string = "/shares/asimov.prod.data/PublicPartner.Processed.WXaaS/MAD_DAD/Daily/" + @startDate.ToString("yyyy/MM/dd/") + "Win10/";
+#DECLARE In_programs          string = @In_dailyMadPath + "programs.ss";
+#DECLARE In_expandedDeviceIds string = @In_dailyMadPath + "deviceIdExpanded_" + @startDate.ToString("yyyy-MM-dd") + ".ss";
+
+//this script will fail if there is no M365 data yet for that day
+//#DECLARE In_TpidMap           string = "/shares/asimov.prod.data/UserSensitive.Usage.Partner.Processed.M365.BusinessReporting.Processed/"      +  @monthEnd.ToString("yyyy/MM/") + "M365Reporting_"        + @monthEnd.ToString("yyyy_MM_dd") + ".ss";
+#DECLARE In_TpidMap    string = "/shares/asimov.prod.data/Public.Processed.Device/Census/Consolidated/V3/"  +  @monthEnd.ToString("yyyy/MM/") + "DeviceCensusConsolidated_V3_"        + @monthEnd.ToString("yyyy_MM_dd") + ".ss";
+
+#DECLARE In_factTable  string = "/shares/asimov.prod.data/PublicPartner.Processed.WxaaSFactTables/Prod/WxaaSDeviceFactTable/v3/Daily/"  +  @monthEnd.ToString("yyyy/MM/") + "WxaaSDeviceFactTable_AllData_" + @monthEnd.ToString("yyyy_MM_dd") + ".ss";
+
+//#DECLARE In_factTable  string = "/shares/asimov.prod.data/PublicPartner.Processed.WxaaSFactTables/Prod/WxaaSDeviceFactTable/v3/Daily/2018/03/WxaaSDeviceFactTable_AllData_2018_03_28.ss";
+
+//#DECLARE In_factTable         string = "/shares/asimov.prod.data/PublicPartner.Processed.WxaaSFactTables/Prod/WdftDaily.view";
+
+#DECLARE Out_stream string =  @"/my/Compete/Win10Devices/" + @startDate.ToString("yyyy/MM/") + "Win10_" + @startDate.ToString("yyyy-MM-dd") + ".ss";    //@"/my/DailyLegacyOffice/"
+
+Programs = SSTREAM @In_programs;
+
+alldata =
+    SELECT
+         DeviceId AS DeviceId
+    FROM Programs;
+         
+//("slack.exe", "teams.exe", "zoom.exe", "hipchat.exe", "workplace chat.exe", "workplacechat.exe", "team-one.exe", "stride.exe", "sparkwindows.exe")
+     
+usageDaily =
+    SELECT
+          DeviceId.ToLower() AS DeviceId
+    FROM alldata;
+
+//Dedup devices
+DeviceDedup   = SSTREAM @In_expandedDeviceIds;
+DevicesWorld = SSTREAM @In_factTable;
+
+//DevicesWorld = VIEW @In_factTable
+//    PARAMS
+//    (        
+//        date = DateTime.Parse(@startString)
+//        //path = "/shares/asimov.prod.data/Public/Partner/Processed/WxaaSFactTables/Prod/WdftDaily.view"
+//    );
+
+//Dedup devices but joining devices to their known global ID and using that.
+DeviceCatJoin =
+    SELECT 
+          usageDaily.*       
+        , DeviceId_Unmapped
+        , DeviceId_Mapped     
+    FROM usageDaily
+         LEFT OUTER JOIN DeviceDedup ON usageDaily.DeviceId == DeviceDedup.DeviceId_Unmapped;
+
+DeviceCatJoin =
+    SELECT
+          DeviceCatJoin.*
+        , string.IsNullOrWhiteSpace(DeviceId_Mapped) ? DeviceId : DeviceId_Mapped AS FinalDeviceId
+    FROM DeviceCatJoin;      
+
+AppActivity =
+    SELECT FinalDeviceId AS DeviceId
+    FROM DeviceCatJoin;
+
+
+//////////////////
+//Filter to only PCs
+//if ohter filters (geo) desired add filter
+
+
+DevicessWorld = 
+    SELECT GlobalDeviceId
+    FROM DevicesWorld
+    WHERE (MDC1DeviceFamily  == "PC" OR  MDC1DeviceFamily  == "Laptop");
+
+
+DeviceToTPIds = SSTREAM @In_TpidMap;
+
+//get PC only
+AppActivity_with_Accounts =
+    SELECT
+          @startDate.ToString() AS Date
+        , TPId
+        , AppActivity.DeviceId AS DeviceId
+    FROM AppActivity
+        INNER JOIN DevicessWorld      ON AppActivity.DeviceId == DevicessWorld.GlobalDeviceId
+        LEFT OUTER JOIN DeviceToTPIds ON AppActivity.DeviceId == DeviceToTPIds.DeviceId;
+
+//Joining with our tenant list
+
+our_tenants = SSTREAM @"/my/Compete/TenantsList.ss";
+
+our_tenants = SELECT DISTINCT TPId AS TPId FROM our_tenants;
+
+AppActivity_with_Accounts = SELECT AppActivity_with_Accounts.* FROM our_tenants INNER JOIN AppActivity_with_Accounts ON AppActivity_with_Accounts.TPId == our_tenants.TPId;
+
+AppActivity_with_Accounts = SELECT DISTINCT DeviceId AS DeviceId, Date, TPId FROM AppActivity_with_Accounts;
+
+///Output Counts
+OUTPUT AppActivity_with_Accounts
+    TO SSTREAM @Out_stream
+    CLUSTERED BY TPId, DeviceId 
+    SORTED BY TPId, DeviceId
+    WITH STREAMEXPIRY "365";
+
+
+
+
+
+
+
+

@@ -1,0 +1,46 @@
+﻿//Script GUID:c230441b-3c4f-4de0-a64f-c2b22dc390f3
+//Used for tracking history
+
+
+#DECLARE In_path string = "/shares/Graphics.proc/Graphics_DailyInk/";
+#DECLARE In_patt string = "DailyInkCount_%Y-%m-%d.ss";
+#DECLARE startString string = "2018-07-01";
+#DECLARE endString string = "2018-09-30";
+
+ink_data =
+    SSTREAM STREAMSET @In_path
+            PATTERN   @In_patt
+            RANGE __date = [@startString, @endString];
+
+ink_data =
+    SELECT OfficeUserId.ToString() AS OfficeUserId
+    FROM ink_data;
+
+//map the sep sqm to and check how many used in the past month
+
+puid_sqm_mapping =
+    SSTREAM @"/shares/ACE.proc/local/Campaigns/Core/OfficeClients/2018/09/Win32WXPActiveUsers_30_RL30D.ss";
+
+msit_puid =
+    SSTREAM @"/my/FHL2018/MSFTList.ss";
+
+data =
+    SELECT puid_sqm_mapping.Puid
+    FROM puid_sqm_mapping
+         INNER JOIN
+             ink_data
+         ON puid_sqm_mapping.SqmUserId == ink_data.OfficeUserId;
+
+data =
+    SELECT data.Puid
+    FROM data
+         INNER JOIN
+             msit_puid
+         ON data.Puid == msit_puid.Puid;
+
+data =
+    SELECT DISTINCT Puid
+    FROM data;
+
+OUTPUT data
+TO SSTREAM @"/my/FHL2018/MSITPuidsInk_3months.ss";

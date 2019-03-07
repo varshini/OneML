@@ -1,0 +1,26 @@
+﻿//Script GUID:4a9ba5c7-c1d6-404f-9687-2e204142e321
+//Used for tracking history
+
+
+//read OCV data from source and get average pulse rating for the last year
+
+ocv_data =
+    SSTREAM "/shares/OCE.proc/OfficeCustomerVoice-Prod/OcvItems.ss";
+
+required_data =
+    SELECT TenantId,
+           PulseRating
+    FROM ocv_data
+    WHERE TimeSlice >= DateTime.Parse("05/01/2017") AND TimeSlice <= DateTime.Parse("04/30/2018") AND OcvSource == "CPE Pulse";
+
+
+avg_pulse_rating =
+    SELECT TenantId,
+           AVG(PulseRating) AS AvgPulseRating,
+           COUNT(*) AS CountResponses
+    FROM required_data
+    GROUP BY TenantId;
+
+
+OUTPUT avg_pulse_rating
+TO SSTREAM "/my/OCV/CPEPulse_May2017_Apr2018_Avg_1.ss";

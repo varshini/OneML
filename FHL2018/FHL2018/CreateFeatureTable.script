@@ -1,0 +1,25 @@
+﻿//Script GUID:7860585e-cda7-40e4-86c0-e4c6c94ac465
+//Used for tracking history
+
+features =
+    SSTREAM @"/my/FHL2018/SepModelFeatures.ss";
+
+pos_features =
+    SELECT *
+    FROM features
+    WHERE FinalLabel == "1";
+
+neg_features =
+    SELECT TOP 557700 *
+    FROM features
+    WHERE FinalLabel == "0";
+
+features =
+    SELECT *
+    FROM pos_features
+    UNION ALL
+    SELECT *
+    FROM neg_features;
+
+OUTPUT features
+TO SSTREAM @"/my/FHL2018/SepSampledModelFeatures.ss";

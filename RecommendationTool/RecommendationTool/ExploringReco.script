@@ -1,0 +1,61 @@
+﻿//Script GUID:36ad3cb2-230d-4b96-950d-79a93d200fff
+//Used for tracking history
+
+
+//Exploratory Analysis on the movement of the recommendations from last six months (Oct 2017 to March 2018)
+
+oct_2017_tenant_view =
+    SSTREAM @"/shares/modpim.anfield/O365MarketingDatasets/Commercial/SegmentationModel/2017/TenantUsageSegmentation_2017_10_01.ss";
+
+march_2018_tenant_view =
+    SSTREAM @"/shares/modpim.anfield/O365MarketingDatasets/Commercial/SegmentationModel/2018/TenantUsageSegmentation_2018_03_01.ss";
+
+//getting data for 6 months before - Oct 2017
+data_oct_2017 =
+    SELECT TenantId,
+           FinalTopParentId,
+           RevSumCategory,
+           Total_AvailableUnits_Buckets,
+           SegmentGroup
+    FROM oct_2017_tenant_view
+    WHERE TenantCategory_Snapshot == "Paid" AND SegmentGroup IN ("Enterprise","SMC - Corporate");
+
+
+//getting data for Feb 2018 
+data_march_2018 =
+    SELECT TenantId,
+           RevSumCategory,
+           Total_AvailableUnits_Buckets,
+           SegmentGroup
+    FROM march_2018_tenant_view
+    WHERE TenantCategory_Snapshot == "Paid"  AND SegmentGroup IN ("Enterprise","SMC - Corporate");
+
+final_data =
+    SELECT data_oct_2017.TenantId,
+           data_oct_2017.FinalTopParentId,
+           data_oct_2017.SegmentGroup,
+           data_oct_2017.RevSumCategory AS FromCategory,
+           data_oct_2017.Total_AvailableUnits_Buckets AS FromTotalAvailableUnits,
+           data_march_2018.RevSumCategory AS ToCategory,
+           data_march_2018.Total_AvailableUnits_Buckets AS ToTotalAvailableUnits
+    FROM data_oct_2017
+         INNER JOIN
+             data_march_2018
+         ON data_oct_2017.TenantId == data_march_2018.TenantId;
+
+OUTPUT final_data
+TO SSTREAM @"/my/RecommendationTool/Explore.ss";
+
+
+/*
+#CS
+public static DateTime selectDate(DateTime MinDate, DateTime MinLargestDate)
+{
+        string string_date = MinDate.ToString("yyyyMMdd");
+        if (String.IsNullOrEmpty(string_date))
+            return MinDate;
+        else
+            return MinLargestDate;
+}
+#ENDCS
+*/

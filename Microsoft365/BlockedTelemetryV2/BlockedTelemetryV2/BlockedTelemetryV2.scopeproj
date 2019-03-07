@@ -1,0 +1,62 @@
+﻿<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>ea05d25c-2ce4-4b9b-9ec5-0a3b69a4949f</ProjectGuid>
+    <OutputType>File</OutputType>
+    <AssemblyName>Algebra.xml</AssemblyName>
+    <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
+    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <Name>BlockedTelemetryV2</Name>
+    <RootNamespace>BlockedTelemetryV2</RootNamespace>
+    <VCSelectionInProjectProperty>&lt;Use Current VC in VC Selector&gt;</VCSelectionInProjectProperty>
+    <CosmosRuntimeVersion>Default</CosmosRuntimeVersion>
+    <ScopePath>%24(SCRIPT_DIR);%24(CLUSTER_ROOT);%24(SCOPE_DIR);%24(PROJECT_DIR)</ScopePath>
+    <InputStreamSearchPath>%24(PROJECT_DIR);%24(SCRIPT_DIR);%24(CLUSTER_ROOT)</InputStreamSearchPath>
+    <VertexDebugSolution>false</VertexDebugSolution>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\Debug\</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugSymbols>false</DebugSymbols>
+    <OutputPath>bin\Release\</OutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Script Include="0-GetMachineStatus.script" />
+    <Script Include="1-EntitlementUserTenantMapping.script" />
+    <Script Include="1-LicenseDeviceTenantMapping.script" />
+    <Script Include="1-LicenseEntitlementTenant.script" />
+    <Script Include="1-LicenseTenantMapping.script" />
+    <Script Include="2-ProPlusMAU.script" />
+    <Script Include="3-CombineData.script" />
+    <Script Include="Sampling.script" />
+    <ScriptCode Include="0-GetMachineStatus.script.cs">
+      <DependentUpon>0-GetMachineStatus.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="1-EntitlementUserTenantMapping.script.cs">
+      <DependentUpon>1-EntitlementUserTenantMapping.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="1-LicenseDeviceTenantMapping.script.cs">
+      <DependentUpon>1-LicenseDeviceTenantMapping.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="1-LicenseEntitlementTenant.script.cs">
+      <DependentUpon>1-LicenseEntitlementTenant.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="1-LicenseTenantMapping.script.cs">
+      <DependentUpon>1-LicenseTenantMapping.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="2-ProPlusMAU.script.cs">
+      <DependentUpon>2-ProPlusMAU.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="3-CombineData.script.cs">
+      <DependentUpon>3-CombineData.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="Sampling.script.cs">
+      <DependentUpon>Sampling.script</DependentUpon>
+    </ScriptCode>
+  </ItemGroup>
+  <Import Project="$(AppData)\Microsoft\ScopeStudio\MsBuild\1.0\Scope.targets" />
+</Project>

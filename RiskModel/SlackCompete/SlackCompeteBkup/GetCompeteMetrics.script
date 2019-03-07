@@ -1,0 +1,196 @@
+﻿//Script GUID:b76b24d7-c129-4ec6-aba2-0a54af4a1e25
+//Used for tracking history
+
+//Currently being used as of 2018/06/07
+
+//Aggregating all the Windows data, adding compete and computing ratios
+
+//Windows data 
+#DECLARE In_path string = "/my/Compete/Win10Devices/";
+#DECLARE In_patt string = "%Y/%m/Win10_%Y-%m-%d.ss";
+#DECLARE startString string = "2017-09-01";
+#DECLARE endString string = "2018-03-31";
+
+
+//Read the Streams
+AppActivity =
+    SSTREAM STREAMSET @In_path
+            PATTERN   @In_patt
+            RANGE __date = [@startString, @endString];
+
+AppActivity =
+    SELECT TPId,
+           DeviceId,
+           DateTime.Parse(Date) AS Date
+    FROM AppActivity;
+
+AppActivity =
+    SELECT TPId,
+           DeviceId,
+           Date.Month AS Month,
+           Date.Year AS Year
+    FROM AppActivity;
+
+win10counts =
+    SELECT TPId,
+           Month, 
+           Year, 
+           COUNT(DISTINCT DeviceId) AS MonthlyWin10Devices
+    FROM AppActivity
+    GROUP BY TPId,
+             Month,
+             Year;
+
+/*
+//This is the denominator for all compete calculations - Sum of (distinct win10 devices per month) over 3 months
+win10counts =
+    SELECT TPId,
+           SUM(MonthlyWin10Devices) AS OverallWin10Devices
+    FROM win10counts
+    GROUP BY TPId;
+*/
+
+
+//Overall Compete Data
+#DECLARE In_path1 string = "/local/Projects/Compete/SlackTeamsZoomStrideOneHipFBSpark/SlackTeamsZoomStrideOneHipFBSparkLync/";
+#DECLARE In_patt1 string = "%Y/%m/TeamsCompetitorMetricsWin10_%Y-%m-%d.ss";
+#DECLARE startString1 string = "2017-09-01";
+#DECLARE endString1 string = "2018-03-31";
+
+AppActivity =
+    SSTREAM STREAMSET @In_path1
+            PATTERN   @In_patt1
+            RANGE __date = [@startString1, @endString1];
+
+overall_compete =
+    SELECT *
+    FROM AppActivity
+    WHERE ProcessName NOT IN("lync.exe", "teams.exe", "ucmapi.exe");
+
+overall_compete =
+    SELECT TPId,
+           DeviceId,
+           Date.Month AS Month,
+           Date.Year AS Year
+    FROM overall_compete;
+
+overall_compete =
+    SELECT TPId,
+           Month,
+           Year,
+           COUNT(DISTINCT DeviceId) AS MonthlyCompeteDevices
+    FROM overall_compete
+    GROUP BY TPId,
+             Month,
+             Year;
+
+/*
+// Numerator for overall compete - Sum of (count of distinct devices showing any compete signal per month) over 3 months
+overall_compete =
+    SELECT TPId,
+           SUM(MonthlyCompeteDevices) AS OverAllCompeteDevices
+    FROM overall_compete
+    GROUP BY TPId;
+
+overall_compete =
+    SELECT TPId,
+           (double) OverAllCompeteDevices AS OverAllCompeteDevices
+    FROM overall_compete;
+
+overall_compete =
+    SELECT overall_compete.TPId,
+           overall_compete.OverAllCompeteDevices,
+           win10counts.OverallWin10Devices,
+           overall_compete.OverAllCompeteDevices / win10counts.OverallWin10Devices AS OverAllCompeteRatio
+    FROM win10counts
+         LEFT JOIN
+             overall_compete
+         ON win10counts.TPId == overall_compete.TPId;
+
+OUTPUT overall_compete
+TO SSTREAM @"/my/Compete/AllUpCompeteRatio_Jan18_Mar18_v2.ss";
+*/
+
+overall_compete =
+    SELECT overall_compete.TPId,
+           overall_compete.Month,
+           overall_compete.Year,
+           overall_compete.MonthlyCompeteDevices,
+           win10counts.MonthlyWin10Devices         
+    FROM win10counts
+         INNER JOIN
+             overall_compete
+         ON win10counts.TPId == overall_compete.TPId AND win10counts.Month == overall_compete.Month AND win10counts.Year == overall_compete.Year;
+
+OUTPUT overall_compete
+TO SSTREAM @"/my/Compete/MonthWise_AllUpCompeteMAU_Sep17_Mar18.ss";
+
+      
+compete_per_app =
+    SELECT ProcessName,
+           TPId,
+           DeviceId,
+           Date.Month AS Month,
+           Date.Year AS Year
+    FROM AppActivity;
+
+compete_per_app =
+    SELECT TPId,
+           ProcessName,
+           Month,
+           Year,
+           COUNT(DISTINCT DeviceId) AS MonthlyDeviceCount
+    FROM compete_per_app
+    GROUP BY TPId,
+             ProcessName,
+             Month,
+             Year;
+
+/*
+compete_per_app =
+    SELECT TPId,
+           ProcessName,
+           SUM(DeviceCount) AS CompeteAppDeviceCount
+    FROM compete_per_app
+    GROUP BY TPId,
+             ProcessName;
+
+compete_per_app =
+    SELECT TPId,
+           ProcessName,
+           (double) CompeteAppDeviceCount AS CompeteAppDeviceCount
+    FROM compete_per_app;
+
+compete_per_app =
+    SELECT compete_per_app.TPId,
+           compete_per_app.ProcessName,
+           compete_per_app.CompeteAppDeviceCount,
+           win10counts.OverallWin10Devices,
+           compete_per_app.CompeteAppDeviceCount / win10counts.OverallWin10Devices AS PerAppCompeteRatio
+    FROM win10counts
+         LEFT JOIN
+             compete_per_app
+         ON win10counts.TPId == compete_per_app.TPId;
+
+OUTPUT compete_per_app
+TO SSTREAM @"/my/Compete/PerAppCompeteRatio_Jan18_Mar18_v2.ss";
+*/
+
+compete_per_app =
+    SELECT compete_per_app.TPId,
+           compete_per_app.Month,
+           compete_per_app.Year,
+           compete_per_app.ProcessName,
+           compete_per_app.MonthlyDeviceCount,
+           win10counts.MonthlyWin10Devices           
+    FROM win10counts
+         INNER JOIN
+             compete_per_app
+         ON win10counts.TPId == compete_per_app.TPId AND win10counts.Month == compete_per_app.Month AND win10counts.Year == compete_per_app.Year;
+
+OUTPUT compete_per_app
+TO SSTREAM @"/my/Compete/MonthWise_PerAppCompeteMAU_Sep17_Mar18.ss";
+
+//TODO - Join with final tenant list and have thresholds
+
+//nv54go7g62tdxcrtcb3rfpv7todeqoua7ihzxbkrjd2vqijmeipa

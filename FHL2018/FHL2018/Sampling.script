@@ -1,0 +1,23 @@
+﻿//Script GUID:5ec6e367-4a53-49ea-b75a-79106c25d453
+//Used for tracking history
+
+
+data =
+    SSTREAM @"/my/FHL2018/SepModelFeatures.ss";
+
+one =
+    SELECT COUNT(DISTINCT Puid) AS PositiveLabelCount
+    FROM data
+    WHERE FinalLabel == "1";
+
+OUTPUT one
+TO SSTREAM @"/my/OneCheck.ss";
+
+
+all =
+    SELECT COUNT(DISTINCT Puid) AS PositiveLabelCount
+    FROM data;
+
+OUTPUT all
+TO SSTREAM @"/my/AllCheck.ss";
+

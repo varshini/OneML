@@ -1,0 +1,57 @@
+﻿//Script GUID:ecf95aac-1509-42e0-8cbb-999d917a4668
+//Used for tracking history
+
+//get pro plus MAU for the month
+
+mau =
+    SSTREAM @"/shares/IDEAs.Prod/Build/16.00.1124.000/vienna/dev/tenantrl28mau/officeclient/2018/11/OfficeClientRL28MAU_2018_11_30.ss";
+
+data =
+    SELECT mau.OmsTenantId,
+           mau.RL28MAUSubscription AS ProplusMAU
+    FROM mau;
+
+tenant_tpid_mapping = VIEW @"/shares/IDEAs.Prod/Public/Views/IDEAsMSSalesTenants.view"
+    PARAMS( HistoryDate = DateTime.Parse( "2018-11-30" ) );
+
+data =
+    SELECT data. *,
+           tenant_tpid_mapping.CustomerTopParentOrgId AS Tpid
+    FROM data
+         INNER JOIN
+             tenant_tpid_mapping
+         ON data.OMSTenantId == tenant_tpid_mapping.OMSTenantId;
+
+OUTPUT data
+TO SSTREAM @"/my/BlockedTelemetry/Monthly/Nov/ProPlusMAU.ss";
+
+
+/*
+//get pro plus mau per app 
+
+word =
+    SSTREAM @"/shares/IDEAs.Prod/Build/16.00.1124.000/vienna/dev/tenantactiveusagecounts/user/rl28/word/2018/11/WordRL28ActiveUserCount_2018_11_30.ss";
+
+excel =
+    SSTREAM @"/shares/IDEAs.Prod/Build/16.00.1124.000/vienna/dev/tenantactiveusagecounts/user/rl28/word/2018/11/ExcelRL28ActiveUserCount_2018_11_30.ss";
+
+pp =
+    SSTREAM @"/shares/IDEAs.Prod/Build/16.00.1124.000/vienna/dev/tenantactiveusagecounts/user/rl28/word/2018/11/PowerPointRL28ActiveUserCount_2018_11_30.ss";
+
+mau =
+    SELECT word.Subscription AS Word, excel.Subscription AS Excel
+    FROM word
+         FULL OUTER JOIN
+             excel
+         ON word.OmsTenantId == excel.OmsTenantId;
+
+mau =
+    SELECT mau.Word,
+           mau.Excel,
+           pp.Subscription AS PowerPoint
+    FROM mau
+         FULL OUTER JOIN
+             pp
+         ON mau.OmsTenantId == pp.OmsTenantId;
+
+*/

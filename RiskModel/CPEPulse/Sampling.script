@@ -1,0 +1,25 @@
+﻿//Script GUID:f5989cbd-69d0-4c08-ad95-d36043236e21
+//Used for tracking history
+
+
+//read OCV data from source
+ocv_data =
+    SSTREAM "/shares/OCE.proc/OfficeCustomerVoice-Prod/OcvItems.ss";
+
+required_data =
+    SELECT TenantId, PulseRating
+    FROM ocv_data 
+    WHERE TimeSlice >= DateTime.Parse("05/01/2017") AND TimeSlice <= DateTime.Parse("04/30/2018") AND OcvSource == "CPE Pulse" AND TenantId == "3d048074-c7bd-4110-aaf7-ac6491f2811e";
+
+/*
+data =
+    SELECT TenantId,
+           SUM(PulseRating) AS Sum,
+           COUNT( * ) AS Count,
+           AVG(PulseRating) AS AvgPulseRating
+    FROM required_data
+    GROUP BY TenantId;
+*/
+
+OUTPUT required_data
+TO SSTREAM @"/my/OCV/sample_tenant2.ss";

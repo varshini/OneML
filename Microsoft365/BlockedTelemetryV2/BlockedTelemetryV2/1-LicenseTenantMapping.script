@@ -1,0 +1,29 @@
+﻿//Script GUID:e7951552-7a0f-401c-b6cd-c8a61ddcb1a7
+//Used for tracking history
+
+//maps the license ids to tenants directly
+
+data =
+    SSTREAM @"/my/BlockedTelemetry/Monthly/Nov/OLSPings.ss";
+               
+license_tenant_mapping = VIEW @"/shares/IDEAs.Prod/Public/Views/IDEAsOlsLicensesProfile.view"
+    PARAMS( HistoryDate = DateTime.Parse( "2018-11-30" ) );
+
+licenses =
+    SELECT data. *,
+           license_tenant_mapping.OMSTenantId
+    FROM license_tenant_mapping
+         INNER JOIN
+             data
+         ON data.LicenseId == license_tenant_mapping.OlsLicenseId;
+
+licenses =
+    SELECT OMSTenantId, COUNT(DISTINCT LicenseId) AS LicenseCount
+    FROM licenses
+    GROUP BY OMSTenantId;
+
+OUTPUT licenses
+TO SSTREAM @"/my/BlockedTelemetry/Monthly/Nov/TenantLicenseCount.ss";
+
+
+

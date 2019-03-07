@@ -1,0 +1,61 @@
+﻿<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>43e7e71e-b443-4cf1-ab52-9bd29015fa75</ProjectGuid>
+    <OutputType>File</OutputType>
+    <AssemblyName>Algebra.xml</AssemblyName>
+    <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
+    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <Name>ModernMAU</Name>
+    <RootNamespace>ModernMAU</RootNamespace>
+    <VCSelectionInProjectProperty>&lt;Use Current VC in VC Selector&gt;</VCSelectionInProjectProperty>
+    <CosmosRuntimeVersion>Default</CosmosRuntimeVersion>
+    <ScopePath>%24(SCRIPT_DIR);%24(CLUSTER_ROOT);%24(SCOPE_DIR);%24(PROJECT_DIR)</ScopePath>
+    <InputStreamSearchPath>%24(PROJECT_DIR);%24(SCRIPT_DIR);%24(CLUSTER_ROOT)</InputStreamSearchPath>
+    <VertexDebugSolution>false</VertexDebugSolution>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\Debug\</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugSymbols>false</DebugSymbols>
+    <OutputPath>bin\Release\</OutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Script Include="0-MonthlyAppServiceData.script">
+      <RemoveUselessParameters>False</RemoveUselessParameters>
+      <ScopeOldParameters>PROCESS_DATE_START=(\"2018-05-31\")</ScopeOldParameters>
+    </Script>
+    <Script Include="1-CoreAppsAggr.script">
+      <RemoveUselessParameters>False</RemoveUselessParameters>
+      <ScopeOldParameters>PROCESS_DATE_START=(\"2018-05-31\")</ScopeOldParameters>
+    </Script>
+    <Script Include="1-WLAggr.script">
+      <RemoveUselessParameters>False</RemoveUselessParameters>
+      <ScopeOldParameters>PROCESS_DATE_START=(\"2018-05-31\")</ScopeOldParameters>
+    </Script>
+    <Script Include="2-ModernPUIDAggr.script">
+      <RemoveUselessParameters>False</RemoveUselessParameters>
+      <ScopeOldParameters>PROCESS_DATE_START=(\"2018-05-31\")</ScopeOldParameters>
+      <ScopeClusterParameters>PROCESS_DATE_START=(\"2018-05-31\")</ScopeClusterParameters>
+    </Script>
+  </ItemGroup>
+  <ItemGroup>
+    <ScriptCode Include="0-MonthlyAppServiceData.script.cs">
+      <DependentUpon>0-MonthlyAppServiceData.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="1-CoreAppsAggr.script.cs">
+      <DependentUpon>1-CoreAppsAggr.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="1-WLAggr.script.cs">
+      <DependentUpon>1-WLAggr.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="2-ModernPUIDAggr.script.cs">
+      <DependentUpon>2-ModernPUIDAggr.script</DependentUpon>
+    </ScriptCode>
+  </ItemGroup>
+  <Import Project="$(AppData)\Microsoft\ScopeStudio\MsBuild\1.0\Scope.targets" />
+</Project>
