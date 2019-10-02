@@ -1,0 +1,42 @@
+﻿//Script GUID:6eea6624-4aaa-4067-9aa3-961530fa1dda
+//Used for tracking history
+
+/* Aggregates O365 usage and EMS Usage monthly level data */
+
+/* O365 Usage */
+
+#DECLARE outputRoot     string   = @"/local/Projects/M365NCA/"; // if running on ACE.proc "/local/Projects/"; if running on office.adhoc "/shares/ACE.proc/local/Projects/"
+
+//Input
+#DECLARE mauStreamPath      string = string.Format("{0}O365MAU/", @outputRoot);
+#DECLARE mauStreamPatern    string = "TPIDProfileMAUMerge_%Y_%m_%d.ss";
+
+mauAgg = 
+    SELECT *          
+    FROM
+        (
+        SSTREAM SPARSE STREAMSET @mauStreamPath
+        PATTERN @mauStreamPatern
+        RANGE __date=["2017-01-01", "2019-06-30"]
+        );
+
+OUTPUT mauAgg TO SSTREAM @"/local/Projects/M365NCA/O365MAU/O365MAUAggregated.ss"
+CLUSTERED BY FinalTPID;
+
+
+/* EMS Usage */
+
+//Input
+#DECLARE mauStreamPath1      string = string.Format("{0}EMSUsage/", @outputRoot);
+#DECLARE mauStreamPatern1    string = "%Y-%m-%d_EMSUsage.ss";
+
+mauAgg = 
+    SELECT *          
+    FROM
+        (
+        SSTREAM SPARSE STREAMSET @mauStreamPath1
+        PATTERN @mauStreamPatern1
+        RANGE __date=["2018-07-01", "2019-06-30"]
+        );
+
+OUTPUT mauAgg TO SSTREAM @"/local/Projects/M365NCA/EMSUsage/EMSMAUAggregated.ss";

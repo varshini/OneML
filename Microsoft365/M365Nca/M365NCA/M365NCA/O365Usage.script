@@ -1,0 +1,1264 @@
+﻿//Script GUID:9abb9a24-a087-4a58-af88-1df0f81d4681
+//Used for tracking history
+
+// Get O365 MAU at TPID level 
+
+SMC_tenants =
+    SSTREAM @"/local/Projects/M365NCA/FY20SMCTenants.ss";
+
+MODULE "/shares/PXSCosmos14.Prod/PXS.DeleteSignal.PROD/PrivacyAnnotation/PrivacyAnnotation.module";
+USING Privacy;
+
+#DECLARE longTailInput string = DateTime.UtcNow.ToString(); 
+
+#DECLARE snapDateTime DateTime = DateTime.Parse(@@PROCESS_DATE_START@@);
+
+#DECLARE enddateDateTime DateTime = @snapDateTime.AddDays(-1);
+#DECLARE enddateString string = @enddateDateTime.ToString("yyyy-MM-dd");
+#DECLARE startdateDateTime DateTime = @enddateDateTime.AddDays(-28);
+#DECLARE startdateString string = @startdateDateTime.ToString("yyyy-MM-dd");
+#DECLARE outputfolderpath string = "/local/Projects/M365NCA/O365MAU/";
+
+
+//-------- EXO --------
+
+#DECLARE outputEXOMAU string = string.Format("{0}/{1}_{2}_{3}_{4}.ss",@outputfolderpath, "EXOMAU", @enddateDateTime.Year, @enddateDateTime.Month.ToString("D2"), @enddateDateTime.Day.ToString("D2"));
+
+InEXODailyUsage =
+    SSTREAM STREAMSET "/shares/IDEAs.Prod/Release/activeusage/exchangecommercial/"
+            PATTERN "%Y/%m/EXOActiveUsage_%Y_%m_%d.ss"
+            //         RANGE __date=["2017-01-01", "2017-05-31"];
+            RANGE __date = [@startdateString, @enddateString];
+
+//Get All EXO Usage (all platforms)
+EXODailyUsage_All = 
+    SELECT  DISTINCT UserId,
+            OmsTenantId,
+            Application,
+            Office365Instance
+    FROM InEXODailyUsage
+    WHERE 1==1
+    AND IsMsftInternal != true
+          AND !string.IsNullOrWhiteSpace(OmsTenantId);
+
+///Get EXO Usage excluding Web and Mobile
+EXODailyUsage_Desktop = 
+    SELECT  DISTINCT UserId,
+            OmsTenantId,
+            Application,
+            Office365Instance
+    FROM InEXODailyUsage
+    WHERE 1==1
+    AND IsMsftInternal != true
+          AND !string.IsNullOrWhiteSpace(OmsTenantId)
+          AND ! ("Perpetual".Equals(LicenseModel, StringComparison.OrdinalIgnoreCase))
+          AND Platform NOT IN ("Web", "Mobile");
+
+///Get EXO Usage on Mobile
+EXODailyUsage_Mobile = 
+    SELECT  DISTINCT UserId,
+            OmsTenantId,
+            Application,
+            Office365Instance
+    FROM InEXODailyUsage
+    WHERE 1==1
+    AND IsMsftInternal != true
+          AND !string.IsNullOrWhiteSpace(OmsTenantId)
+          AND ! ("Perpetual".Equals(LicenseModel, StringComparison.OrdinalIgnoreCase))
+          AND Platform == "Mobile";
+
+////Add a flag for every user to indicate if there is Web and Mobile usage
+EXODailyUsage = 
+    SELECT  A.UserId,
+            A.OmsTenantId,
+            A.Application,
+            A.Office365Instance,
+            (B.UserId != null ? 1 : 0) AS HasDesktopUsage,
+            (C.UserId != null ? 1 : 0) AS HasMobileUsage
+    FROM  EXODailyUsage_All AS A
+    LEFT OUTER JOIN EXODailyUsage_Desktop AS B
+        ON A.UserId == B.UserId
+        AND A.OmsTenantId == B.OmsTenantId
+    LEFT OUTER JOIN EXODailyUsage_Mobile AS C
+        ON A.UserId == C.UserId
+        AND A.OmsTenantId == C.OmsTenantId;
+       
+
+
+//-------- SPO --------
+
+
+#DECLARE outputSPOMAU string = string.Format("{0}/{1}_{2}_{3}_{4}.ss",@outputfolderpath, "SPOMAU", @enddateDateTime.Year, @enddateDateTime.Month.ToString("D2"), @enddateDateTime.Day.ToString("D2"));
+
+InSPODailyUsage =
+    SSTREAM STREAMSET "/shares/IDEAs.Prod/Release/activeusage/sharepointcommercial/"
+            PATTERN "%Y/%m/SharepointActiveUsage_%Y_%m_%d.ss"
+            //         RANGE __date=["2017-01-01", "2017-05-31"];
+            RANGE __date = [@startdateString, @enddateString];
+
+//Get All SPO Usage (all platforms)
+SPODailyUsage_All = 
+    SELECT  DISTINCT UserId,
+            OmsTenantId,
+            Application,
+            Office365Instance
+    FROM InSPODailyUsage
+    WHERE 1==1
+    AND IsMsftInternal != true
+          AND !string.IsNullOrWhiteSpace(OmsTenantId);
+
+///Get SPO Usage excluding Web and Mobile
+SPODailyUsage_Desktop = 
+    SELECT  DISTINCT UserId,
+            OmsTenantId,
+            Application,
+            Office365Instance
+    FROM InSPODailyUsage
+    WHERE 1==1
+    AND IsMsftInternal != true
+          AND !string.IsNullOrWhiteSpace(OmsTenantId)
+          AND ! ("Perpetual".Equals(LicenseModel, StringComparison.OrdinalIgnoreCase))
+          AND Platform NOT IN ("Web", "Mobile");
+
+///Get SPO Usage on Mobile
+SPODailyUsage_Mobile = 
+    SELECT  DISTINCT UserId,
+            OmsTenantId,
+            Application,
+            Office365Instance
+    FROM InSPODailyUsage
+    WHERE 1==1
+    AND IsMsftInternal != true
+          AND !string.IsNullOrWhiteSpace(OmsTenantId)
+          AND ! ("Perpetual".Equals(LicenseModel, StringComparison.OrdinalIgnoreCase))
+          AND Platform == "Mobile";
+
+////Add a flag for every user to indicate if there is Web and Mobile usage
+SPODailyUsage = 
+    SELECT  A.UserId,
+            A.OmsTenantId,
+            A.Application,
+            A.Office365Instance,
+            (B.UserId != null ? 1 : 0) AS HasDesktopUsage,
+            (C.UserId != null ? 1 : 0) AS HasMobileUsage
+    FROM  SPODailyUsage_All AS A
+    LEFT OUTER JOIN SPODailyUsage_Desktop AS B
+        ON A.UserId == B.UserId
+        AND A.OmsTenantId == B.OmsTenantId
+    LEFT OUTER JOIN SPODailyUsage_Mobile AS C
+        ON A.UserId == C.UserId
+        AND A.OmsTenantId == C.OmsTenantId;
+        
+
+//-------- ODB --------
+
+#DECLARE outputODBMAU string = string.Format("{0}/{1}_{2}_{3}_{4}.ss",@outputfolderpath, "ODBMAU", @enddateDateTime.Year, @enddateDateTime.Month.ToString("D2"), @enddateDateTime.Day.ToString("D2"));
+
+InODBDailyUsage =
+    SSTREAM STREAMSET "/shares/IDEAs.Prod/Release/activeusage/onedriveforbusinesscommercial/"
+            PATTERN "%Y/%m/OneDriveForBusinessActiveUsage_%Y_%m_%d.ss"
+            //         RANGE __date=["2017-01-01", "2017-05-31"];
+            RANGE __date = [@startdateString, @enddateString];
+
+//Get All ODB Usage (all platforms)
+ODBDailyUsage_All = 
+    SELECT  DISTINCT UserId,
+            OmsTenantId,
+            Application,
+            Office365Instance
+    FROM InODBDailyUsage
+    WHERE 1==1
+    AND IsMsftInternal != true
+          AND !string.IsNullOrWhiteSpace(OmsTenantId);
+
+///Get ODB Usage excluding Web and Mobile
+ODBDailyUsage_Desktop = 
+    SELECT  DISTINCT UserId,
+            OmsTenantId,
+            Application,
+            Office365Instance
+    FROM InODBDailyUsage
+    WHERE 1==1
+    AND IsMsftInternal != true
+          AND !string.IsNullOrWhiteSpace(OmsTenantId)
+          AND ! ("Perpetual".Equals(LicenseModel, StringComparison.OrdinalIgnoreCase))
+          AND Platform NOT IN ("Web", "Mobile");
+
+///Get ODB Usage on Mobile
+ODBDailyUsage_Mobile = 
+    SELECT  DISTINCT UserId,
+            OmsTenantId,
+            Application,
+            Office365Instance
+    FROM InODBDailyUsage
+    WHERE 1==1
+    AND IsMsftInternal != true
+          AND !string.IsNullOrWhiteSpace(OmsTenantId)
+          AND ! ("Perpetual".Equals(LicenseModel, StringComparison.OrdinalIgnoreCase))
+          AND Platform == "Mobile";
+
+////Add a flag for every user to indicate if there is Web and Mobile usage
+ODBDailyUsage = 
+    SELECT  A.UserId,
+            A.OmsTenantId,
+            A.Application,
+            A.Office365Instance,
+            (B.UserId != null ? 1 : 0) AS HasDesktopUsage,
+            (C.UserId != null ? 1 : 0) AS HasMobileUsage
+    FROM  ODBDailyUsage_All AS A
+    LEFT OUTER JOIN ODBDailyUsage_Desktop AS B
+        ON A.UserId == B.UserId
+        AND A.OmsTenantId == B.OmsTenantId
+    LEFT OUTER JOIN ODBDailyUsage_Mobile AS C
+        ON A.UserId == C.UserId
+        AND A.OmsTenantId == C.OmsTenantId;
+        
+
+//-------- SfB --------
+
+#DECLARE outputSfBMAU string = string.Format("{0}/{1}_{2}_{3}_{4}.ss",@outputfolderpath, "SfBMAU", @enddateDateTime.Year, @enddateDateTime.Month.ToString("D2"), @enddateDateTime.Day.ToString("D2"));
+
+InSfBDailyUsage =
+    SSTREAM STREAMSET "/shares/IDEAs.Prod/Release/activeusage/skypeforbusinesscommercial/"
+            PATTERN "%Y/%m/SkypeForBusinessActiveUsage_%Y_%m_%d.ss"
+            //         RANGE __date=["2017-01-01", "2017-05-31"];
+            RANGE __date = [@startdateString, @enddateString];
+
+//Get All SfB Usage (all platforms)
+SfBDailyUsage_All = 
+    SELECT  DISTINCT UserId,
+            OmsTenantId,
+            Application,
+            Office365Instance
+    FROM InSfBDailyUsage
+    WHERE 1==1
+    AND IsMsftInternal != true
+          AND !string.IsNullOrWhiteSpace(OmsTenantId);
+
+///Get SfB Usage excluding Web and Mobile
+SfBDailyUsage_Desktop = 
+    SELECT  DISTINCT UserId,
+            OmsTenantId,
+            Application,
+            Office365Instance
+    FROM InSfBDailyUsage
+    WHERE 1==1
+    AND IsMsftInternal != true
+          AND !string.IsNullOrWhiteSpace(OmsTenantId)
+          AND ! ("Perpetual".Equals(LicenseModel, StringComparison.OrdinalIgnoreCase))
+          AND Platform NOT IN ("Web", "Mobile");
+
+///Get SfB Usage on Mobile
+SfBDailyUsage_Mobile = 
+    SELECT  DISTINCT UserId,
+            OmsTenantId,
+            Application,
+            Office365Instance
+    FROM InSfBDailyUsage
+    WHERE 1==1
+    AND IsMsftInternal != true
+          AND !string.IsNullOrWhiteSpace(OmsTenantId)
+          AND ! ("Perpetual".Equals(LicenseModel, StringComparison.OrdinalIgnoreCase))
+          AND Platform == "Mobile";
+
+////Add a flag for every user to indicate if there is Web and Mobile usage
+SfBDailyUsage = 
+    SELECT  A.UserId,
+            A.OmsTenantId,
+            A.Application,
+            A.Office365Instance,
+            (B.UserId != null ? 1 : 0) AS HasDesktopUsage,
+            (C.UserId != null ? 1 : 0) AS HasMobileUsage
+    FROM  SfBDailyUsage_All AS A
+    LEFT OUTER JOIN SfBDailyUsage_Desktop AS B
+        ON A.UserId == B.UserId
+        AND A.OmsTenantId == B.OmsTenantId
+    LEFT OUTER JOIN SfBDailyUsage_Mobile AS C
+        ON A.UserId == C.UserId
+        AND A.OmsTenantId == C.OmsTenantId;
+        
+
+//-------- Teams --------
+
+
+#DECLARE outputTeamsMAU string = string.Format("{0}/{1}_{2}_{3}_{4}.ss",@outputfolderpath, "TeamsMAU", @enddateDateTime.Year, @enddateDateTime.Month.ToString("D2"), @enddateDateTime.Day.ToString("D2"));
+
+InTeamsDailyUsage =
+    SSTREAM STREAMSET "/shares/IDEAs.Prod/Release/activeusage/teamscommercial/"
+            PATTERN "%Y/%m/TeamsActiveUsage_%Y_%m_%d.ss"
+            //         RANGE __date=["2017-01-01", "2017-05-31"];
+            RANGE __date = [@startdateString, @enddateString];
+
+//Get All Teams Usage (all platforms)
+TeamsDailyUsage_All = 
+    SELECT  DISTINCT UserId,
+            OmsTenantId,
+            Application,
+            Office365Instance
+    FROM InTeamsDailyUsage
+    WHERE 1==1
+    AND IsMsftInternal != true
+          AND !string.IsNullOrWhiteSpace(OmsTenantId);
+
+///Get Teams Usage excluding Web and Mobile
+TeamsDailyUsage_Desktop = 
+    SELECT  DISTINCT UserId,
+            OmsTenantId,
+            Application,
+            Office365Instance
+    FROM InTeamsDailyUsage
+    WHERE 1==1
+    AND IsMsftInternal != true
+          AND !string.IsNullOrWhiteSpace(OmsTenantId)
+          AND ! ("Perpetual".Equals(LicenseModel, StringComparison.OrdinalIgnoreCase))
+          AND Platform NOT IN ("Web", "Mobile");
+
+///Get Teams Usage on Mobile
+TeamsDailyUsage_Mobile = 
+    SELECT  DISTINCT UserId,
+            OmsTenantId,
+            Application,
+            Office365Instance
+    FROM InTeamsDailyUsage
+    WHERE 1==1
+    AND IsMsftInternal != true
+          AND !string.IsNullOrWhiteSpace(OmsTenantId)
+          AND ! ("Perpetual".Equals(LicenseModel, StringComparison.OrdinalIgnoreCase))
+          AND Platform == "Mobile";
+
+////Add a flag for every user to indicate if there is Web and Mobile usage
+TeamsDailyUsage = 
+    SELECT  A.UserId,
+            A.OmsTenantId,
+            A.Application,
+            A.Office365Instance,
+            (B.UserId != null ? 1 : 0) AS HasDesktopUsage,
+            (C.UserId != null ? 1 : 0) AS HasMobileUsage
+    FROM  TeamsDailyUsage_All AS A
+    LEFT OUTER JOIN TeamsDailyUsage_Desktop AS B
+        ON A.UserId == B.UserId
+        AND A.OmsTenantId == B.OmsTenantId
+    LEFT OUTER JOIN TeamsDailyUsage_Mobile AS C
+        ON A.UserId == C.UserId
+        AND A.OmsTenantId == C.OmsTenantId;
+
+//-------- Yammer --------
+
+
+#DECLARE outputYammerMAU string = string.Format("{0}/{1}_{2}_{3}_{4}.ss",@outputfolderpath, "YammerMAU", @enddateDateTime.Year, @enddateDateTime.Month.ToString("D2"), @enddateDateTime.Day.ToString("D2"));
+
+InYammerDailyUsage =
+    SSTREAM STREAMSET "/shares/IDEAs.Prod/Release/activeusage/yammercommercial/"
+            PATTERN "%Y/%m/YammerActiveUsage_%Y_%m_%d.ss"
+            //         RANGE __date=["2017-01-01", "2017-05-31"];
+            RANGE __date = [@startdateString, @enddateString];
+
+//Get All Yammer Usage (all platforms)
+YammerDailyUsage_All = 
+    SELECT  DISTINCT UserId,
+            OmsTenantId,
+            Application,
+            Office365Instance
+    FROM InYammerDailyUsage
+    WHERE true
+    AND IsMsftInternal != true
+          AND !string.IsNullOrWhiteSpace(OmsTenantId);
+          
+///Get Yammer Usage excluding Web and Mobile
+YammerDailyUsage_Desktop = 
+    SELECT  DISTINCT UserId,
+            OmsTenantId,
+            Application,
+            Office365Instance
+    FROM InYammerDailyUsage
+    WHERE true
+    AND IsMsftInternal != true
+          AND !string.IsNullOrWhiteSpace(OmsTenantId)
+          AND ! ("Perpetual".Equals(LicenseModel, StringComparison.OrdinalIgnoreCase))
+          AND Platform NOT IN ("Web", "Mobile");
+
+///Get Yammer Usage on Mobile
+YammerDailyUsage_Mobile = 
+    SELECT  DISTINCT UserId,
+            OmsTenantId,
+            Application,
+            Office365Instance
+    FROM InYammerDailyUsage
+    WHERE 1==1
+    AND IsMsftInternal != true
+          AND !string.IsNullOrWhiteSpace(OmsTenantId)
+          AND ! ("Perpetual".Equals(LicenseModel, StringComparison.OrdinalIgnoreCase))
+          AND Platform == "Mobile";
+
+////Add a flag for every user to indicate if there is Web and Mobile usage
+YammerDailyUsage = 
+    SELECT  A.UserId,
+            A.OmsTenantId,
+            A.Application,
+            A.Office365Instance,
+            (B.UserId != null ? 1 : 0) AS HasDesktopUsage,
+            (C.UserId != null ? 1 : 0) AS HasMobileUsage
+    FROM  YammerDailyUsage_All AS A
+    LEFT OUTER JOIN YammerDailyUsage_Desktop AS B
+        ON A.UserId == B.UserId
+        AND A.OmsTenantId == B.OmsTenantId
+    LEFT OUTER JOIN YammerDailyUsage_Mobile AS C
+        ON A.UserId == C.UserId
+        AND A.OmsTenantId == C.OmsTenantId;
+
+//-------- Word --------
+
+
+#DECLARE outputWordMAU string = string.Format("{0}/{1}_{2}_{3}_{4}.ss",@outputfolderpath, "WordMAU", @enddateDateTime.Year, @enddateDateTime.Month.ToString("D2"), @enddateDateTime.Day.ToString("D2"));
+
+InWordDailyUsage =
+    SSTREAM STREAMSET "/shares/IDEAs.Prod/Release/activeusage/wordcommercialuser/"
+            PATTERN "%Y/%m/WordActiveUsage_%Y_%m_%d.ss"
+            //         RANGE __date=["2017-01-01", "2017-05-31"];
+            RANGE __date = [@startdateString, @enddateString];
+
+//Get All Word Usage (all platforms)
+WordDailyUsage_All = 
+    SELECT  DISTINCT UserId,
+            OmsTenantId,
+            Application,
+            Office365Instance
+    FROM InWordDailyUsage
+    WHERE 1==1
+    AND IsMsftInternal != true
+          AND !string.IsNullOrWhiteSpace(OmsTenantId)
+          AND ! ("Perpetual".Equals(LicenseModel, StringComparison.OrdinalIgnoreCase));
+
+///Get Word Usage excluding Web and Mobile
+WordDailyUsage_Desktop = 
+    SELECT  DISTINCT UserId,
+            OmsTenantId,
+            Application,
+            Office365Instance
+    FROM InWordDailyUsage
+    WHERE 1==1
+    AND IsMsftInternal != true
+          AND !string.IsNullOrWhiteSpace(OmsTenantId)
+          AND ! ("Perpetual".Equals(LicenseModel, StringComparison.OrdinalIgnoreCase))
+          AND Platform NOT IN ("Web", "Mobile");
+
+///Get Word Usage on Mobile
+WordDailyUsage_Mobile = 
+    SELECT  DISTINCT UserId,
+            OmsTenantId,
+            Application,
+            Office365Instance
+    FROM InWordDailyUsage
+    WHERE 1==1
+    AND IsMsftInternal != true
+          AND !string.IsNullOrWhiteSpace(OmsTenantId)
+          AND ! ("Perpetual".Equals(LicenseModel, StringComparison.OrdinalIgnoreCase))
+          AND Platform == "Mobile";
+
+////Add a flag for every user to indicate if there is Web and Mobile usage
+WordDailyUsage = 
+    SELECT  A.UserId,
+            A.OmsTenantId,
+            A.Application,
+            A.Office365Instance,
+            (B.UserId != null ? 1 : 0) AS HasDesktopUsage,
+            (C.UserId != null ? 1 : 0) AS HasMobileUsage
+    FROM  WordDailyUsage_All AS A
+    LEFT OUTER JOIN WordDailyUsage_Desktop AS B
+        ON A.UserId == B.UserId
+        AND A.OmsTenantId == B.OmsTenantId
+    LEFT OUTER JOIN WordDailyUsage_Mobile AS C
+        ON A.UserId == C.UserId
+        AND A.OmsTenantId == C.OmsTenantId;
+  
+//-------- Excel --------
+
+
+#DECLARE outputExcelMAU string = string.Format("{0}/{1}_{2}_{3}_{4}.ss",@outputfolderpath, "ExcelMAU", @enddateDateTime.Year, @enddateDateTime.Month.ToString("D2"), @enddateDateTime.Day.ToString("D2"));
+
+InExcelDailyUsage =
+    SSTREAM STREAMSET "/shares/IDEAs.Prod/Release/activeusage/excelcommercialuser/"
+            PATTERN "%Y/%m/ExcelActiveUsage_%Y_%m_%d.ss"
+            //         RANGE __date=["2017-01-01", "2017-05-31"];
+            RANGE __date = [@startdateString, @enddateString];
+
+//Get All Excel Usage (all platforms)
+ExcelDailyUsage_All = 
+    SELECT  DISTINCT UserId,
+            OmsTenantId,
+            Application,
+            Office365Instance
+    FROM InExcelDailyUsage
+    WHERE 1==1
+    AND IsMsftInternal != true
+          AND !string.IsNullOrWhiteSpace(OmsTenantId)
+          AND ! ("Perpetual".Equals(LicenseModel, StringComparison.OrdinalIgnoreCase));
+
+///Get Excel Usage excluding Web and Mobile
+ExcelDailyUsage_Desktop = 
+    SELECT  DISTINCT UserId,
+            OmsTenantId,
+            Application,
+            Office365Instance
+    FROM InExcelDailyUsage
+    WHERE 1==1
+    AND IsMsftInternal != true
+          AND !string.IsNullOrWhiteSpace(OmsTenantId)
+          AND ! ("Perpetual".Equals(LicenseModel, StringComparison.OrdinalIgnoreCase))
+          AND Platform NOT IN ("Web", "Mobile");
+
+///Get Excel Usage on Mobile
+ExcelDailyUsage_Mobile = 
+    SELECT  DISTINCT UserId,
+            OmsTenantId,
+            Application,
+            Office365Instance
+    FROM InExcelDailyUsage
+    WHERE 1==1
+    AND IsMsftInternal != true
+          AND !string.IsNullOrWhiteSpace(OmsTenantId)
+          AND ! ("Perpetual".Equals(LicenseModel, StringComparison.OrdinalIgnoreCase))
+          AND Platform == "Mobile";
+
+////Add a flag for every user to indicate if there is Web and Mobile usage
+ExcelDailyUsage = 
+    SELECT  A.UserId,
+            A.OmsTenantId,
+            A.Application,
+            A.Office365Instance,
+            (B.UserId != null ? 1 : 0) AS HasDesktopUsage,
+            (C.UserId != null ? 1 : 0) AS HasMobileUsage
+    FROM  ExcelDailyUsage_All AS A
+    LEFT OUTER JOIN ExcelDailyUsage_Desktop AS B
+        ON A.UserId == B.UserId
+        AND A.OmsTenantId == B.OmsTenantId
+    LEFT OUTER JOIN ExcelDailyUsage_Mobile AS C
+        ON A.UserId == C.UserId
+        AND A.OmsTenantId == C.OmsTenantId;
+
+//-------- PowerPoint --------
+
+
+#DECLARE outputPowerPointMAU string = string.Format("{0}/{1}_{2}_{3}_{4}.ss",@outputfolderpath, "PowerPointMAU", @enddateDateTime.Year, @enddateDateTime.Month.ToString("D2"), @enddateDateTime.Day.ToString("D2"));
+
+InPowerPointDailyUsage =
+    SSTREAM STREAMSET "/shares/IDEAs.Prod/Release/activeusage/powerpointcommercialuser/"
+            PATTERN "%Y/%m/PowerPointActiveUsage_%Y_%m_%d.ss"
+            //         RANGE __date=["2017-01-01", "2017-05-31"];
+            RANGE __date = [@startdateString, @enddateString];
+
+//Get All PowerPoint Usage (all platforms)
+PowerPointDailyUsage_All = 
+    SELECT  DISTINCT UserId,
+            OmsTenantId,
+            Application,
+            Office365Instance
+    FROM InPowerPointDailyUsage
+    WHERE 1==1
+    AND IsMsftInternal != true
+          AND !string.IsNullOrWhiteSpace(OmsTenantId)
+          AND ! ("Perpetual".Equals(LicenseModel, StringComparison.OrdinalIgnoreCase));
+
+
+///Get PowerPoint Usage excluding Web and Mobile
+PowerPointDailyUsage_Desktop = 
+    SELECT  DISTINCT UserId,
+            OmsTenantId,
+            Application,
+            Office365Instance
+    FROM InPowerPointDailyUsage
+    WHERE 1==1
+    AND IsMsftInternal != true
+          AND !string.IsNullOrWhiteSpace(OmsTenantId)
+          AND ! ("Perpetual".Equals(LicenseModel, StringComparison.OrdinalIgnoreCase))
+          AND Platform NOT IN ("Web", "Mobile");
+
+///Get PowerPoint Usage on Mobile
+PowerPointDailyUsage_Mobile = 
+    SELECT  DISTINCT UserId,
+            OmsTenantId,
+            Application,
+            Office365Instance
+    FROM InPowerPointDailyUsage
+    WHERE 1==1
+    AND IsMsftInternal != true
+          AND !string.IsNullOrWhiteSpace(OmsTenantId)
+          AND ! ("Perpetual".Equals(LicenseModel, StringComparison.OrdinalIgnoreCase))
+          AND Platform == "Mobile";
+
+////Add a flag for every user to indicate if there is Web and Mobile usage
+PowerPointDailyUsage = 
+    SELECT  A.UserId,
+            A.OmsTenantId,
+            A.Application,
+            A.Office365Instance,
+            (B.UserId != null ? 1 : 0) AS HasDesktopUsage,
+            (C.UserId != null ? 1 : 0) AS HasMobileUsage
+    FROM  PowerPointDailyUsage_All AS A
+    LEFT OUTER JOIN PowerPointDailyUsage_Desktop AS B
+        ON A.UserId == B.UserId
+        AND A.OmsTenantId == B.OmsTenantId
+    LEFT OUTER JOIN PowerPointDailyUsage_Mobile AS C
+        ON A.UserId == C.UserId
+        AND A.OmsTenantId == C.OmsTenantId;
+        
+//-------- Outlook --------
+
+
+#DECLARE outputOutlookMAU string = string.Format("{0}/{1}_{2}_{3}_{4}.ss",@outputfolderpath, "OutlookMAU", @enddateDateTime.Year, @enddateDateTime.Month.ToString("D2"), @enddateDateTime.Day.ToString("D2"));
+
+InOutlookDailyUsage =
+    SSTREAM STREAMSET "/shares/IDEAs.Prod/Release/activeusage/outlookcommercialuser/"
+            PATTERN "%Y/%m/OutlookActiveUsage_%Y_%m_%d.ss"
+            //         RANGE __date=["2017-01-01", "2017-05-31"];
+            RANGE __date = [@startdateString, @enddateString];
+
+//Get All Outlook Usage (all platforms)
+OutlookDailyUsage_All = 
+    SELECT  DISTINCT UserId,
+            OmsTenantId,
+            Application,
+            Office365Instance
+    FROM InOutlookDailyUsage
+    WHERE 1==1
+    AND IsMsftInternal != true
+          AND !string.IsNullOrWhiteSpace(OmsTenantId)
+          AND ! ("Perpetual".Equals(LicenseModel, StringComparison.OrdinalIgnoreCase));
+
+///Get Outlook Usage excluding Web and Mobile
+OutlookDailyUsage_Desktop = 
+    SELECT  DISTINCT UserId,
+            OmsTenantId,
+            Application,
+            Office365Instance
+    FROM InOutlookDailyUsage
+    WHERE 1==1
+    AND IsMsftInternal != true
+          AND !string.IsNullOrWhiteSpace(OmsTenantId)
+          AND ! ("Perpetual".Equals(LicenseModel, StringComparison.OrdinalIgnoreCase))
+          AND Platform NOT IN ("Web", "Mobile");
+
+///Get Outlook Usage on Mobile
+OutlookDailyUsage_Mobile = 
+    SELECT  DISTINCT UserId,
+            OmsTenantId,
+            Application,
+            Office365Instance
+    FROM InOutlookDailyUsage
+    WHERE 1==1
+    AND IsMsftInternal != true
+          AND !string.IsNullOrWhiteSpace(OmsTenantId)
+          AND ! ("Perpetual".Equals(LicenseModel, StringComparison.OrdinalIgnoreCase))
+          AND Platform == "Mobile";
+
+////Add a flag for every user to indicate if there is Weband Mobile usage
+OutlookDailyUsage = 
+    SELECT  A.UserId,
+            A.OmsTenantId,
+            A.Application,
+            A.Office365Instance,
+            (B.UserId != null ? 1 : 0) AS HasDesktopUsage,
+            (C.UserId != null ? 1 : 0) AS HasMobileUsage
+    FROM  OutlookDailyUsage_All AS A
+    LEFT OUTER JOIN OutlookDailyUsage_Desktop AS B
+        ON A.UserId == B.UserId
+        AND A.OmsTenantId == B.OmsTenantId
+    LEFT OUTER JOIN OutlookDailyUsage_Mobile AS C
+        ON A.UserId == C.UserId
+        AND A.OmsTenantId == C.OmsTenantId;
+        
+        
+//-------- OneNote --------
+
+
+#DECLARE outputOneNoteMAU string = string.Format("{0}/{1}_{2}_{3}_{4}.ss",@outputfolderpath, "OneNoteMAU", @enddateDateTime.Year, @enddateDateTime.Month.ToString("D2"), @enddateDateTime.Day.ToString("D2"));
+
+
+InOneNoteDailyUsage =
+    SSTREAM STREAMSET "/shares/IDEAs.Prod/Release/activeusage/onenotecommercialuser/"
+            PATTERN "%Y/%m/OneNoteActiveUsage_%Y_%m_%d.ss"
+            //         RANGE __date=["2017-01-01", "2017-05-31"];
+            RANGE __date = [@startdateString, @enddateString];
+
+//Get All OneNote Usage (all platforms)
+OneNoteDailyUsage_All = 
+    SELECT  DISTINCT UserId,
+            OmsTenantId,
+            Application,
+            Office365Instance
+    FROM InOneNoteDailyUsage
+    WHERE 1==1
+    AND IsMsftInternal != true
+          AND !string.IsNullOrWhiteSpace(OmsTenantId)
+          AND ! ("Perpetual".Equals(LicenseModel, StringComparison.OrdinalIgnoreCase));
+
+
+///Get OneNote Usage excluding Web and Mobile
+OneNoteDailyUsage_Desktop = 
+    SELECT  DISTINCT UserId,
+            OmsTenantId,
+            Application,
+            Office365Instance
+    FROM InOneNoteDailyUsage
+    WHERE 1==1
+    AND IsMsftInternal != true
+          AND !string.IsNullOrWhiteSpace(OmsTenantId)
+          AND ! ("Perpetual".Equals(LicenseModel, StringComparison.OrdinalIgnoreCase))
+          AND Platform NOT IN ("Web", "Mobile");
+
+///Get OneNote Usage on Mobile
+OneNoteDailyUsage_Mobile = 
+    SELECT  DISTINCT UserId,
+            OmsTenantId,
+            Application,
+            Office365Instance
+    FROM InOneNoteDailyUsage
+    WHERE 1==1
+    AND IsMsftInternal != true
+          AND !string.IsNullOrWhiteSpace(OmsTenantId)
+          AND ! ("Perpetual".Equals(LicenseModel, StringComparison.OrdinalIgnoreCase))
+          AND Platform == "Mobile";
+
+////Add a flag for every user to indicate if there is Web and Mobile usage
+OneNoteDailyUsage = 
+    SELECT  A.UserId,
+            A.OmsTenantId,
+            A.Application,
+            A.Office365Instance,
+            (B.UserId != null ? 1 : 0) AS HasDesktopUsage,
+            (C.UserId != null ? 1 : 0) AS HasMobileUsage
+    FROM  OneNoteDailyUsage_All AS A
+    LEFT OUTER JOIN OneNoteDailyUsage_Desktop AS B
+        ON A.UserId == B.UserId
+        AND A.OmsTenantId == B.OmsTenantId
+    LEFT OUTER JOIN OneNoteDailyUsage_Mobile AS C
+        ON A.UserId == C.UserId
+        AND A.OmsTenantId == C.OmsTenantId;
+    
+//-------- Tenant Base --------
+
+#DECLARE inputdate DateTime = @snapDateTime.AddDays(-1);
+
+#DECLARE Tenantview_path string = @"/shares/IDEAs.Prod/Public/Views/IDEAsTenantProfile.view";
+#DECLARE Subscriptionview_path string = @"/shares/IDEAs.Prod/Public/Views/IDEAsSubscriptionProfile.view";
+
+#DECLARE outputTenantProfile string = string.Format("{0}/{1}_{2}_{3}_{4}.ss",@outputfolderpath, "Tenant_SubProfileData", @inputdate.Year, @inputdate.Month.ToString("D2"), @inputdate.Day.ToString("D2"));
+
+
+TenantProfile  =
+    VIEW @Tenantview_path
+    PARAMS
+    (
+        HistoryDate = @inputdate
+    );
+
+
+///Get the tenant attributes
+TenantProfile =
+    SELECT Office365Instance,
+           OMSTenantId,
+           CreatedDate,
+           IsTest,
+           IsViral,
+           IsFastTrackTenant,
+           HasEducation,
+           HasCharity,
+           HasGovernment,
+           HasNonProfit,
+           HasQuickStart,
+           TenantCategory,
+           CustomerSegmentGroup,
+           MSSalesSubSegmentName,
+           MSSalesAreaName,
+           TotalAvailableUnits,
+           EXOAvailableUnits,
+           SPOAvailableUnits,
+           OD4BAvailableUnits,
+           LYOAvailableUnits,
+           YammerAvailableUnits,
+           TeamsAvailableUnits,
+           ProPlusAvailableUnits,
+            PaidAvailableUnits
+            ,PaidEXOAvailableUnits
+            ,PaidProPlusAvailableUnits
+            ,PaidSPOAvailableUnits
+            ,PaidOD4BAvailableUnits
+            ,PaidLYOAvailableUnits
+            ,PaidYammerAvailableUnits
+            ,PaidTeamsAvailableUnits
+            ,PaidEMSAvailableUnits
+            ,PaidM365AvailableUnits
+            ,PaidOffice365AvailableUnits,
+           TotalEnabledUsers,
+           EXOEnabledUsers,
+           SPOEnabledUsers,
+           OD4BEnabledUsers,
+           LYOEnabledUsers,
+           YammerEnabledUsers,
+           TeamEnabledUsers,
+           PPDEnabledUsers
+    FROM TenantProfile
+    WHERE 1==1
+          AND IsMSODSDeleted != "True"
+      AND State != "Deleted";
+
+
+
+SubscriptionProfile  =
+    VIEW @Subscriptionview_path
+    PARAMS
+    (
+        HistoryDate = @inputdate
+    );
+
+SubProfile = 
+    SELECT OMSTenantId,
+           SubscriptionId,
+           SubscriptionState,
+           OfferProductName,
+           IncludedQuantity,
+           OfferIsTrial,
+           OfferIsEdu,
+           OfferIsCharity,
+           OfferIsGovernment,           
+           OfferIsAddOn,
+           OfferName,
+           SKUId,
+           SKUName,
+           HasEXO,
+           HasSPO,
+           HasOD4B,
+           HasLYO,
+           HasYammer,
+           HasMicrosoftTeams,
+           HasProPlus 
+    WHERE 1==1
+          AND OfferIsTrial == false //exclude trials
+//          AND OfferIsEdu == false //exclude EDU
+//          AND OfferIsCharity ==  false //exclude Charity/Non-profit
+          //AND OfferIsAddOn == false //exclude add on
+          AND IsIWSubscription == false
+          AND IsFraud == false; //Exclude fraud;
+          
+///Aggregate at Tenant level
+Tenant_SubAgg = 
+    SELECT OMSTenantId,
+           MAX(OfferIsEdu) AS IsEducation,
+           MAX(OfferIsCharity) AS IsCharity,
+           MAX(OfferIsGovernment) AS IsGovernment,
+           MAX((OfferName.ToUpper()).Contains("NONPROFIT") ? true : false) AS IsNonProfit,
+           (double) SUM((SubscriptionState IN("Active", "InGracePeriod")) ? IncludedQuantity : 0) AS Sub_TotalAvailableUnits_withAddOn,
+           (double) SUM((SubscriptionState IN("Active", "InGracePeriod") AND (HasEXO OR HasSPO OR HasOD4B OR HasLYO OR HasYammer OR HasMicrosoftTeams OR HasProPlus)) ? IncludedQuantity : 0) AS Sub_O365_TotalAvailableUnits_withAddOn,
+           (double) SUM(OfferIsAddOn == false AND (SubscriptionState IN("Active", "InGracePeriod")) ? IncludedQuantity : 0) AS Sub_TotalAvailableUnits,
+           (double) SUM(OfferIsAddOn == false AND (SubscriptionState IN("Active", "InGracePeriod") AND (HasEXO OR HasSPO OR HasOD4B OR HasLYO OR HasYammer OR HasMicrosoftTeams OR HasProPlus)) ? IncludedQuantity : 0) AS Sub_O365_TotalAvailableUnits,
+           (double) SUM(OfferIsAddOn == false AND (SubscriptionState IN("Active", "InGracePeriod") AND HasEXO) ? IncludedQuantity : 0) AS Sub_EXOAvailableUnits,
+           (double) SUM(OfferIsAddOn == false AND (SubscriptionState IN("Active", "InGracePeriod") AND HasSPO) ? IncludedQuantity : 0) AS Sub_SPOAvailableUnits,
+           (double) SUM(OfferIsAddOn == false AND (SubscriptionState IN("Active", "InGracePeriod") AND HasOD4B) ? IncludedQuantity : 0) AS Sub_OD4BAvailableUnits,
+           (double) SUM(OfferIsAddOn == false AND (SubscriptionState IN("Active", "InGracePeriod") AND HasLYO) ? IncludedQuantity : 0) AS Sub_LYOAvailableUnits,
+           (double) SUM(OfferIsAddOn == false AND (SubscriptionState IN("Active", "InGracePeriod") AND HasYammer) ? IncludedQuantity : 0) AS Sub_YammerAvailableUnits,
+           (double) SUM(OfferIsAddOn == false AND (SubscriptionState IN("Active", "InGracePeriod") AND HasMicrosoftTeams) ? IncludedQuantity : 0) AS Sub_MicrosoftTeamsAvailableUnits,
+           (double) SUM(OfferIsAddOn == false AND (SubscriptionState IN("Active", "InGracePeriod") AND HasProPlus) ? IncludedQuantity : 0) AS Sub_ProPlusAvailableUnits
+FROM SubProfile;
+
+
+///Merge Tenant Profile and Subscription data
+Tenant_SubProfileData = 
+    SELECT T.*,
+           S.IsEducation,
+           S.IsCharity,
+           S.IsGovernment,
+           S.IsNonProfit,
+           S.Sub_TotalAvailableUnits_withAddOn,
+           S.Sub_O365_TotalAvailableUnits_withAddOn,
+           S.Sub_TotalAvailableUnits,
+           S.Sub_O365_TotalAvailableUnits,
+           (S.Sub_O365_TotalAvailableUnits > 1000000 ? true : false ) AS HasMorethanMillionO365AvailableUnits,
+           S.Sub_EXOAvailableUnits,
+           S.Sub_SPOAvailableUnits,
+           S.Sub_OD4BAvailableUnits,
+           S.Sub_LYOAvailableUnits,
+           S.Sub_YammerAvailableUnits,
+           S.Sub_MicrosoftTeamsAvailableUnits,
+           S.Sub_ProPlusAvailableUnits
+    FROM TenantProfile AS T
+         LEFT OUTER JOIN Tenant_SubAgg AS S
+              ON T.OMSTenantId == S.OMSTenantId;
+
+
+
+//-------- User Enablement --------
+
+
+#DECLARE UserProfileview_path string = @"/shares/IDEAs.Prod/Public/Views/IDEAsUserProfile.view";
+
+UserProfile  =
+    VIEW @UserProfileview_path
+    PARAMS
+    (
+        HistoryDate = @inputdate
+    );
+
+///Determine enabled flags for each user on the tenants 
+TenantEnabledUsers =
+    SELECT DISTINCT OMSTenantId,
+                    UserObjectId,
+                    ((EXOEnabled OR SPOEnabled OR OD4BEnabled OR LYOEnabled OR MicrosoftTeamsEnabled OR YammerEnabled OR ProPlusEnabled) ? true : false) AS O365Enabled,
+                    ((EXOEnabled OR SPOEnabled OR OD4BEnabled OR LYOEnabled OR MicrosoftTeamsEnabled OR YammerEnabled) ? true : false) AS O365Enabled_woProPlus,
+                    EXOEnabled,
+                    SPOEnabled,
+                    OD4BEnabled,
+                    LYOEnabled AS SfBEnabled,
+                    MicrosoftTeamsEnabled AS TeamsEnabled,
+                    YammerEnabled,
+                    ProPlusEnabled
+    FROM UserProfile AS TE
+    WHERE 1 == 1
+          AND Deleted == false
+          AND SoftDeleted == false
+          //AND Office365SkuAssigned == true
+          AND (EXOEnabled OR SPOEnabled OR OD4BEnabled OR LYOEnabled OR MicrosoftTeamsEnabled OR YammerEnabled OR ProPlusEnabled);
+
+///Aggregate Enabled User count at Tenant level
+TenantEnabled_Agg = 
+    SELECT OMSTenantId,
+           COUNTIF(O365Enabled) AS O365EnabledUsers,
+           COUNTIF(O365Enabled_woProPlus) AS O365Enabled_woProPlus,
+           COUNTIF(EXOEnabled) AS EXOEnabledUsers,
+           COUNTIF(SPOEnabled) AS SPOEnabledUsers,
+           COUNTIF(OD4BEnabled) AS OD4BEnabledUsers,
+           COUNTIF(SfBEnabled) AS SfBEnabledUsers,
+           COUNTIF(TeamsEnabled) AS TeamsEnabledUsers,
+           COUNTIF(YammerEnabled) AS YammerEnabledUsers,
+           COUNTIF(ProPlusEnabled) AS ProPlusEnabledUsers
+    FROM TenantEnabledUsers;
+
+////Merge with Tenants in TenantSubProfile
+TenantProfile_Enabled = 
+    SELECT TP.*,
+           (TE.OMSTenantId != null ? TE.O365EnabledUsers : 0 ) AS O365EnabledUsers_New,
+           (TE.OMSTenantId != null ? TE.O365Enabled_woProPlus : 0) AS O365Enabled_woProPlus_New,
+           (TE.OMSTenantId != null ? TE.EXOEnabledUsers : 0 ) AS EXOEnabledUsers_New,
+           (TE.OMSTenantId != null ? TE.SPOEnabledUsers : 0 ) AS SPOEnabledUsers_New,
+           (TE.OMSTenantId != null ? TE.OD4BEnabledUsers : 0 ) AS OD4BEnabledUsers_New,
+           (TE.OMSTenantId != null ? TE.SfBEnabledUsers : 0 ) AS SfBEnabledUsers_New,
+           (TE.OMSTenantId != null ? TE.TeamsEnabledUsers : 0 ) AS TeamsEnabledUsers_New,
+           (TE.OMSTenantId != null ? TE.YammerEnabledUsers : 0 ) AS YammerEnabledUsers_New,
+           (TE.OMSTenantId != null ? TE.ProPlusEnabledUsers : 0 ) AS ProPlusEnabledUsers_New
+    FROM Tenant_SubProfileData AS TP
+         LEFT OUTER JOIN TenantEnabled_Agg AS TE
+         ON TP.OMSTenantId == TE.OMSTenantId;
+
+//-------- Combining profile and usage data --------
+
+
+
+#DECLARE outputTenantProfileMAUMerge string = string.Format("{0}/{1}_{2}_{3}_{4}.ss",@outputfolderpath, "TPIDProfileMAUMerge", @enddateDateTime.Year, @enddateDateTime.Month.ToString("D2"), @enddateDateTime.Day.ToString("D2"));
+
+
+///Combine users from EXO and Other workload usage
+TenantAllWorkloadUser =
+    SELECT DISTINCT Application,
+           OmsTenantId,
+           UserId,
+           HasDesktopUsage,
+           HasMobileUsage
+    FROM EXODailyUsage
+    UNION ALL
+    SELECT DISTINCT Application,
+           OmsTenantId,
+           UserId,
+           HasDesktopUsage,
+           HasMobileUsage
+    FROM SPODailyUsage
+    UNION ALL
+    SELECT DISTINCT Application,
+           OmsTenantId,
+           UserId,
+           HasDesktopUsage,
+           HasMobileUsage
+    FROM ODBDailyUsage
+    UNION ALL
+    SELECT DISTINCT Application,
+           OmsTenantId,
+           UserId,
+           HasDesktopUsage,
+           HasMobileUsage
+    FROM SfBDailyUsage   
+    UNION ALL
+    SELECT DISTINCT Application,
+           OmsTenantId,
+           UserId,
+           HasDesktopUsage,
+           HasMobileUsage
+    FROM TeamsDailyUsage
+    UNION ALL
+    SELECT DISTINCT Application,
+           OmsTenantId,
+           UserId,
+           HasDesktopUsage,
+           HasMobileUsage
+    FROM YammerDailyUsage 
+    UNION ALL
+    SELECT DISTINCT Application,
+           OmsTenantId,
+           UserId,
+           HasDesktopUsage,
+           HasMobileUsage
+    FROM WordDailyUsage   
+    UNION ALL
+    SELECT DISTINCT Application,
+           OmsTenantId,
+           UserId,
+           HasDesktopUsage,
+           HasMobileUsage
+    FROM ExcelDailyUsage  
+    UNION ALL
+    SELECT DISTINCT Application,
+           OmsTenantId,
+           UserId,
+           HasDesktopUsage,
+           HasMobileUsage
+    FROM PowerPointDailyUsage   
+    UNION ALL
+    SELECT DISTINCT Application,
+           OmsTenantId,
+           UserId,
+           HasDesktopUsage,
+           HasMobileUsage
+    FROM OutlookDailyUsage
+    UNION ALL
+    SELECT DISTINCT Application,
+           OmsTenantId,
+           UserId,
+           HasDesktopUsage,
+           HasMobileUsage
+    FROM OneNoteDailyUsage; 
+
+////Obtain unique user id for each tenant
+TenantUniqueUser =
+    SELECT DISTINCT OmsTenantId,
+           UserId
+    FROM TenantAllWorkloadUser;
+
+
+///Create Workload flags for each user
+TenantUser_WorkloadFlags_Int =
+    SELECT U. *,
+           (A.UserId != null AND (A.Application == "EXO" OR A.Application == "SPO" OR A.Application == "ODB" OR A.Application == "SfB" OR A.Application == "Teams" OR A.Application == "Yammer" OR
+           A.Application == "Word" OR A.Application == "Excel" OR A.Application == "PowerPoint" OR A.Application == "OneNote" OR A.Application == "Outlook") ? 1 : 0) AS HasO365Usage,
+           (A.UserId != null AND A.Application == "EXO" ? 1 : 0) AS HasEXOUsage,
+           (A.UserId != null AND ( A.Application == "EXO" OR A.Application == "SPO" ) ? 1 : 0) AS HasODSPUsage,
+           (A.UserId != null AND A.Application == "SPO" ? 1 : 0) AS HasSPOUsage,
+           (A.UserId != null AND A.Application == "ODB" ? 1 : 0) AS HasOD4BUsage,
+           (A.UserId != null AND A.Application == "SfB" ? 1 : 0) AS HasSfBUsage,
+           (A.UserId != null AND A.Application == "Teams" ? 1 : 0) AS HasTeamsUsage,
+           (A.UserId != null AND A.Application == "Yammer" ? 1 : 0) AS HasYammerUsage,
+           (A.UserId != null AND (A.Application == "Word" OR A.Application == "Excel" OR A.Application == "PowerPoint" OR A.Application == "OneNote" OR A.Application == "Outlook") ? 1 : 0) AS HasProPlusUsage,
+           (A.UserId != null AND A.Application == "Word" ? 1 : 0) AS HasWordUsage,
+           (A.UserId != null AND A.Application == "Excel" ? 1 : 0) AS HasExcelUsage,
+           (A.UserId != null AND A.Application == "PowerPoint" ? 1 : 0) AS HasPowerPointUsage,
+           (A.UserId != null AND A.Application == "OneNote" ? 1 : 0) AS HasOneNoteUsage,
+           (A.UserId != null AND A.Application == "Outlook" ? 1 : 0) AS HasOutlookUsage,
+           //O365 Usage with only ProPlus Desktop Usage
+           (A.UserId != null AND (A.Application == "EXO" OR A.Application == "SPO" OR A.Application == "ODB" OR A.Application == "SfB" OR A.Application == "Teams" OR A.Application == "Yammer" OR 
+              (A.HasDesktopUsage == 1 AND (A.Application == "Word" OR A.Application == "Excel" OR A.Application == "PowerPoint" OR A.Application == "OneNote" OR A.Application == "Outlook"))) ? 1 : 0) AS HasO365Usage_ProPlusDesktop,
+           (A.UserId != null AND (A.Application == "EXO" OR A.Application == "SPO" OR A.Application == "ODB" OR A.Application == "SfB" OR A.Application == "Teams" OR A.Application == "Yammer") ? 1 : 0) AS HasO365Usage_withoutProPlus,
+           ///ProPlus Desktop Usage
+           (A.UserId != null AND A.HasDesktopUsage == 1 AND (A.Application == "Word" OR A.Application == "Excel" OR A.Application == "PowerPoint" OR A.Application == "OneNote" OR A.Application == "Outlook") ? 1 : 0) AS HasProPlusUsage_Desktop,
+           (A.UserId != null AND A.HasDesktopUsage == 1 AND A.Application == "Word" ? 1 : 0) AS HasWordUsage_Desktop,
+           (A.UserId != null AND A.HasDesktopUsage == 1 AND A.Application == "Excel" ? 1 : 0) AS HasExcelUsage_Desktop,
+           (A.UserId != null AND A.HasDesktopUsage == 1 AND A.Application == "PowerPoint" ? 1 : 0) AS HasPowerPointUsage_Desktop,
+           (A.UserId != null AND A.HasDesktopUsage == 1 AND A.Application == "OneNote" ? 1 : 0) AS HasOneNoteUsage_Desktop,
+           (A.UserId != null AND A.HasDesktopUsage == 1 AND A.Application == "Outlook" ? 1 : 0) AS HasOutlookUsage_Desktop,
+           (A.UserId != null AND A.HasMobileUsage == 1 AND A.Application == "Outlook" ? 1 : 0) AS HasOutlookUsage_Mobile
+    FROM TenantUniqueUser AS U
+         LEFT OUTER JOIN
+             TenantAllWorkloadUser AS A
+         ON U.OmsTenantId == A.OmsTenantId
+            AND U.UserId == A.UserId;
+
+////Create one row per User and Tenant
+TenantUser_WorkloadFlags =
+    SELECT OmsTenantId,
+           UserId,
+           MAX(HasO365Usage) AS HasO365Usage,
+           MAX(HasEXOUsage) AS HasEXOUsage,
+           MAX(HasODSPUsage) AS HasODSPUsage,
+           MAX(HasSPOUsage) AS HasSPOUsage,
+           MAX(HasOD4BUsage) AS HasOD4BUsage,
+           MAX(HasSfBUsage) AS HasSfBUsage,
+           MAX(HasTeamsUsage) AS HasTeamsUsage,
+           MAX(HasYammerUsage) AS HasYammerUsage,
+           MAX(HasProPlusUsage) AS HasProPlusUsage,
+           MAX(HasWordUsage) AS HasWordUsage,
+           MAX(HasExcelUsage) AS HasExcelUsage,
+           MAX(HasPowerPointUsage) AS HasPowerPointUsage,
+           MAX(HasOneNoteUsage) AS HasOneNoteUsage,
+           MAX(HasOutlookUsage) AS HasOutlookUsage,
+           ///O365Usage with ProPlus desktop usage
+           MAX(HasO365Usage_ProPlusDesktop) AS HasO365Usage_ProPlusDesktop,
+           MAX(HasO365Usage_withoutProPlus) AS HasO365Usage_withoutProPlus,
+           ///ProPlus Desktop Usage
+           MAX(HasProPlusUsage_Desktop) AS HasProPlusUsage_Desktop,
+           MAX(HasWordUsage_Desktop) AS HasWordUsage_Desktop,
+           MAX(HasExcelUsage_Desktop) AS HasExcelUsage_Desktop,
+           MAX(HasPowerPointUsage_Desktop) AS HasPowerPointUsage_Desktop,
+           MAX(HasOneNoteUsage_Desktop) AS HasOneNoteUsage_Desktop,
+           MAX(HasOutlookUsage_Desktop) AS HasOutlookUsage_Desktop,
+           MAX(HasOutlookUsage_Mobile) AS HasOutlookUsage_Mobile
+    FROM TenantUser_WorkloadFlags_Int
+    GROUP BY OmsTenantId, UserId;
+          
+
+//////Aggregate at each workload level
+TenantAllWorkloadMAU =
+    SELECT OmsTenantId,
+           COUNTIF(HasO365Usage == 1) AS O365MAU,
+           COUNTIF(HasEXOUsage == 1) AS EXOMAU,
+           COUNTIF(HasODSPUsage == 1) AS ODSPMAU,
+           COUNTIF(HasSPOUsage == 1) AS SPOMAU,
+           COUNTIF(HasOD4BUsage == 1) AS OD4BMAU,
+           COUNTIF(HasSfBUsage == 1) AS SfBMAU,
+           COUNTIF(HasYammerUsage == 1) AS YammerMAU,
+           COUNTIF(HasTeamsUsage == 1) AS TeamsMAU,
+           COUNTIF(HasProPlusUsage == 1) AS ProPlusMAU,
+           COUNTIF(HasWordUsage == 1) AS WordMAU,
+           COUNTIF(HasExcelUsage == 1) AS ExcelMAU,
+           COUNTIF(HasPowerPointUsage == 1) AS PowerPointMAU,
+           COUNTIF(HasOneNoteUsage == 1) AS OneNoteMAU,
+           COUNTIF(HasOutlookUsage == 1) AS OutlookMAU,
+           //O365 MAU with ProPlus Desktop usage
+           COUNTIF(HasO365Usage_ProPlusDesktop == 1) AS O365MAU_ProPlusDesktop,
+           COUNTIF(HasO365Usage_withoutProPlus == 1) AS O365MAU_withoutProPlus,
+           //ProPlus Desktop Usage
+           COUNTIF(HasProPlusUsage_Desktop == 1) AS ProPlusMAU_Desktop,
+           COUNTIF(HasWordUsage_Desktop == 1) AS WordMAU_Desktop,
+           COUNTIF(HasExcelUsage_Desktop == 1) AS ExcelMAU_Desktop,
+           COUNTIF(HasPowerPointUsage_Desktop == 1) AS PowerPointMAU_Desktop,
+           COUNTIF(HasOneNoteUsage_Desktop == 1) AS OneNoteMAU_Desktop,
+           COUNTIF(HasOutlookUsage_Desktop == 1) AS OutlookMAU_Desktop,
+           COUNTIF(HasOutlookUsage_Mobile == 1) AS OutlookMAU_Mobile
+    FROM TenantUser_WorkloadFlags
+    GROUP BY OmsTenantId;
+
+
+///////////Combine with Tenant Profile data 
+TenantProfileMAUMerge =
+    SELECT P.Office365Instance,
+           DateTime.Parse(@@PROCESS_DATE_START@@) AS SnapshotDate,  
+           P.OMSTenantId,
+           P.IsTest,
+           P.IsViral,
+           P.IsFastTrackTenant,
+           P.HasEducation,
+           P.HasCharity,
+           P.HasGovernment,
+           P.HasNonProfit,
+           P.HasQuickStart,
+           P.TenantCategory,
+           P.CustomerSegmentGroup,
+           P.MSSalesSubSegmentName,
+           P.MSSalesAreaName,           
+            PaidAvailableUnits
+            ,PaidEXOAvailableUnits
+            ,PaidProPlusAvailableUnits
+            ,PaidSPOAvailableUnits
+            ,PaidOD4BAvailableUnits
+            ,PaidLYOAvailableUnits
+            ,PaidYammerAvailableUnits
+            ,PaidTeamsAvailableUnits
+            ,PaidEMSAvailableUnits
+            ,PaidM365AvailableUnits
+            ,PaidOffice365AvailableUnits,
+           P.HasMorethanMillionO365AvailableUnits,
+           (P.TotalAvailableUnits != P.Sub_O365_TotalAvailableUnits ? "Different" : "Same") AS SeatCompare,
+           (P.Sub_O365_TotalAvailableUnits == 0 ? "No Seats" : "Has Seats") AS SeatType,
+           P.TotalAvailableUnits AS TenantProfile_TotalAvailableUnits,
+           P.Sub_TotalAvailableUnits,
+           P.Sub_O365_TotalAvailableUnits,           
+           P.Sub_TotalAvailableUnits_withAddOn,
+           P.Sub_O365_TotalAvailableUnits_withAddOn,
+           P.Sub_EXOAvailableUnits,
+           P.Sub_SPOAvailableUnits,
+           P.Sub_OD4BAvailableUnits,
+           P.Sub_LYOAvailableUnits,
+           P.Sub_YammerAvailableUnits,
+           P.Sub_MicrosoftTeamsAvailableUnits,
+           P.Sub_ProPlusAvailableUnits,
+           P.O365EnabledUsers_New AS TotalEnabledUsers,
+           P.O365Enabled_woProPlus_New AS O365Enabled_woProPlus,
+           P.EXOEnabledUsers_New AS EXOEnabledUsers,
+           P.SPOEnabledUsers_New AS SPOEnabledUsers,
+           P.OD4BEnabledUsers_New AS OD4BEnabledUsers,
+           P.SfBEnabledUsers_New AS LYOEnabledUsers,
+           P.TeamsEnabledUsers_New AS TeamEnabledUsers,
+           P.YammerEnabledUsers_New AS YammerEnabledUsers,
+           P.ProPlusEnabledUsers_New AS PPDEnabledUsers,
+           (U.OmsTenantId == null ? 0 : U.O365MAU) AS O365MAU,
+           (U.OmsTenantId == null ? 0 : U.EXOMAU) AS EXOMAU,
+           (U.OmsTenantId == null ? 0 : U.ODSPMAU) AS ODSPMAU,
+           (U.OmsTenantId == null ? 0 : U.SPOMAU) AS SPOMAU,
+           (U.OmsTenantId == null ? 0 : U.OD4BMAU) AS OD4BMAU,
+           (U.OmsTenantId == null ? 0 : U.SfBMAU) AS SfBMAU,
+           (U.OmsTenantId == null ? 0 : U.YammerMAU) AS YammerMAU,
+           (U.OmsTenantId == null ? 0 : U.TeamsMAU) AS TeamsMAU,
+           (U.OmsTenantId == null ? 0 : U.ProPlusMAU) AS ProPlusMAU,
+           (U.OmsTenantId == null ? 0 : U.WordMAU) AS WordMAU,
+           (U.OmsTenantId == null ? 0 : U.ExcelMAU) AS ExcelMAU,
+           (U.OmsTenantId == null ? 0 : U.PowerPointMAU) AS PowerPointMAU,
+           (U.OmsTenantId == null ? 0 : U.OneNoteMAU) AS OneNoteMAU,
+           (U.OmsTenantId == null ? 0 : U.OutlookMAU) AS OutlookMAU,
+           (U.OmsTenantId == null ? 0 : U.O365MAU_ProPlusDesktop) AS O365MAU_ProPlusDesktop,
+           (U.OmsTenantId == null ? 0 : U.O365MAU_withoutProPlus) AS O365MAU_withoutProPlus,
+           (U.OmsTenantId == null ? 0 : U.ProPlusMAU_Desktop) AS ProPlusMAU_Desktop,
+           (U.OmsTenantId == null ? 0 : U.WordMAU_Desktop) AS WordMAU_Desktop,
+           (U.OmsTenantId == null ? 0 : U.ExcelMAU_Desktop) AS ExcelMAU_Desktop,
+           (U.OmsTenantId == null ? 0 : U.PowerPointMAU_Desktop) AS PowerPointMAU_Desktop,
+           (U.OmsTenantId == null ? 0 : U.OneNoteMAU_Desktop) AS OneNoteMAU_Desktop,
+           (U.OmsTenantId == null ? 0 : U.OutlookMAU_Desktop) AS OutlookMAU_Desktop,
+           (U.OmsTenantId == null ? 0 : U.OutlookMAU_Mobile) AS OutlookMAU_Mobile
+    FROM TenantProfile_Enabled AS P
+    LEFT OUTER JOIN TenantAllWorkloadMAU AS U
+    ON P.OMSTenantId == U.OmsTenantId;
+
+TenantProfileMAUMerge = 
+    SELECT TenantProfileMAUMerge.*, SMC_tenants.FinalTPID AS FinalTPID 
+    FROM TenantProfileMAUMerge INNER JOIN SMC_tenants 
+    ON TenantProfileMAUMerge.OMSTenantId == SMC_tenants.OMSTenantId;
+
+TpidProfileMAUMerge = SELECT 
+           FinalTPID,  
+           SnapshotDate, 
+           SUM(O365MAU) AS O365MAU,
+           SUM(EXOMAU) AS EXOMAU,
+           SUM(ODSPMAU) AS ODSPMAU,
+           SUM(SPOMAU) AS SPOMAU,
+           SUM(OD4BMAU) AS OD4BMAU,
+           SUM(SfBMAU) AS SfBMAU,
+           SUM(YammerMAU) AS YammerMAU,
+           SUM(TeamsMAU) AS TeamsMAU,
+           SUM(ProPlusMAU) AS ProPlusMAU,
+           SUM(WordMAU) AS WordMAU,
+           SUM(ExcelMAU) AS ExcelMAU,
+           SUM(PowerPointMAU) AS PowerPointMAU,
+           SUM(OneNoteMAU) AS OneNoteMAU,
+           SUM(OutlookMAU) AS OutlookMAU,
+           SUM(O365MAU_ProPlusDesktop) AS O365MAU_ProPlusDesktop,
+           SUM(O365MAU_withoutProPlus) AS O365MAU_withoutProPlus,
+           SUM(ProPlusMAU_Desktop) AS ProPlusMAU_Desktop,
+           SUM(WordMAU_Desktop) AS WordMAU_Desktop,
+           SUM(ExcelMAU_Desktop) AS ExcelMAU_Desktop,
+           SUM(PowerPointMAU_Desktop) AS PowerPointMAU_Desktop,
+           SUM(OneNoteMAU_Desktop) AS OneNoteMAU_Desktop,
+           SUM(OutlookMAU_Desktop) AS OutlookMAU_Desktop,
+           SUM(OutlookMAU_Mobile) AS OutlookMAU_Mobile
+           FROM TenantProfileMAUMerge
+           GROUP BY FinalTPID, SnapshotDate;
+
+OUTPUT TpidProfileMAUMerge
+TO SSTREAM @outputTenantProfileMAUMerge
+CLUSTERED BY FinalTPID;
+
+
+
+

@@ -1,0 +1,708 @@
+﻿//Script GUID:0f7278d7-fff9-4051-b3d6-8afd58a11177
+//Used for tracking history
+
+/* Script to generate subscription profile for the SMC tenants at the end of each quarter */
+
+#DECLARE snapDate       DateTime = DateTime.Parse(@@PROCESS_DATE_START@@);
+#DECLARE START_DATE_3_MONTHS_DATETIME DateTime = DateTime.Parse(@@PROCESS_DATE_START@@).AddDays(-90);
+
+#DECLARE subscription_view_path string = @"/shares/IDEAs.Prod/Public/Views/IDEAsSubscriptionProfile.view";
+
+SMC_tenants =
+    SSTREAM @"/local/Projects/M365NCA/FY20SMCTenants.ss";
+
+#DECLARE output_all    string = string.Format("/local/Projects/M365NCA/SubscriptionProfile/{0:yyyy-MM}_SubsProfileAll.ss", @snapDate);
+#DECLARE output_e5      string = string.Format("/local/Projects/M365NCA/SubscriptionProfile/{0:yyyy-MM}_SubsProfileE5.ss", @snapDate);
+
+subscription_view_current_overall  =
+    VIEW @subscription_view_path
+    PARAMS
+    (
+        HistoryDate = DateTime.Parse(@@PROCESS_DATE_START@@)
+    );
+
+subscription_view_current_overall = 
+    SELECT subscription_view_current_overall.*, 
+           SMC_tenants.FinalTPID 
+    FROM subscription_view_current_overall 
+         INNER JOIN SMC_tenants 
+         ON subscription_view_current_overall.OMSTenantId == SMC_tenants.OMSTenantId;
+
+subscription_view_sku_ownership = 
+    SELECT OMSTenantId, 
+           FinalTPID, 
+           subscription_view_current_overall.SKUId.ToLower() AS subscription_SKUId,
+           subscription_view_current_overall.SKUName AS subscription_SKUName,
+           subscription_view_current_overall.IncludedQuantity AS subscription_IncludedQuantity 
+    FROM subscription_view_current_overall
+    WHERE 
+        (subscription_view_current_overall.SubscriptionState IN ("Active" , "InGracePeriod") OR 
+        ((subscription_view_current_overall.SubscriptionState NOT IN ("Active" , "InGracePeriod")) AND (subscription_view_current_overall.EndDate > @START_DATE_3_MONTHS_DATETIME))) 
+        AND subscription_view_current_overall.OfferIsTrial == false 
+        AND subscription_view_current_overall.IsFraud == false 
+        AND subscription_view_current_overall.OfferIsCharity == false
+        AND subscription_view_current_overall.OfferIsGovernment == false 
+        AND subscription_view_current_overall.HasPaidSeats == true
+        AND SKUId IN (
+            // EMS A3
+            "3f25dc7b-b31c-4779-acc1-3871cc88a4e8",
+            "aedfac18-56b8-45e3-969b-53edb4ba4952",
+            "e5159997-2e83-408d-8571-32c07454d60a",
+            // EMS A5
+            "09d288ec-aa50-4d14-a7eb-d2146c365840",
+            "443ce361-cb2d-4a45-b5c6-2ece6cb2f33a",
+            "f579e051-0ae9-4f9a-9291-cda9aaa347f1",
+            // EMS E3
+            "c579ccf1-599d-4579-affa-aa7a72b08f1e",
+            "53f93e24-c051-4019-8dc8-5329d9fe1932",
+            "66bf5bff-83ef-4b65-9509-f3a2d39e49a0",
+            "87e26aab-cc68-484d-9199-fe94ad5d8021",
+            "c5ac15dc-c762-40a1-ad40-4b2901194e9c",
+            "efccb6f7-5641-4e0e-bd10-b4976e1bf68e",
+            "e724ff00-8c47-44ee-b854-4e42377ee027",
+            "ec50c02c-f2e1-4be5-9cef-9c701b05d1ba",
+            "826d7c7e-a93a-47f2-82f1-ade85a81fe7d",
+            "c793db86-5237-494e-9b11-dcd4877c2c8c",
+            // EMS E5
+            "15b68d25-1bef-40ec-9c9b-9c49faa23d7c",
+            "3b42d58f-e6f8-49ac-8f12-20ebb28eec3b",
+            "68e5aef4-5890-4ed9-adb5-7c402b58952a",
+            "b05e124f-c7cc-45a0-a6aa-8cf78c946968",
+            "ebaebf79-6d6b-4c2c-b5ba-53276d010383",
+            "2772bde4-5f0a-4b1a-bd64-bd0208386dac",
+            "a461b89c-10e3-471c-82b8-aae4d820fccb",
+            "8a180c2b-f4cf-4d44-897c-3d32acc4a60b",
+            // M365 A1
+            "b17653a4-2443-4e8c-a550-18249dda78bb",
+            // M365 A3
+            "4b590615-0888-425a-a965-b3bf7789848d",
+            "7cfd9a2b-e110-4c39-bf20-c6a3f36a3121",
+            "18250162-5d87-4436-a834-d795c15c80f3",
+            // M365 A5
+            "e97c048c-37a4-45fb-ab50-922fbf07a370",
+            "46c119d4-0379-4a9d-85e4-97c66d3f909e",
+            "31d57bc7-3a05-4867-ab53-97a17835a411",
+            "65200ac3-f927-4407-a3d5-c63562dff461",
+            "a25c01ce-bab1-47e9-a6d0-ebe939b99ff9",
+            "81441ae1-0b31-4185-a6c0-32b6b84d419f",
+            // M365 Biz
+            "cbdc14ab-d96c-4c30-b9f4-6ada7cdc1d46",
+            "cd2c13ea-aa42-4284-b21f-5a68a1818dbe",
+            "e3b0993d-43e9-463a-af2f-0e53e51591d2",
+            // M365 E3
+            "05e9a617-0261-4cee-bb44-138d3ef5d965",
+            "23a55cbc-971c-4ba2-8bae-04cd13d2f4ad",
+            "d61d61cc-f992-433f-a577-5bd016037eeb",
+            "ca9d1dd9-dfe9-4fef-b97c-9bc1ea3c3658",
+            "14229a8c-4e69-44e0-b627-5423755d8893",
+            "964c9dc6-df2b-4097-a24b-81697c10b10f",
+            // M365 E5
+            "06ebc4ee-1bb5-47dd-8120-11324bc54e06",
+            "169c754d-96ba-4658-9481-ccd0fdd78212",
+            "7d85a5a2-6636-4258-97d4-58a551330869",
+            "cd2925a3-5076-4233-8931-638a8c94f773",
+            // M365 F1
+            "66b55226-6b4f-492c-910c-a3b7a3c9d993",
+            // O365 E1 EDUCATION
+            "08133a92-1fda-4079-afba-16438bfe2f64",
+            "a19037fc-48b4-4d57-b079-ce44b7832473",
+            "d37ba356-38c5-4c82-90da-3d714f72a382",
+            // O365 ENTERPRISE E1
+            "18181a46-0d4e-45cd-891e-60aabd171b4e",
+            "0e020f01-a378-4366-b6d0-99ba53cb432b",
+            "bc19b96b-acbd-4cc0-8cb4-ebec7313f446",
+            "11ccf716-0666-455a-b7e6-abdc9422b27b",
+            "f698ca06-024f-4562-b029-9cb1f1e02646",
+            "6e8353b7-3362-4039-a52f-d57677ca187f",
+            // O365 ENTERPRISE E2
+            "6634e0ce-1a9f-428c-a498-f84ec7b8aa2e",
+            "4c56dad4-97cb-4174-ab07-78e0275df6da",
+            // O365 E3 EDUCATION
+            "ba213450-6e5b-4569-83d3-5b6bd4aa9cd7",
+            "2eb4ba84-035b-42d6-8ebb-827c0f09bb72",
+            "91495de6-3977-425d-acd4-8852fd266e0b",
+            "e4fa3838-3d01-42df-aa28-5e0a4c68604b",
+            "f5a9147f-b4f8-4924-a9f0-8fadaac4982f",
+            "eed7a755-c6cf-49b1-ace3-32eb3627c498",
+            "8fc2205d-4e51-4401-97f0-5c89ef1aafbb",
+            "678e0149-1118-47cd-a65f-88f8ad1bb87e",
+            "5efa2fc4-e7b9-4b01-aff8-bb6c03357173",
+            // o365 E3 ENTERPRISE
+            "074d176f-8bae-4128-9225-6a4d0bb7430f",
+            "6fd2c87f-b296-42f0-b197-1e91e994b900",
+            "b33ff485-9025-4323-92d7-d5f6cee2168c",
+            "b107e5a3-3e60-4c0d-a184-a7e4395eb44c",
+            "aea38a85-9bd5-4981-aa00-616b411205bf",
+            "189a915c-fe4f-4ffa-bde4-85b9628d07a0",
+            "ee810e98-ad50-46e9-b4f2-9ac838989150",
+            "c2c3a2b9-86b4-41cf-a576-cc25a78a17ef",
+            "c3d0f9bd-4848-4499-b313-1f8b146433f1",
+            "1fa9556c-c37f-44c5-9d9d-d326642b2885",
+            "6a467665-16a3-4abd-9d7f-562741e04bbb",
+            "1908916a-464c-44c1-8f86-55f260ed9643",
+            "1277eb31-41d9-4091-ba56-9c60eedcd01c",
+            "b3c2a9eb-4eba-40bb-a180-f7e645c4c9a3",
+            "1cd4490f-800d-48be-bd0a-0e3f689d3315",
+            "5f6fad41-1e0a-4a46-b0cb-2b74ff6680f3",
+            "d9321249-3a07-47cb-ac70-50dfe2a54790",
+            "8c1ce5ef-294d-4714-9ab2-59f0bde13585",
+            // O365 E4
+            "16732e85-c0e3-438e-a82f-71f39cbe2acb",
+            "05e8cabf-68b5-480f-a930-2143d472d959",
+            "1392051d-0cb9-4b7a-88d5-621fee5e8711",
+            "784ffd5c-ed90-4fc5-a8d3-00db0f74ae40",
+            "b865e169-24fb-4d7c-926e-c557a48080b6",
+            "06c4934b-b369-4009-b113-aa3aaa1995e6",
+            "5419c1fe-05a8-41c5-aa18-63b954411d59",
+            "cc2caa35-67d8-4f58-ad98-5c032df0f4ba",
+            "24fd7e37-3c0c-409b-a5c6-8dce944c6ced",
+            // O365 E5 ENTERPRISE
+            "bbae4dd5-b224-43c9-94b5-f8467ad8a377",
+            "3f5eafd4-7a09-49e4-aba2-1e780aeb3561",
+            "c7df2760-2c81-4ef7-b578-5b5392b571df",
+            "3424eafc-53e0-4e71-9e69-118a016ecf1d",
+            "26d45bd9-adf1-46cd-a9e1-51e9a5524128",
+            "29d12b83-0cfc-4dd7-8881-99669afbc31e",
+            "99b205e9-6075-4322-859f-5c325d58bb22",
+            "6d885561-5146-4711-9595-d33d07a18900",
+            "c6d964ff-af67-40f5-96f4-e066fb03513e",
+            "0bc49f01-5d1c-5cd7-8cc9-ba1dfa56ce77",
+            "73b09640-e1cc-4fcc-87b7-4873cab9c9ff",
+            "cf6d63e8-bba6-43e0-bb2f-8dc36a3c10e9",
+            // WIN E3
+            "6a0f6da5-0b87-4190-a6ae-9bb5a2b9546a",
+            "cb10e6cd-9da4-4992-867b-67546b1db821",
+            "eeaa9e98-75e5-4527-8087-b1ac1b175e86",
+            "d13ef257-988a-46f3-8fce-f47484dd4550",
+            "76e618d8-1f2b-41e6-af94-3207df4dc6d2",
+            "c9486bce-7b06-4033-9549-b949153392b7",
+            "427e12af-f3ad-4afa-a965-2edb0afb4c8c",
+            "4985acf2-0aed-421c-88bc-3f3f3eba9afb",
+            // WIN E5
+            "1e7e1070-8ccb-4aca-b470-d7cb538cb07e",
+            "488ba24a-39a9-4473-8ee5-19291e71b002",
+            "5efc7de4-9abc-4dac-9cc2-58b1fe2047ab",
+            "9bbfbcb1-b8e6-43be-9775-677b4cc98f20",
+            "4e7137ad-0ee7-4724-af22-7614f51891d7",
+            "072b0e56-3864-4c53-bfc4-906a4c705ab7");
+
+subscription_view_sku_ownership_grouped = 
+    SELECT 
+        FinalTPID,
+        COUNT(DISTINCT OMSTenantId) AS tenants_count_license_profile,
+        /* 
+            EMS A3
+        */
+        SUM (SKUId IN (
+            "3f25dc7b-b31c-4779-acc1-3871cc88a4e8",
+            "aedfac18-56b8-45e3-969b-53edb4ba4952",
+            "e5159997-2e83-408d-8571-32c07454d60a") ? EOPPaid_M0 : 0 ) AS EMS_A3_Paid_seats,
+        COUNT (DISTINCT (SKUId IN (
+            "3f25dc7b-b31c-4779-acc1-3871cc88a4e8",
+            "aedfac18-56b8-45e3-969b-53edb4ba4952",
+            "e5159997-2e83-408d-8571-32c07454d60a") ? SubscriptionId : null ) ) AS EMS_A3_subs,
+        SUM (SKUId IN (
+            "3f25dc7b-b31c-4779-acc1-3871cc88a4e8",
+            "aedfac18-56b8-45e3-969b-53edb4ba4952",
+            "e5159997-2e83-408d-8571-32c07454d60a") ? AvailableUnitCnt : 0 ) AS EMS_A3_Available_seats,
+        /* 
+            EMS A5
+        */
+        SUM (SKUId IN (
+            "09d288ec-aa50-4d14-a7eb-d2146c365840",
+            "443ce361-cb2d-4a45-b5c6-2ece6cb2f33a",
+            "f579e051-0ae9-4f9a-9291-cda9aaa347f1" ) ? EOPPaid_M0 : 0 ) AS EMS_A5_Paid_seats,
+        COUNT (DISTINCT (SKUId IN (
+            "09d288ec-aa50-4d14-a7eb-d2146c365840",
+            "443ce361-cb2d-4a45-b5c6-2ece6cb2f33a",
+            "f579e051-0ae9-4f9a-9291-cda9aaa347f1" ) ? SubscriptionId : null ) ) AS EMS_A5_subs,
+        SUM (SKUId IN (
+            "09d288ec-aa50-4d14-a7eb-d2146c365840",
+            "443ce361-cb2d-4a45-b5c6-2ece6cb2f33a",
+            "f579e051-0ae9-4f9a-9291-cda9aaa347f1" ) ? AvailableUnitCnt : 0 ) AS EMS_A5_Available_seats,
+        /*
+            EMS E3
+        */
+        SUM (SKUId IN (
+            "c579ccf1-599d-4579-affa-aa7a72b08f1e",
+            "53f93e24-c051-4019-8dc8-5329d9fe1932",
+            "66bf5bff-83ef-4b65-9509-f3a2d39e49a0",
+            "87e26aab-cc68-484d-9199-fe94ad5d8021",
+            "c5ac15dc-c762-40a1-ad40-4b2901194e9c",
+            "efccb6f7-5641-4e0e-bd10-b4976e1bf68e",
+            "e724ff00-8c47-44ee-b854-4e42377ee027",
+            "ec50c02c-f2e1-4be5-9cef-9c701b05d1ba",
+            "826d7c7e-a93a-47f2-82f1-ade85a81fe7d",
+            "c793db86-5237-494e-9b11-dcd4877c2c8c" ) ? EOPPaid_M0 : 0 ) AS EMS_E3_Paid_seats, 
+        COUNT (DISTINCT (SKUId IN (
+            "c579ccf1-599d-4579-affa-aa7a72b08f1e",
+            "53f93e24-c051-4019-8dc8-5329d9fe1932",
+            "66bf5bff-83ef-4b65-9509-f3a2d39e49a0",
+            "87e26aab-cc68-484d-9199-fe94ad5d8021",
+            "c5ac15dc-c762-40a1-ad40-4b2901194e9c",
+            "efccb6f7-5641-4e0e-bd10-b4976e1bf68e",
+            "e724ff00-8c47-44ee-b854-4e42377ee027",
+            "ec50c02c-f2e1-4be5-9cef-9c701b05d1ba",
+            "826d7c7e-a93a-47f2-82f1-ade85a81fe7d",
+            "c793db86-5237-494e-9b11-dcd4877c2c8c") ? SubscriptionId : null ) ) AS EMS_E3_subs, 
+        SUM (SKUId IN (
+            "c579ccf1-599d-4579-affa-aa7a72b08f1e",
+            "53f93e24-c051-4019-8dc8-5329d9fe1932",
+            "66bf5bff-83ef-4b65-9509-f3a2d39e49a0",
+            "87e26aab-cc68-484d-9199-fe94ad5d8021",
+            "c5ac15dc-c762-40a1-ad40-4b2901194e9c",
+            "efccb6f7-5641-4e0e-bd10-b4976e1bf68e",
+            "e724ff00-8c47-44ee-b854-4e42377ee027",
+            "ec50c02c-f2e1-4be5-9cef-9c701b05d1ba",
+            "826d7c7e-a93a-47f2-82f1-ade85a81fe7d",
+            "c793db86-5237-494e-9b11-dcd4877c2c8c" ) ? AvailableUnitCnt : 0 ) AS EMS_E3_Available_seats,
+        /*
+            EMS E5
+        */
+        SUM (SKUId IN (
+            "15b68d25-1bef-40ec-9c9b-9c49faa23d7c",
+            "3b42d58f-e6f8-49ac-8f12-20ebb28eec3b",
+            "68e5aef4-5890-4ed9-adb5-7c402b58952a",
+            "b05e124f-c7cc-45a0-a6aa-8cf78c946968",
+            "ebaebf79-6d6b-4c2c-b5ba-53276d010383",
+            "2772bde4-5f0a-4b1a-bd64-bd0208386dac",
+            "a461b89c-10e3-471c-82b8-aae4d820fccb",
+            "8a180c2b-f4cf-4d44-897c-3d32acc4a60b" ) ? EOPPaid_M0 : 0 ) AS EMS_E5_Paid_seats,
+        COUNT (DISTINCT (SKUId IN ( 
+            "15b68d25-1bef-40ec-9c9b-9c49faa23d7c",
+            "3b42d58f-e6f8-49ac-8f12-20ebb28eec3b",
+            "68e5aef4-5890-4ed9-adb5-7c402b58952a",
+            "b05e124f-c7cc-45a0-a6aa-8cf78c946968",
+            "ebaebf79-6d6b-4c2c-b5ba-53276d010383",
+            "2772bde4-5f0a-4b1a-bd64-bd0208386dac",
+            "a461b89c-10e3-471c-82b8-aae4d820fccb",
+            "8a180c2b-f4cf-4d44-897c-3d32acc4a60b" ) ? SubscriptionId : null ) ) AS EMS_E5_subs, 
+        SUM (SKUId IN (
+            "15b68d25-1bef-40ec-9c9b-9c49faa23d7c",
+            "3b42d58f-e6f8-49ac-8f12-20ebb28eec3b",
+            "68e5aef4-5890-4ed9-adb5-7c402b58952a",
+            "b05e124f-c7cc-45a0-a6aa-8cf78c946968",
+            "ebaebf79-6d6b-4c2c-b5ba-53276d010383",
+            "2772bde4-5f0a-4b1a-bd64-bd0208386dac",
+            "a461b89c-10e3-471c-82b8-aae4d820fccb",
+            "8a180c2b-f4cf-4d44-897c-3d32acc4a60b" ) ? AvailableUnitCnt : 0 ) AS EMS_E5_Available_seats,
+        /*
+            M365 A1
+        */
+        SUM (SKUId IN (
+            "b17653a4-2443-4e8c-a550-18249dda78bb" ) ? EOPPaid_M0 : 0 ) AS M365_A1_Paid_seats,
+        COUNT (DISTINCT (SKUId IN (
+            "b17653a4-2443-4e8c-a550-18249dda78bb") ? SubscriptionId : null ) ) AS M365_A1_subs, 
+        SUM (SKUId IN (
+            "b17653a4-2443-4e8c-a550-18249dda78bb" ) ? AvailableUnitCnt : 0 ) AS M365_A1_Available_seats,
+        /*
+            M365 A3
+        */
+        SUM (SKUId IN (
+            "4b590615-0888-425a-a965-b3bf7789848d",
+            "7cfd9a2b-e110-4c39-bf20-c6a3f36a3121",
+            "18250162-5d87-4436-a834-d795c15c80f3" ) ? EOPPaid_M0 : 0 ) AS M365_A3_Paid_seats,
+        COUNT (DISTINCT (SKUId IN (
+            "4b590615-0888-425a-a965-b3bf7789848d",
+            "7cfd9a2b-e110-4c39-bf20-c6a3f36a3121",
+            "18250162-5d87-4436-a834-d795c15c80f3") ? SubscriptionId : null ) ) AS M365_A3_subs,
+        SUM (SKUId IN (
+            "4b590615-0888-425a-a965-b3bf7789848d",
+            "7cfd9a2b-e110-4c39-bf20-c6a3f36a3121",
+            "18250162-5d87-4436-a834-d795c15c80f3" ) ? AvailableUnitCnt : 0 ) AS M365_A3_Available_seats,
+        /* 
+            M365 A5
+        */
+        SUM (SKUId IN (
+            "e97c048c-37a4-45fb-ab50-922fbf07a370",
+            "46c119d4-0379-4a9d-85e4-97c66d3f909e",
+            "31d57bc7-3a05-4867-ab53-97a17835a411",
+            "65200ac3-f927-4407-a3d5-c63562dff461",
+            "a25c01ce-bab1-47e9-a6d0-ebe939b99ff9",
+            "81441ae1-0b31-4185-a6c0-32b6b84d419f" ) ? EOPPaid_M0 : 0 ) AS M365_A5_Paid_seats,
+        COUNT (DISTINCT (SKUId IN (
+            "e97c048c-37a4-45fb-ab50-922fbf07a370",
+            "46c119d4-0379-4a9d-85e4-97c66d3f909e",
+            "31d57bc7-3a05-4867-ab53-97a17835a411",
+            "65200ac3-f927-4407-a3d5-c63562dff461",
+            "a25c01ce-bab1-47e9-a6d0-ebe939b99ff9",
+            "81441ae1-0b31-4185-a6c0-32b6b84d419f") ? SubscriptionId : null ) ) AS M365_A5_subs,
+        SUM (SKUId IN (
+            "e97c048c-37a4-45fb-ab50-922fbf07a370",
+            "46c119d4-0379-4a9d-85e4-97c66d3f909e",
+            "31d57bc7-3a05-4867-ab53-97a17835a411",
+            "65200ac3-f927-4407-a3d5-c63562dff461",
+            "a25c01ce-bab1-47e9-a6d0-ebe939b99ff9",
+            "81441ae1-0b31-4185-a6c0-32b6b84d419f" ) ? AvailableUnitCnt : 0 ) AS M365_A5_Available_seats, 
+        /*
+            M365 Biz
+        */
+        SUM (SKUId IN (
+            "cbdc14ab-d96c-4c30-b9f4-6ada7cdc1d46",
+            "cd2c13ea-aa42-4284-b21f-5a68a1818dbe",
+            "e3b0993d-43e9-463a-af2f-0e53e51591d2" ) ? EOPPaid_M0 : 0 ) AS M365_Biz_Paid_seats, 
+        COUNT (DISTINCT (SKUId IN (
+            "cbdc14ab-d96c-4c30-b9f4-6ada7cdc1d46",
+            "cd2c13ea-aa42-4284-b21f-5a68a1818dbe",
+            "e3b0993d-43e9-463a-af2f-0e53e51591d2") ? SubscriptionId : null ) ) AS M365_Biz_subs,
+        SUM (SKUId IN (
+            "cbdc14ab-d96c-4c30-b9f4-6ada7cdc1d46",
+            "cd2c13ea-aa42-4284-b21f-5a68a1818dbe",
+            "e3b0993d-43e9-463a-af2f-0e53e51591d2" ) ? AvailableUnitCnt : 0 ) AS M365_Biz_Available_seats, 
+        /*
+            M365 E3
+        */
+        SUM (SKUId IN (
+            "05e9a617-0261-4cee-bb44-138d3ef5d965",
+            "23a55cbc-971c-4ba2-8bae-04cd13d2f4ad",
+            "d61d61cc-f992-433f-a577-5bd016037eeb",
+            "ca9d1dd9-dfe9-4fef-b97c-9bc1ea3c3658",
+            "14229a8c-4e69-44e0-b627-5423755d8893",
+            "964c9dc6-df2b-4097-a24b-81697c10b10f" ) ? EOPPaid_M0 : 0 ) AS M365_E3_Paid_seats, 
+        COUNT (DISTINCT (SKUId IN (
+            "05e9a617-0261-4cee-bb44-138d3ef5d965",
+            "23a55cbc-971c-4ba2-8bae-04cd13d2f4ad",
+            "d61d61cc-f992-433f-a577-5bd016037eeb",
+            "ca9d1dd9-dfe9-4fef-b97c-9bc1ea3c3658",
+            "14229a8c-4e69-44e0-b627-5423755d8893",
+            "964c9dc6-df2b-4097-a24b-81697c10b10f") ? SubscriptionId : null ) ) AS M365_E3_subs,
+        SUM (SKUId IN (
+            "05e9a617-0261-4cee-bb44-138d3ef5d965",
+            "23a55cbc-971c-4ba2-8bae-04cd13d2f4ad",
+            "d61d61cc-f992-433f-a577-5bd016037eeb",
+            "ca9d1dd9-dfe9-4fef-b97c-9bc1ea3c3658",
+            "14229a8c-4e69-44e0-b627-5423755d8893",
+            "964c9dc6-df2b-4097-a24b-81697c10b10f" ) ? AvailableUnitCnt : 0 ) AS M365_E3_Available_seats, 
+        /*
+            M365 E5
+        */
+        SUM (SKUId IN (
+            "06ebc4ee-1bb5-47dd-8120-11324bc54e06",
+            "169c754d-96ba-4658-9481-ccd0fdd78212",
+            "7d85a5a2-6636-4258-97d4-58a551330869",
+            "cd2925a3-5076-4233-8931-638a8c94f773" ) ? EOPPaid_M0 : 0 ) AS M365_E5_Paid_seats, 
+        COUNT (DISTINCT (SKUId IN (
+            "06ebc4ee-1bb5-47dd-8120-11324bc54e06",
+            "169c754d-96ba-4658-9481-ccd0fdd78212",
+            "7d85a5a2-6636-4258-97d4-58a551330869",
+            "cd2925a3-5076-4233-8931-638a8c94f773") ? SubscriptionId : null ) ) AS M365_E5_subs,
+        SUM (SKUId IN (
+            "06ebc4ee-1bb5-47dd-8120-11324bc54e06",
+            "169c754d-96ba-4658-9481-ccd0fdd78212",
+            "7d85a5a2-6636-4258-97d4-58a551330869",
+            "cd2925a3-5076-4233-8931-638a8c94f773" ) ? AvailableUnitCnt : 0 ) AS M365_E5_Available_seats,
+        /*
+            M365 F1
+        */
+        SUM (SKUId IN (
+            "66b55226-6b4f-492c-910c-a3b7a3c9d993" ) ? EOPPaid_M0 : 0 ) AS M365_F1_Paid_seats, 
+        COUNT (DISTINCT (SKUId IN (
+            "66b55226-6b4f-492c-910c-a3b7a3c9d993") ? SubscriptionId : null ) ) AS M365_F1_subs,
+        SUM (SKUId IN (
+            "66b55226-6b4f-492c-910c-a3b7a3c9d993" ) ? AvailableUnitCnt : 0 ) AS M365_F1_Available_seats,
+        /*
+            O365 E1 Education
+        */
+        SUM (SKUId IN (
+            "08133a92-1fda-4079-afba-16438bfe2f64",
+            "a19037fc-48b4-4d57-b079-ce44b7832473",
+            "d37ba356-38c5-4c82-90da-3d714f72a382" ) ? EOPPaid_M0 : 0 ) AS O365_E1_EDUCATION_Paid_seats, 
+        COUNT (DISTINCT (SKUId IN (
+            "08133a92-1fda-4079-afba-16438bfe2f64",
+            "a19037fc-48b4-4d57-b079-ce44b7832473",
+            "d37ba356-38c5-4c82-90da-3d714f72a382" ) ? SubscriptionId : null ) ) AS O365_E1_EDUCATION_subs,
+        SUM (SKUId IN (
+            "08133a92-1fda-4079-afba-16438bfe2f64",
+            "a19037fc-48b4-4d57-b079-ce44b7832473",
+            "d37ba356-38c5-4c82-90da-3d714f72a382" ) ? AvailableUnitCnt : 0 ) AS O365_E1_EDUCATION_Available_seats, 
+        /*
+            O365 Enterprise E1
+        */
+        SUM (SKUId IN (
+            "18181a46-0d4e-45cd-891e-60aabd171b4e",
+            "0e020f01-a378-4366-b6d0-99ba53cb432b",
+            "bc19b96b-acbd-4cc0-8cb4-ebec7313f446",
+            "11ccf716-0666-455a-b7e6-abdc9422b27b",
+            "f698ca06-024f-4562-b029-9cb1f1e02646",
+            "6e8353b7-3362-4039-a52f-d57677ca187f" ) ? EOPPaid_M0 : 0 ) AS O365_E1_ENTERPRISE_Paid_seats, 
+        COUNT (DISTINCT (SKUId IN (
+            "18181a46-0d4e-45cd-891e-60aabd171b4e",
+            "0e020f01-a378-4366-b6d0-99ba53cb432b",
+            "bc19b96b-acbd-4cc0-8cb4-ebec7313f446",
+            "11ccf716-0666-455a-b7e6-abdc9422b27b",
+            "f698ca06-024f-4562-b029-9cb1f1e02646",
+            "6e8353b7-3362-4039-a52f-d57677ca187f") ? SubscriptionId : null ) ) AS O365_E1_ENTERPRISE_subs,
+        SUM (SKUId IN (
+            "18181a46-0d4e-45cd-891e-60aabd171b4e",
+            "0e020f01-a378-4366-b6d0-99ba53cb432b",
+            "bc19b96b-acbd-4cc0-8cb4-ebec7313f446",
+            "11ccf716-0666-455a-b7e6-abdc9422b27b",
+            "f698ca06-024f-4562-b029-9cb1f1e02646",
+            "6e8353b7-3362-4039-a52f-d57677ca187f" ) ? AvailableUnitCnt : 0 ) AS O365_E1_ENTERPRISE_Available_seats, 
+        /*
+            O365 Enterprise E2
+        */
+        SUM (SKUId IN (
+            "6634e0ce-1a9f-428c-a498-f84ec7b8aa2e",
+            "4c56dad4-97cb-4174-ab07-78e0275df6da" ) ? EOPPaid_M0 : 0 ) AS O365_E2_ENTERPRISE_Paid_seats, 
+        COUNT (DISTINCT (SKUId IN (
+            "6634e0ce-1a9f-428c-a498-f84ec7b8aa2e",
+            "4c56dad4-97cb-4174-ab07-78e0275df6da") ? SubscriptionId : null ) ) AS O365_E2_ENTERPRISE_subs,
+        SUM (SKUId IN (
+            "6634e0ce-1a9f-428c-a498-f84ec7b8aa2e",
+            "4c56dad4-97cb-4174-ab07-78e0275df6da" ) ? AvailableUnitCnt : 0 ) AS O365_E2_ENTERPRISE_Available_seats, 
+        /*
+            O365 E3 Education
+        */
+        SUM (SKUId IN (
+            "ba213450-6e5b-4569-83d3-5b6bd4aa9cd7",
+            "2eb4ba84-035b-42d6-8ebb-827c0f09bb72",
+            "91495de6-3977-425d-acd4-8852fd266e0b",
+            "e4fa3838-3d01-42df-aa28-5e0a4c68604b",
+            "f5a9147f-b4f8-4924-a9f0-8fadaac4982f",
+            "eed7a755-c6cf-49b1-ace3-32eb3627c498",
+            "8fc2205d-4e51-4401-97f0-5c89ef1aafbb",
+            "678e0149-1118-47cd-a65f-88f8ad1bb87e",
+            "5efa2fc4-e7b9-4b01-aff8-bb6c03357173"  ) ? EOPPaid_M0 : 0 ) AS O365_E3_EDUCATION_Paid_seats, 
+        COUNT (DISTINCT (SKUId IN (
+            "ba213450-6e5b-4569-83d3-5b6bd4aa9cd7",
+            "2eb4ba84-035b-42d6-8ebb-827c0f09bb72",
+            "91495de6-3977-425d-acd4-8852fd266e0b",
+            "e4fa3838-3d01-42df-aa28-5e0a4c68604b",
+            "f5a9147f-b4f8-4924-a9f0-8fadaac4982f",
+            "eed7a755-c6cf-49b1-ace3-32eb3627c498",
+            "8fc2205d-4e51-4401-97f0-5c89ef1aafbb",
+            "678e0149-1118-47cd-a65f-88f8ad1bb87e",
+            "5efa2fc4-e7b9-4b01-aff8-bb6c03357173" ) ? SubscriptionId : null ) ) AS O365_E3_EDUCATION_subs,
+        SUM (SKUId IN (
+            "ba213450-6e5b-4569-83d3-5b6bd4aa9cd7",
+            "2eb4ba84-035b-42d6-8ebb-827c0f09bb72",
+            "91495de6-3977-425d-acd4-8852fd266e0b",
+            "e4fa3838-3d01-42df-aa28-5e0a4c68604b",
+            "f5a9147f-b4f8-4924-a9f0-8fadaac4982f",
+            "eed7a755-c6cf-49b1-ace3-32eb3627c498",
+            "8fc2205d-4e51-4401-97f0-5c89ef1aafbb",
+            "678e0149-1118-47cd-a65f-88f8ad1bb87e",
+            "5efa2fc4-e7b9-4b01-aff8-bb6c03357173"  ) ? AvailableUnitCnt : 0 ) AS O365_E3_EDUCATION_Available_seats, 
+        /*
+            O365 E3 Enterprise
+        */
+        SUM (SKUId IN (
+            "074d176f-8bae-4128-9225-6a4d0bb7430f",
+            "6fd2c87f-b296-42f0-b197-1e91e994b900",
+            "b33ff485-9025-4323-92d7-d5f6cee2168c",
+            "b107e5a3-3e60-4c0d-a184-a7e4395eb44c",
+            "aea38a85-9bd5-4981-aa00-616b411205bf",
+            "189a915c-fe4f-4ffa-bde4-85b9628d07a0",
+            "ee810e98-ad50-46e9-b4f2-9ac838989150",
+            "c2c3a2b9-86b4-41cf-a576-cc25a78a17ef",
+            "c3d0f9bd-4848-4499-b313-1f8b146433f1",
+            "1fa9556c-c37f-44c5-9d9d-d326642b2885",
+            "6a467665-16a3-4abd-9d7f-562741e04bbb",
+            "1908916a-464c-44c1-8f86-55f260ed9643",
+            "1277eb31-41d9-4091-ba56-9c60eedcd01c",
+            "b3c2a9eb-4eba-40bb-a180-f7e645c4c9a3",
+            "1cd4490f-800d-48be-bd0a-0e3f689d3315",
+            "5f6fad41-1e0a-4a46-b0cb-2b74ff6680f3",
+            "d9321249-3a07-47cb-ac70-50dfe2a54790",
+            "8c1ce5ef-294d-4714-9ab2-59f0bde13585" ) ? EOPPaid_M0 : 0 ) AS O365_E3_ENTERPRISE_Paid_seats, 
+         COUNT (DISTINCT (SKUId IN (
+            "074d176f-8bae-4128-9225-6a4d0bb7430f",
+            "6fd2c87f-b296-42f0-b197-1e91e994b900",
+            "b33ff485-9025-4323-92d7-d5f6cee2168c",
+            "b107e5a3-3e60-4c0d-a184-a7e4395eb44c",
+            "aea38a85-9bd5-4981-aa00-616b411205bf",
+            "189a915c-fe4f-4ffa-bde4-85b9628d07a0",
+            "ee810e98-ad50-46e9-b4f2-9ac838989150",
+            "c2c3a2b9-86b4-41cf-a576-cc25a78a17ef",
+            "c3d0f9bd-4848-4499-b313-1f8b146433f1",
+            "1fa9556c-c37f-44c5-9d9d-d326642b2885",
+            "6a467665-16a3-4abd-9d7f-562741e04bbb",
+            "1908916a-464c-44c1-8f86-55f260ed9643",
+            "1277eb31-41d9-4091-ba56-9c60eedcd01c",
+            "b3c2a9eb-4eba-40bb-a180-f7e645c4c9a3",
+            "1cd4490f-800d-48be-bd0a-0e3f689d3315",
+            "5f6fad41-1e0a-4a46-b0cb-2b74ff6680f3",
+            "d9321249-3a07-47cb-ac70-50dfe2a54790",
+            "8c1ce5ef-294d-4714-9ab2-59f0bde13585") ? SubscriptionId : null ) ) AS O365_E3_ENTERPRISE_subs,
+        SUM (SKUId IN (
+            "074d176f-8bae-4128-9225-6a4d0bb7430f",
+            "6fd2c87f-b296-42f0-b197-1e91e994b900",
+            "b33ff485-9025-4323-92d7-d5f6cee2168c",
+            "b107e5a3-3e60-4c0d-a184-a7e4395eb44c",
+            "aea38a85-9bd5-4981-aa00-616b411205bf",
+            "189a915c-fe4f-4ffa-bde4-85b9628d07a0",
+            "ee810e98-ad50-46e9-b4f2-9ac838989150",
+            "c2c3a2b9-86b4-41cf-a576-cc25a78a17ef",
+            "c3d0f9bd-4848-4499-b313-1f8b146433f1",
+            "1fa9556c-c37f-44c5-9d9d-d326642b2885",
+            "6a467665-16a3-4abd-9d7f-562741e04bbb",
+            "1908916a-464c-44c1-8f86-55f260ed9643",
+            "1277eb31-41d9-4091-ba56-9c60eedcd01c",
+            "b3c2a9eb-4eba-40bb-a180-f7e645c4c9a3",
+            "1cd4490f-800d-48be-bd0a-0e3f689d3315",
+            "5f6fad41-1e0a-4a46-b0cb-2b74ff6680f3",
+            "d9321249-3a07-47cb-ac70-50dfe2a54790",
+            "8c1ce5ef-294d-4714-9ab2-59f0bde13585" ) ? AvailableUnitCnt : 0 ) AS O365_E3_ENTERPRISE_Available_seats, 
+        /*
+            O365 E4
+        */
+        SUM (SKUId IN ( // O365 E4
+            "16732e85-c0e3-438e-a82f-71f39cbe2acb",
+            "05e8cabf-68b5-480f-a930-2143d472d959",
+            "1392051d-0cb9-4b7a-88d5-621fee5e8711",
+            "784ffd5c-ed90-4fc5-a8d3-00db0f74ae40",
+            "b865e169-24fb-4d7c-926e-c557a48080b6",
+            "06c4934b-b369-4009-b113-aa3aaa1995e6",
+            "5419c1fe-05a8-41c5-aa18-63b954411d59",
+            "cc2caa35-67d8-4f58-ad98-5c032df0f4ba",
+            "24fd7e37-3c0c-409b-a5c6-8dce944c6ced" ) ? EOPPaid_M0 : 0 ) AS O365_E4_ENTERPRISE_Paid_seats, 
+         COUNT (DISTINCT (SKUId IN ( // O365 E4
+            "16732e85-c0e3-438e-a82f-71f39cbe2acb",
+            "05e8cabf-68b5-480f-a930-2143d472d959",
+            "1392051d-0cb9-4b7a-88d5-621fee5e8711",
+            "784ffd5c-ed90-4fc5-a8d3-00db0f74ae40",
+            "b865e169-24fb-4d7c-926e-c557a48080b6",
+            "06c4934b-b369-4009-b113-aa3aaa1995e6",
+            "5419c1fe-05a8-41c5-aa18-63b954411d59",
+            "cc2caa35-67d8-4f58-ad98-5c032df0f4ba",
+            "24fd7e37-3c0c-409b-a5c6-8dce944c6ced") ? SubscriptionId : null ) ) AS O365_E4_ENTERPRISE_subs,
+        SUM (SKUId IN ( // O365 E4
+            "16732e85-c0e3-438e-a82f-71f39cbe2acb",
+            "05e8cabf-68b5-480f-a930-2143d472d959",
+            "1392051d-0cb9-4b7a-88d5-621fee5e8711",
+            "784ffd5c-ed90-4fc5-a8d3-00db0f74ae40",
+            "b865e169-24fb-4d7c-926e-c557a48080b6",
+            "06c4934b-b369-4009-b113-aa3aaa1995e6",
+            "5419c1fe-05a8-41c5-aa18-63b954411d59",
+            "cc2caa35-67d8-4f58-ad98-5c032df0f4ba",
+            "24fd7e37-3c0c-409b-a5c6-8dce944c6ced" ) ? AvailableUnitCnt : 0 ) AS O365_E4_ENTERPRISE_Available_seats, 
+        /*
+            O365 E5 Enterprise
+        */
+        SUM (SKUId IN (
+            "bbae4dd5-b224-43c9-94b5-f8467ad8a377",
+            "3f5eafd4-7a09-49e4-aba2-1e780aeb3561",
+            "c7df2760-2c81-4ef7-b578-5b5392b571df",
+            "3424eafc-53e0-4e71-9e69-118a016ecf1d",
+            "26d45bd9-adf1-46cd-a9e1-51e9a5524128",
+            "29d12b83-0cfc-4dd7-8881-99669afbc31e",
+            "99b205e9-6075-4322-859f-5c325d58bb22",
+            "6d885561-5146-4711-9595-d33d07a18900",
+            "c6d964ff-af67-40f5-96f4-e066fb03513e",
+            "0bc49f01-5d1c-5cd7-8cc9-ba1dfa56ce77",
+            "73b09640-e1cc-4fcc-87b7-4873cab9c9ff",
+            "cf6d63e8-bba6-43e0-bb2f-8dc36a3c10e9" ) ? EOPPaid_M0 : 0 ) AS O365_E5_ENTERPRISE_Paid_seats, 
+         COUNT (DISTINCT (SKUId IN (
+            "bbae4dd5-b224-43c9-94b5-f8467ad8a377",
+            "3f5eafd4-7a09-49e4-aba2-1e780aeb3561",
+            "c7df2760-2c81-4ef7-b578-5b5392b571df",
+            "3424eafc-53e0-4e71-9e69-118a016ecf1d",
+            "26d45bd9-adf1-46cd-a9e1-51e9a5524128",
+            "29d12b83-0cfc-4dd7-8881-99669afbc31e",
+            "99b205e9-6075-4322-859f-5c325d58bb22",
+            "6d885561-5146-4711-9595-d33d07a18900",
+            "c6d964ff-af67-40f5-96f4-e066fb03513e",
+            "0bc49f01-5d1c-5cd7-8cc9-ba1dfa56ce77",
+            "73b09640-e1cc-4fcc-87b7-4873cab9c9ff",
+            "cf6d63e8-bba6-43e0-bb2f-8dc36a3c10e9" ) ? SubscriptionId : null ) ) AS O365_E5_ENTERPRISE_subs,
+        SUM (SKUId IN (
+            "bbae4dd5-b224-43c9-94b5-f8467ad8a377",
+            "3f5eafd4-7a09-49e4-aba2-1e780aeb3561",
+            "c7df2760-2c81-4ef7-b578-5b5392b571df",
+            "3424eafc-53e0-4e71-9e69-118a016ecf1d",
+            "26d45bd9-adf1-46cd-a9e1-51e9a5524128",
+            "29d12b83-0cfc-4dd7-8881-99669afbc31e",
+            "99b205e9-6075-4322-859f-5c325d58bb22",
+            "6d885561-5146-4711-9595-d33d07a18900",
+            "c6d964ff-af67-40f5-96f4-e066fb03513e",
+            "0bc49f01-5d1c-5cd7-8cc9-ba1dfa56ce77",
+            "73b09640-e1cc-4fcc-87b7-4873cab9c9ff",
+            "cf6d63e8-bba6-43e0-bb2f-8dc36a3c10e9" ) ? AvailableUnitCnt : 0 ) AS O365_E5_ENTERPRISE_Available_seats, 
+        /*
+            WIN E3
+        */
+        SUM (SKUId IN (
+            "6a0f6da5-0b87-4190-a6ae-9bb5a2b9546a",
+            "cb10e6cd-9da4-4992-867b-67546b1db821",
+            "eeaa9e98-75e5-4527-8087-b1ac1b175e86",
+            "d13ef257-988a-46f3-8fce-f47484dd4550",
+            "76e618d8-1f2b-41e6-af94-3207df4dc6d2",
+            "c9486bce-7b06-4033-9549-b949153392b7",
+            "427e12af-f3ad-4afa-a965-2edb0afb4c8c",
+            "4985acf2-0aed-421c-88bc-3f3f3eba9afb" ) ? EOPPaid_M0 : 0 ) AS WIN_E3_Paid_seats, 
+        COUNT (DISTINCT (SKUId IN (
+            "6a0f6da5-0b87-4190-a6ae-9bb5a2b9546a",
+            "cb10e6cd-9da4-4992-867b-67546b1db821",
+            "eeaa9e98-75e5-4527-8087-b1ac1b175e86",
+            "d13ef257-988a-46f3-8fce-f47484dd4550",
+            "76e618d8-1f2b-41e6-af94-3207df4dc6d2",
+            "c9486bce-7b06-4033-9549-b949153392b7",
+            "427e12af-f3ad-4afa-a965-2edb0afb4c8c",
+            "4985acf2-0aed-421c-88bc-3f3f3eba9afb") ? SubscriptionId : null ) ) AS WIN_E3_subs,
+        SUM (SKUId IN (
+            "6a0f6da5-0b87-4190-a6ae-9bb5a2b9546a",
+            "cb10e6cd-9da4-4992-867b-67546b1db821",
+            "eeaa9e98-75e5-4527-8087-b1ac1b175e86",
+            "d13ef257-988a-46f3-8fce-f47484dd4550",
+            "76e618d8-1f2b-41e6-af94-3207df4dc6d2",
+            "c9486bce-7b06-4033-9549-b949153392b7",
+            "427e12af-f3ad-4afa-a965-2edb0afb4c8c",
+            "4985acf2-0aed-421c-88bc-3f3f3eba9afb" ) ? AvailableUnitCnt : 0 ) AS WIN_E3_Available_seats, 
+        /*
+            WIN E5
+        */
+        SUM (SKUId IN ( // WIN E5
+            "1e7e1070-8ccb-4aca-b470-d7cb538cb07e",
+            "488ba24a-39a9-4473-8ee5-19291e71b002",
+            "5efc7de4-9abc-4dac-9cc2-58b1fe2047ab",
+            "9bbfbcb1-b8e6-43be-9775-677b4cc98f20",
+            "4e7137ad-0ee7-4724-af22-7614f51891d7",
+            "072b0e56-3864-4c53-bfc4-906a4c705ab7" ) ? EOPPaid_M0 : 0 ) AS WIN_E5_Paid_seats, 
+        COUNT (DISTINCT (SKUId IN ( // WIN E5
+            "1e7e1070-8ccb-4aca-b470-d7cb538cb07e",
+            "488ba24a-39a9-4473-8ee5-19291e71b002",
+            "5efc7de4-9abc-4dac-9cc2-58b1fe2047ab",
+            "9bbfbcb1-b8e6-43be-9775-677b4cc98f20",
+            "4e7137ad-0ee7-4724-af22-7614f51891d7",
+            "072b0e56-3864-4c53-bfc4-906a4c705ab7" ) ? SubscriptionId : null ) ) AS WIN_E5_subs,
+        SUM (SKUId IN ( // WIN E5
+            "1e7e1070-8ccb-4aca-b470-d7cb538cb07e",
+            "488ba24a-39a9-4473-8ee5-19291e71b002",
+            "5efc7de4-9abc-4dac-9cc2-58b1fe2047ab",
+            "9bbfbcb1-b8e6-43be-9775-677b4cc98f20",
+            "4e7137ad-0ee7-4724-af22-7614f51891d7",
+            "072b0e56-3864-4c53-bfc4-906a4c705ab7" ) ? AvailableUnitCnt : 0 ) AS WIN_E5_Available_seats 
+    FROM subscription_view_sku_ownership
+    GROUP BY FinalTPID;
+
+subscription_view_sku_ownership_grouped = 
+    SELECT 
+        *,
+        (EMS_A3_subs > 0 ? 1 : 0) AS EMS_A3,
+        (EMS_A5_subs > 0 ? 1 : 0) AS EMS_A5,
+        (EMS_E3_subs > 0 ? 1 : 0) AS EMS_E3,
+        (EMS_E5_subs > 0 ? 1 : 0) AS EMS_E5,
+        (M365_A1_subs > 0 ? 1 : 0) AS M365_A1,
+        (M365_A3_subs > 0 ? 1 : 0) AS M365_A3,
+        (M365_A5_subs > 0 ? 1 : 0) AS M365_A5,
+        (M365_Biz_subs > 0 ? 1 : 0) AS M365_Biz,
+        (M365_E3_subs > 0 ? 1 : 0) AS M365_E3,
+        (M365_E5_subs > 0 ? 1 : 0) AS M365_E5,
+        (M365_F1_subs > 0 ? 1 : 0) AS M365_F1,
+        (O365_E1_EDUCATION_subs > 0 ? 1 : 0) AS O365_E1_EDUCATION,
+        (O365_E1_ENTERPRISE_subs > 0 ? 1 : 0) AS O365_E1_ENTERPRISE,
+        (O365_E2_ENTERPRISE_subs > 0 ? 1 : 0) AS O365_E2_ENTERPRISE,
+        (O365_E3_EDUCATION_subs > 0 ? 1 : 0) AS O365_E3_EDUCATION,
+        (O365_E3_ENTERPRISE_subs > 0 ? 1 : 0) AS O365_E3_ENTERPRISE,
+        (O365_E4_ENTERPRISE_subs > 0 ? 1 : 0) AS O365_E4_ENTERPRISE,
+        (O365_E5_ENTERPRISE_subs > 0 ? 1 : 0) AS O365_E5_ENTERPRISE,
+        (WIN_E3_subs > 0 ? 1 : 0) AS WIN_E3,
+        (WIN_E5_subs > 0 ? 1 : 0) AS WIN_E5   
+    FROM subscription_view_sku_ownership_grouped;
+
+
+OUTPUT subscription_view_sku_ownership_grouped
+TO SSTREAM @output_all
+CLUSTERED BY FinalTPID;
+

@@ -1,0 +1,165 @@
+﻿//Script to pull EMS usage per month - This is based on pre release data, the actual verified data becomes available at the end of FY20, this is a stop gap till then //
+
+SMC_tenants =
+    SSTREAM @"/local/Projects/M365NCA/FY20SMCTenants.ss";
+
+#DECLARE AADP_ROOT string = @"/shares/IDEAs.Prod/Partner/PreRelease/dev/countedactions/aadp/";
+#DECLARE AADP_PATH string = @"%Y/%m/AADPDailyUsage_%Y_%m_%d.ss";
+#DECLARE INTUNE_ROOT string = @"/shares/IDEAs.Prod/Partner/PreRelease/dev/countedactions/intune/";
+#DECLARE INTUNE_PATH string = @"%Y/%m/IntuneDailyUsage_%Y_%m_%d.ss";
+#DECLARE AIP_ROOT string = @"/shares/IDEAs.Prod/Partner/PreRelease/dev/countedactions/aip/";
+#DECLARE AIP_PATH string = @"%Y/%m/AIPDailyUsage_%Y_%m_%d.ss";
+#DECLARE OATP_ROOT string = @"/shares/IDEAs.Prod/Partner/PreRelease/dev/countedactions/oatp/";
+#DECLARE OATP_PATH string = @"%Y/%m/OATPDailyUsage_%Y_%m_%d.ss";
+
+
+#DECLARE START_DATE       DateTime = DateTime.Parse(@@START_DATE@@);
+#DECLARE END_DATE       DateTime = DateTime.Parse(@@END_DATE@@);
+
+#DECLARE START_DATEStr    string   = @START_DATE.ToString("yyyy-MM-dd");
+#DECLARE END_DATEStr    string   = @END_DATE.ToString("yyyy-MM-dd");
+
+
+#DECLARE output      string = string.Format("/local/Projects/M365NCA/EMSUsage/{0:yyyy-MM}_EMSUsage.ss", @END_DATEStr);
+
+input_data_intune =
+    SELECT DISTINCT
+        UserId AS UserId_intune,
+        OmsTenantId.ToLower() AS TenantId_intune,
+        (DeviceLastCheckInDateTime.HasValue && DeviceLastCheckInDateTime.Value.Date >= @START_DATE && DeviceLastCheckInDateTime.Value.Date < @END_DATE) || 
+            (MAMLastCheckInDateTime.HasValue && MAMLastCheckInDateTime.Value.Date >= @START_DATE && MAMLastCheckInDateTime.Value.Date < @END_DATE) AS isIntuneActive,
+        true AS isIntuneConfigured
+    FROM
+    (
+        SSTREAM SPARSE STREAMSET @INTUNE_ROOT
+                       PATTERN @INTUNE_PATH
+                       RANGE __date = [@START_DATEStr, @END_DATEStr]
+    )
+    WHERE !string.IsNullOrEmpty(UserId);
+
+input_data_intune =
+    SELECT
+        SMC_tenants.FinalTPID, 
+        input_data_intune.*
+    FROM input_data_intune
+         INNER JOIN SMC_tenants
+         ON input_data_intune.TenantId_intune  == SMC_tenants.OMSTenantId;
+
+input_data_intune_count = 
+    SELECT
+        FinalTPID AS FinalTPIDintune,
+        COUNT(DISTINCT TenantId_intune) AS tenants_count_intune,
+        COUNT(DISTINCT (isIntuneConfigured == true ? UserId_intune: NULL)) AS Intune_configured_users,
+        COUNT(DISTINCT (isIntuneActive == true ? UserId_intune: NULL)) AS Intune_active_users
+    FROM input_data_intune;
+
+
+// AADP
+input_data_aadp =
+    SELECT DISTINCT
+        OmsTenantId.ToString().ToLower() AS TenantId_aadp,
+        Name, 
+        UserId.ToString().ToLower() AS UserId_aadp
+    FROM
+    (
+        SSTREAM SPARSE STREAMSET @AADP_ROOT
+                       PATTERN @AADP_PATH
+                       RANGE __date = [@START_DATEStr, @END_DATEStr]
+    );
+
+input_data_aadp = 
+    SELECT DISTINCT
+        SMC_tenants.FinalTPID AS FinalTPID ,
+        TenantId_aadp,
+        UserId_aadp,
+        ((Name == "CAUserConfigured") ? true: false) AS isAADPConfigured,
+        ((Name == "CAUserActive") ? true: false) AS isAADPActive
+    FROM input_data_aadp
+         INNER JOIN SMC_tenants
+         ON input_data_aadp.TenantId_aadp  == SMC_tenants.OMSTenantId;
+
+input_data_aadp_count = 
+    SELECT
+        FinalTPID AS FinalTPIDaadp,
+        COUNT(DISTINCT TenantId_aadp) AS tenants_count_aadp,
+        COUNT(DISTINCT (isAADPConfigured == true ? UserId_aadp: NULL)) AS AADP_configured_users,
+        COUNT(DISTINCT (isAADPActive == true ? UserId_aadp: NULL)) AS AADP_active_users
+    FROM input_data_aadp;
+
+
+// AIP
+input_data_AIP = 
+    SELECT DISTINCT
+        OmsTenantId.ToLower() AS TenantId_aip, 
+        UserId.ToLower() AS UserId_aip,
+        IsIntentional
+    FROM
+    (
+        SSTREAM SPARSE STREAMSET @AIP_ROOT
+                       PATTERN @AIP_PATH
+                       RANGE __date = [@START_DATEStr, @END_DATEStr]
+    );
+
+input_data_AIP = 
+    SELECT DISTINCT
+        SMC_tenants.FinalTPID,
+        TenantId_aip,
+        UserId_aip,
+        (UserId_aip != NULL ? true : false) AS isAIPConfigured,
+        IsIntentional AS isAIPActive
+    FROM input_data_AIP
+         INNER JOIN SMC_tenants
+         ON input_data_AIP.TenantId_aip  == SMC_tenants.OMSTenantId;
+
+input_data_AIP_count = 
+    SELECT
+        FinalTPID AS FinalTPIDaip,
+        COUNT(DISTINCT TenantId_aip) AS tenants_count_aip,
+        COUNT(DISTINCT (isAIPConfigured == true ? UserId_aip: NULL)) AS AIP_configured_users,
+        COUNT(DISTINCT (isAIPActive == true ? UserId_aip: NULL)) AS AIP_active_users
+    FROM input_data_AIP;
+
+//OATP 
+input_data_OATP = 
+    SELECT DISTINCT
+        OmsTenantId.ToLower() AS TenantId_oatp, 
+        UserId,
+        IsIntentional
+    FROM
+    (
+        SSTREAM SPARSE STREAMSET @OATP_ROOT
+                       PATTERN @OATP_PATH
+                       RANGE __date = [@START_DATEStr, @END_DATEStr]
+    );
+
+input_data_OATP =
+    SELECT
+        SMC_tenants.FinalTPID AS FinalTPID,
+        input_data_OATP.*
+    FROM input_data_OATP
+         INNER JOIN SMC_tenants
+         ON input_data_OATP.TenantId_oatp  == SMC_tenants.OMSTenantId;
+
+input_data_OATP_count = 
+    SELECT 
+        FinalTPID AS FinalTPIDoatp,
+        COUNT(DISTINCT TenantId_oatp) AS tenants_count_oatp,
+        COUNT(DISTINCT (IsIntentional == true ? UserId: NULL)) AS OATP_active_users
+    FROM input_data_OATP;
+
+final = SELECT DateTime.Parse(@@END_DATE@@) AS SnapshotDate, 
+               input_data_intune_count.*,input_data_aadp_count.*,input_data_AIP_count.*,input_data_OATP_count.*
+    FROM input_data_intune_count FULL OUTER JOIN input_data_aadp_count ON input_data_intune_count.FinalTPIDintune == input_data_aadp_count.FinalTPIDaadp
+         FULL OUTER JOIN input_data_AIP_count ON input_data_intune_count.FinalTPIDintune == input_data_AIP_count.FinalTPIDaip
+               FULL OUTER JOIN input_data_OATP_count ON input_data_intune_count.FinalTPIDintune == input_data_OATP_count.FinalTPIDoatp;
+
+OUTPUT final TO SSTREAM @output;
+
+
+
+
+
+
+
+
+

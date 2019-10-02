@@ -1,0 +1,28 @@
+﻿//Script GUID:fcfb981c-b2f0-43fd-8c32-cc96490c9c1d
+//Used for tracking history
+
+/* Script to map FY20 SMC Tpids to tenants */
+
+MappingView = VIEW @"/shares/IDEAs.Prod/Public/Views/IDEAsTenantTPIDMapping/v1/IDEAsTenantTPIDMapping.view"
+    PARAMS( HistoryDate = DateTime.Parse( "2019-06-30" ) );
+
+tpid_list = 
+    EXTRACT 
+        MSSalesID     : int
+    FROM
+    @"/local/Projects/M365NCA/FY20SMCTpids.csv"
+    USING DefaultTextExtractor(delimiter: ',');
+
+mapping =
+    SELECT OMSTenantId,
+           FinalTPID
+    FROM MappingView
+         INNER JOIN
+             tpid_list
+         ON tpid_list.MSSalesID == MappingView.FinalTPID;
+
+OUTPUT mapping
+TO SSTREAM @"/local/Projects/M365NCA/FY20SMCTenants.ss";
+
+
+

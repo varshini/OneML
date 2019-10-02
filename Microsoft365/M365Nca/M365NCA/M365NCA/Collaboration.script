@@ -1,0 +1,130 @@
+﻿//Script GUID:eb7125c4-a663-4c15-9e16-6b311b5d844c
+//Used for tracking history
+
+// RUN ON ACE.PROC //
+
+//Monthly snapshot of collaboration data //
+
+SMC_tenants =
+    SSTREAM @"/local/Projects/M365NCA/FY20SMCTenants.ss";
+
+#DECLARE snapDate       DateTime = DateTime.Parse(@@PROCESS_DATE_START@@);
+#DECLARE output1      string = string.Format("/local/Projects/M365NCA/Collaboration/{0:yyyy-MM}_SPOUsage.ss", @snapDate);
+
+#DECLARE In_path string = "/shares/IDEAs.Prod/Scheduled/Datasets/Private/UserCollaborationNetworks/SPO/Graphs/";
+#DECLARE In_patt string = "%Y/%m/%d/TenantUserMetrics_Prod_RL28D.ss";
+
+spo_usage = SSTREAM STREAMSET @In_path
+                    PATTERN   @In_patt
+                    RANGE __date = [@@PROCESS_DATE_START@@, @@PROCESS_DATE_START@@];
+
+// -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- //
+// SPO
+//---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- //
+
+//Aggregate at tpid level
+spo_usage =
+    SELECT
+        
+        SMC_tenants.FinalTPID AS FinalTPID,
+        MAX(DateTime.Parse(@@PROCESS_DATE_START@@)) AS SnapshotDate,
+        SUM(NumWXPOUsers) AS NumWXPOUsers,
+        SUM(NumWXPOEditors) AS NumWXPOEditors,
+        SUM(NumWXPUsers) AS NumWXPUsers,
+        SUM(NumWXPEditors) AS NumWXPEditors,
+        SUM(NumWordUsers) AS NumWordUsers,
+        SUM(NumWordEditors) AS NumWordEditors,
+        SUM(NumExcelUsers) AS NumExcelUsers,
+        SUM(NumExcelEditors) AS NumExcelEditors,
+        SUM(NumPowerPointUsers) AS NumPowerPointUsers,
+        SUM(NumPowerPointEditors) AS NumPowerPointEditors,
+        SUM(NumOneNoteUsers) AS NumOneNoteUsers,
+        SUM(NumOneNoteEditors) AS NumOneNoteEditors,
+        SUM(NumWXPOUsersCollaborated) AS NumWXPOUsersCollaborated,
+        SUM(NumWXPUsersCollaborated) AS NumWXPUsersCollaborated,
+        SUM(NumWordUsersCollaborated) AS NumWordUsersCollaborated,
+        SUM(NumExcelUsersCollaborated) AS NumExcelUsersCollaborated,
+        SUM(NumPowerPointUsersCollaborated) AS NumPowerPointUsersCollaborated,
+        SUM(NumOneNoteUsersCollaborated) AS NumOneNoteUsersCollaborated,
+        SUM(NumWXPOContributors) AS NumWXPOContributors,
+        SUM(NumWXPOReaders) AS NumWXPOReaders,
+        SUM(NumWXPContributors) AS NumWXPContributors,
+        SUM(NumWXPReaders) AS NumWXPReaders,
+        SUM(NumWordContributors) AS NumWordContributors,
+        SUM(NumWordReaders) AS NumWordReaders,
+        SUM(NumExcelContributors) AS NumExcelContributors,
+        SUM(NumExcelReaders) AS NumExcelReaders,
+        SUM(NumPowerPointContributors) AS NumPowerPointContributors,
+        SUM(NumPowerPointReaders) AS NumPowerPointReaders,
+        SUM(NumOneNoteContributors) AS NumOneNoteContributors,
+        SUM(NumOneNoteReaders) AS NumOneNoteReaders,
+        SUM(NumWXPOCoauthors) AS NumWXPOCoauthors,
+        SUM(NumWXPCoauthors) AS NumWXPCoauthors,
+        SUM(NumWordCoauthors) AS NumWordCoauthors,
+        SUM(NumExcelCoauthors) AS NumExcelCoauthors,
+        SUM(NumPowerPointCoauthors) AS NumPowerPointCoauthors,
+        SUM(NumOneNoteCoauthors) AS NumOneNoteCoauthors
+    FROM spo_usage
+         INNER JOIN SMC_tenants
+         ON spo_usage.OMSTenantId == SMC_tenants.OMSTenantId
+    GROUP BY FinalTPID; 
+
+OUTPUT spo_usage
+TO SSTREAM @output1
+CLUSTERED BY FinalTPID;
+
+// -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- //
+// EXO
+//---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- //
+
+#DECLARE In_path_exo string = "/shares/IDEAs.Prod/Scheduled/Datasets/Private/UserCollaborationNetworks/EXO/Graphs/Commercial/";
+#DECLARE In_patt_exo string = "%Y/%m/%d/NodeUsageAttributes_Worldwide_RL28D.ss";
+
+#DECLARE output2      string = string.Format("/local/Projects/M365NCA/Collaboration/{0:yyyy-MM}_EXOUsage.ss", @snapDate);
+
+exo_usage =
+    SSTREAM STREAMSET @In_path_exo
+            PATTERN   @In_patt_exo
+            RANGE __date = [@@PROCESS_DATE_START@@, @@PROCESS_DATE_START@@];
+
+//Aggregate at tpid level
+exo_usage =
+    SELECT 
+        SMC_tenants.FinalTPID AS FinalTPID,
+        MAX(DateTime.Parse(@@PROCESS_DATE_START@@)) AS SnapshotDate, 
+        SUM(NumEmailsSent) AS NumEmailsSent,
+        SUM(NumWordStreamAttachmentsSent) AS NumWordStreamAttachmentsSent,
+        SUM(NumExcelStreamAttachmentsSent) AS NumExcelStreamAttachmentsSent,
+        SUM(NumPowerPointStreamAttachmentsSent) AS NumPowerPointStreamAttachmentsSent,
+        SUM(NumPDFStreamAttachmentsSent) AS NumPDFStreamAttachmentsSent,
+        SUM(NumOneNoteStreamAttachmentsSent) AS NumOneNoteStreamAttachmentsSent,
+        SUM(NumWordReferenceAttachmentsSent) AS NumWordReferenceAttachmentsSent,
+        SUM(NumExcelReferenceAttachmentsSent) AS NumExcelReferenceAttachmentsSent,
+        SUM(NumPowerPointReferenceAttachmentsSent) AS NumPowerPointReferenceAttachmentsSent,
+        SUM(NumPDFReferenceAttachmentsSent) AS NumPDFReferenceAttachmentsSent,
+        SUM(NumOneNoteReferenceAttachmentsSent) AS NumOneNoteReferenceAttachmentsSent,
+        SUM(NumInboundEmailsReceived) AS NumInboundEmailsReceived,
+        SUM(NumInboundInboxEmailsReceived) AS NumInboundInboxEmailsReceived,
+        SUM(NumInboundEmailsRead) AS NumInboundEmailsRead,
+        SUM(NumEmailsInWhichOpenedAttachments) AS NumEmailsInWhichOpenedAttachments,
+        SUM(NumWordStreamAttachmentOpened) AS NumWordStreamAttachmentOpened,
+        SUM(NumExcelStreamAttachmentOpened) AS NumExcelStreamAttachmentOpened,
+        SUM(NumPowerPointStreamAttachmentOpened) AS NumPowerPointStreamAttachmentOpened,
+        SUM(NumPDFStreamAttachmentOpened) AS NumPDFStreamAttachmentOpened,
+        SUM(NumOneNoteStreamAttachmentOpened) AS NumOneNoteStreamAttachmentOpened,
+        SUM(NumWordReferenceAttachmentOpened) AS NumWordReferenceAttachmentOpened,
+        SUM(NumExcelReferenceAttachmentOpened) AS NumExcelReferenceAttachmentOpened,
+        SUM(NumPowerPointReferenceAttachmentOpened) AS NumPowerPointReferenceAttachmentOpened,
+        SUM(NumPDFReferenceAttachmentOpened) AS NumPDFReferenceAttachmentOpened,
+        SUM(NumOneNoteReferenceAttachmentOpened) AS NumOneNoteReferenceAttachmentOpened
+    FROM exo_usage
+         INNER JOIN SMC_tenants
+         ON exo_usage.OMSTenantId == SMC_tenants.OMSTenantId
+    GROUP BY FinalTPID; 
+
+
+OUTPUT exo_usage
+TO SSTREAM @output2
+CLUSTERED BY FinalTPID;
+
+

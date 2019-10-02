@@ -1,0 +1,85 @@
+﻿<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>206de4a9-ef01-42c9-b8d5-618e921f0134</ProjectGuid>
+    <OutputType>File</OutputType>
+    <AssemblyName>Algebra.xml</AssemblyName>
+    <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
+    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <Name>M365NCA</Name>
+    <RootNamespace>M365NCA</RootNamespace>
+    <VCSelectionInProjectProperty>&lt;Use Current VC in VC Selector&gt;</VCSelectionInProjectProperty>
+    <CosmosRuntimeVersion>Default</CosmosRuntimeVersion>
+    <ScopePath>%24(SCRIPT_DIR);%24(CLUSTER_ROOT);%24(SCOPE_DIR);%24(PROJECT_DIR)</ScopePath>
+    <InputStreamSearchPath>%24(PROJECT_DIR);%24(SCRIPT_DIR);%24(CLUSTER_ROOT)</InputStreamSearchPath>
+    <VertexDebugSolution>false</VertexDebugSolution>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\Debug\</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugSymbols>false</DebugSymbols>
+    <OutputPath>bin\Release\</OutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Script Include="AggregateData.script" />
+    <Script Include="AggregateUsage.script" />
+    <Script Include="Collaboration.script">
+      <RemoveUselessParameters>False</RemoveUselessParameters>
+      <ScopeOldParameters>PROCESS_DATE_START=(\"2018-07-31\")</ScopeOldParameters>
+    </Script>
+    <Script Include="EMSUsage.script">
+      <RemoveUselessParameters>False</RemoveUselessParameters>
+      <ScopeOldParameters>START_DATE=(\"2018-10-01\"),END_DATE=(\"2018-10-31\")</ScopeOldParameters>
+      <ScopeClusterParameters>START_DATE=(\"2019-06-01\"),END_DATE=(\"2019-06-30\")</ScopeClusterParameters>
+    </Script>
+    <Script Include="O365Usage.script">
+      <RemoveUselessParameters>False</RemoveUselessParameters>
+      <ScopeOldParameters>PROCESS_DATE_START=(\"2018-07-31\")</ScopeOldParameters>
+      <ScopeClusterParameters>PROCESS_DATE_START=(\"2019-06-30\")</ScopeClusterParameters>
+    </Script>
+    <Script Include="ProPlus.script" />
+    <Script Include="Sample.script" />
+    <Script Include="SubscriptionProfile.script" />
+    <Script Include="TenantProfile.script">
+      <RemoveUselessParameters>False</RemoveUselessParameters>
+      <ScopeOldParameters>PROCESS_DATE_START=(\"2019-06-30\")</ScopeOldParameters>
+      <ScopeClusterParameters>PROCESS_DATE_START=(\"2019-06-30\")</ScopeClusterParameters>
+    </Script>
+    <Script Include="TPIDTenantMapping.script" />
+    <ScriptCode Include="AggregateData.script.cs">
+      <DependentUpon>AggregateData.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="AggregateUsage.script.cs">
+      <DependentUpon>AggregateUsage.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="Collaboration.script.cs">
+      <DependentUpon>Collaboration.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="EMSUsage.script.cs">
+      <DependentUpon>EMSUsage.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="O365Usage.script.cs">
+      <DependentUpon>O365Usage.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="ProPlus.script.cs">
+      <DependentUpon>ProPlus.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="Sample.script.cs">
+      <DependentUpon>Sample.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="SubscriptionProfile.script.cs">
+      <DependentUpon>SubscriptionProfile.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="TenantProfile.script.cs">
+      <DependentUpon>TenantProfile.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="TPIDTenantMapping.script.cs">
+      <DependentUpon>TPIDTenantMapping.script</DependentUpon>
+    </ScriptCode>
+  </ItemGroup>
+  <Import Project="$(AppData)\Microsoft\ScopeStudio\MsBuild\1.0\Scope.targets" />
+</Project>

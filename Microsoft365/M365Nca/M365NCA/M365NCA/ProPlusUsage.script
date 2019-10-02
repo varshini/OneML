@@ -1,0 +1,205 @@
+﻿//Script GUID:0014f39b-fa86-47b9-b314-ed0cc166ff14
+//Used for tracking history
+
+SMC_tenants =
+    SSTREAM @"/local/Projects/M365NCA/FY20SMCTenants.ss";
+
+data1 = SSTREAM @"/shares/IDEAs.Prod/Partner/PreRelease/dev/tenantactiveusagecounts/user/rl28/officeclient/2018/01/OfficeClientRL28ActiveUserCount_2018_01_31.ss";
+data1 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp,
+           DesktopPerpetual,
+           DesktopSubscription
+    FROM data1;data2 = SSTREAM @"/shares/IDEAs.Prod/Partner/PreRelease/dev/tenantactiveusagecounts/user/rl28/officeclient/2018/02/OfficeClientRL28ActiveUserCount_2018_02_28.ss";
+data2 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp,
+           DesktopPerpetual,
+           DesktopSubscription
+    FROM data2;data3 = SSTREAM @"/shares/IDEAs.Prod/Partner/PreRelease/dev/tenantactiveusagecounts/user/rl28/officeclient/2018/03/OfficeClientRL28ActiveUserCount_2018_03_31.ss";
+data3 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp,
+           DesktopPerpetual,
+           DesktopSubscription
+    FROM data3;data4 = SSTREAM @"/shares/IDEAs.Prod/Partner/PreRelease/dev/tenantactiveusagecounts/user/rl28/officeclient/2018/04/OfficeClientRL28ActiveUserCount_2018_04_30.ss";
+data4 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp,
+           DesktopPerpetual,
+           DesktopSubscription
+    FROM data4;data5 = SSTREAM @"/shares/IDEAs.Prod/Partner/PreRelease/dev/tenantactiveusagecounts/user/rl28/officeclient/2018/05/OfficeClientRL28ActiveUserCount_2018_05_31.ss";
+data5 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp,
+           DesktopPerpetual,
+           DesktopSubscription
+    FROM data5;data6 = SSTREAM @"/shares/IDEAs.Prod/Partner/PreRelease/dev/tenantactiveusagecounts/user/rl28/officeclient/2018/06/OfficeClientRL28ActiveUserCount_2018_06_30.ss";
+data6 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp,
+           DesktopPerpetual,
+           DesktopSubscription
+    FROM data6;data7 = SSTREAM @"/shares/IDEAs.Prod/Partner/PreRelease/dev/tenantactiveusagecounts/user/rl28/officeclient/2018/07/OfficeClientRL28ActiveUserCount_2018_07_31.ss";
+data7 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp,
+           DesktopPerpetual,
+           DesktopSubscription
+    FROM data7;data8 = SSTREAM @"/shares/IDEAs.Prod/Partner/PreRelease/dev/tenantactiveusagecounts/user/rl28/officeclient/2018/08/OfficeClientRL28ActiveUserCount_2018_08_31.ss";
+data8 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp,
+           DesktopPerpetual,
+           DesktopSubscription
+    FROM data8;data9 = SSTREAM @"/shares/IDEAs.Prod/Partner/PreRelease/dev/tenantactiveusagecounts/user/rl28/officeclient/2018/09/OfficeClientRL28ActiveUserCount_2018_09_30.ss";
+data9 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp,
+           DesktopPerpetual,
+           DesktopSubscription
+    FROM data9;data10 = SSTREAM @"/shares/IDEAs.Prod/Partner/PreRelease/dev/tenantactiveusagecounts/user/rl28/officeclient/2018/10/OfficeClientRL28ActiveUserCount_2018_10_31.ss";
+data10 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp,
+           DesktopPerpetual,
+           DesktopSubscription
+    FROM data10;data11 = SSTREAM @"/shares/IDEAs.Prod/Partner/PreRelease/dev/tenantactiveusagecounts/user/rl28/officeclient/2018/11/OfficeClientRL28ActiveUserCount_2018_11_30.ss";
+data11 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp,
+           DesktopPerpetual,
+           DesktopSubscription
+    FROM data11;data12 = SSTREAM @"/shares/IDEAs.Prod/Partner/PreRelease/dev/tenantactiveusagecounts/user/rl28/officeclient/2018/12/OfficeClientRL28ActiveUserCount_2018_12_31.ss";
+data12 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp,
+           DesktopPerpetual,
+           DesktopSubscription
+    FROM data12;data13 = SSTREAM @"/shares/IDEAs.Prod/Partner/PreRelease/dev/tenantactiveusagecounts/user/rl28/officeclient/2019/01/OfficeClientRL28ActiveUserCount_2019_01_31.ss";
+data13 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp,
+           DesktopPerpetual,
+           DesktopSubscription
+    FROM data13;data14 = SSTREAM @"/shares/IDEAs.Prod/Partner/PreRelease/dev/tenantactiveusagecounts/user/rl28/officeclient/2019/02/OfficeClientRL28ActiveUserCount_2019_02_28.ss";
+data14 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp,
+           DesktopPerpetual,
+           DesktopSubscription
+    FROM data14;data15 = SSTREAM @"/shares/IDEAs.Prod/Partner/PreRelease/dev/tenantactiveusagecounts/user/rl28/officeclient/2019/03/OfficeClientRL28ActiveUserCount_2019_03_31.ss";
+data15 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp,
+           DesktopPerpetual,
+           DesktopSubscription
+    FROM data15;data16 = SSTREAM @"/shares/IDEAs.Prod/Partner/PreRelease/dev/tenantactiveusagecounts/user/rl28/officeclient/2019/04/OfficeClientRL28ActiveUserCount_2019_04_30.ss";
+data16 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp,
+           DesktopPerpetual,
+           DesktopSubscription
+    FROM data16;data17 = SSTREAM @"/shares/IDEAs.Prod/Partner/PreRelease/dev/tenantactiveusagecounts/user/rl28/officeclient/2019/05/OfficeClientRL28ActiveUserCount_2019_05_31.ss";
+data17 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp,
+           DesktopPerpetual,
+           DesktopSubscription
+    FROM data17;data18 = SSTREAM @"/shares/IDEAs.Prod/Partner/PreRelease/dev/tenantactiveusagecounts/user/rl28/officeclient/2019/06/OfficeClientRL28ActiveUserCount_2019_06_30.ss";
+data18 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp,
+           DesktopPerpetual,
+           DesktopSubscription
+    FROM data18;
+
+data =
+    SELECT *
+    FROM data1
+    UNION ALL
+    SELECT *
+    FROM data2
+UNION ALL
+    SELECT *
+    FROM data3
+UNION ALL
+    SELECT *
+    FROM data4
+UNION ALL
+    SELECT *
+    FROM data5
+UNION ALL
+    SELECT *
+    FROM data6
+UNION ALL
+    SELECT *
+    FROM data7
+UNION ALL
+    SELECT *
+    FROM data8
+UNION ALL
+    SELECT *
+    FROM data9
+UNION ALL
+    SELECT *
+    FROM data10
+UNION ALL
+    SELECT *
+    FROM data11
+UNION ALL
+    SELECT *
+    FROM data12
+UNION ALL
+    SELECT *
+    FROM data13
+UNION ALL
+    SELECT *
+    FROM data14
+UNION ALL
+    SELECT *
+    FROM data15
+UNION ALL
+    SELECT *
+    FROM data16
+UNION ALL
+    SELECT *
+    FROM data17
+UNION ALL
+    SELECT *
+    FROM data18;
+
+
+data = 
+    SELECT data.*, SMC_tenants.FinalTPID AS FinalTPID 
+    FROM data INNER JOIN SMC_tenants 
+    ON data.OmsTenantId == SMC_tenants.OMSTenantId;
+
+data = SELECT 
+           FinalTPID,  
+           Date, 
+           SUM(AllUp) AS AllUp,
+           SUM(DesktopPerpetual) AS DesktopPerpetual, 
+           SUM(DesktopSubscription) AS DesktopSubscription
+           FROM data
+           GROUP BY FinalTPID, Date;
+
+OUTPUT data TO SSTREAM @"/local/Projects/M365NCA/O365MAU/ProPlusMAUAggregated.ss";
