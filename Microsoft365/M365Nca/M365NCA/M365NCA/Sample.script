@@ -1,304 +1,43 @@
-﻿//Script GUID:c509bf0a-cc79-4db0-a71c-f0487da9980d
-//Used for tracking history
+﻿
+june19mau = SSTREAM @"/shares/IDEAs.Prod/Partner/PreRelease/dev/tenantactiveusagecounts/user/rl28/eslt/2019/06/EsltRL28ActiveUserCount_2019_06_30.ss";
+june19pau =
+    VIEW @"/shares/IDEAs.Prod/Release/Profiles/IDEAsTenantProfile/v1/IDEAsTenantProfile.view"
+    PARAMS
+    (
+        HistoryDate = DateTime.Parse("07/01/2019")
+    );
 
-//Script GUID:0a1c7956-e3b3-48ae-8861-ed383647adee
-//Used for tracking history
+sep19mau = SSTREAM @"/shares/IDEAs.Prod/Partner/PreRelease/dev/tenantactiveusagecounts/user/rl28/eslt/2019/09/EsltRL28ActiveUserCount_2019_09_30.ss";
+sep19pau =
+    VIEW @"/shares/IDEAs.Prod/Release/Profiles/IDEAsTenantProfile/v1/IDEAsTenantProfile.view"
+    PARAMS
+    (
+        HistoryDate = DateTime.Parse("10/01/2019")
+    );
 
+jun19data =
+    SELECT june19mau.OmsTenantId,
+           june19mau.AllUp,
+           june19pau.PaidAvailableUnits
+    FROM june19mau
+         INNER JOIN
+             june19pau
+         ON june19mau.OmsTenantId == june19pau.OMSTenantId;
 
-// ====================================================================================================================
-// <copyright company="Microsoft Inc">
-//   (c) 2018 Microsoft Inc.
-// </copyright>
-// <summary>
-//     WHERE = cosmos14\ACE.proc; runtime ~ 
-//       WHY = Create TPID mapping for FastTrack tenants
-// </summary>
-// <history>
-//    [alkok] 2019-09-23: initial
-// </history>
-// ====================================================================================================================
+sep19data =
+    SELECT sep19mau.OmsTenantId,
+           sep19mau.AllUp,
+           sep19pau.PaidAvailableUnits
+    FROM sep19mau
+         INNER JOIN
+             sep19pau
+         ON sep19mau.OmsTenantId == sep19pau.OMSTenantId;
 
+OUTPUT jun19data
+TO SSTREAM @"/my/June19MAU.ss";
 
-// Tools for GDPR tagging
-//MODULE "/shares/PXSCosmos14.Prod/PXS.DeleteSignal.PROD/PrivacyAnnotation/PrivacyAnnotation.module";
-//USING Privacy;
-
-//Analytical resources
-//REFERENCE @"/shares/IDEAs.Prod/SharedResources/Binaries/Relevance.ScopeLib.dll";
-//USING Microsoft.SegmentRelevance.ScopeLib;
-
-// ====================================================================================================================
-
-//#DECLARE outputRoot string = @"/local/Projects/ROIonUsage/"; // if running on ACE.proc "/local/Projects/"; if running on office.adhoc "/shares/ACE.proc/local/Projects/"
-#DECLARE outputRoot string = @"/shares/ACE.proc/local/Projects/DealScoring/"; // if running on ACE.proc "/local/Projects/"; if running on office.adhoc "/shares/ACE.proc/local/Projects/"
-
-//#DECLARE snapDateTime DateTime = DateTime.Parse( "01/01/2019" );
-
-//Input
-tenantCohort = SSTREAM @"/users/gabya/Discounting/2019-07_distCohort.ss";
-
-
-TenantProfile_201707 = VIEW @"/shares/IDEAs.Prod/Release/Profiles/IDEAsTenantProfile/v1/IDEAsTenantProfile.view" PARAMS( HistoryDate = DateTime.Parse( "07/31/2017" ) );
-
-TenantProfile_201708 = VIEW @"/shares/IDEAs.Prod/Release/Profiles/IDEAsTenantProfile/v1/IDEAsTenantProfile.view" PARAMS( HistoryDate = DateTime.Parse( "08/31/2017" ) );
-TenantProfile_201709 = VIEW @"/shares/IDEAs.Prod/Release/Profiles/IDEAsTenantProfile/v1/IDEAsTenantProfile.view" PARAMS( HistoryDate = DateTime.Parse( "09/30/2017" ) );
-TenantProfile_201710 = VIEW @"/shares/IDEAs.Prod/Release/Profiles/IDEAsTenantProfile/v1/IDEAsTenantProfile.view" PARAMS( HistoryDate = DateTime.Parse( "10/31/2017" ) );
-TenantProfile_201711 = VIEW @"/shares/IDEAs.Prod/Release/Profiles/IDEAsTenantProfile/v1/IDEAsTenantProfile.view" PARAMS( HistoryDate = DateTime.Parse( "11/30/2017" ) );
-TenantProfile_201712 = VIEW @"/shares/IDEAs.Prod/Release/Profiles/IDEAsTenantProfile/v1/IDEAsTenantProfile.view" PARAMS( HistoryDate = DateTime.Parse( "12/31/2017" ) );
-TenantProfile_201801 = VIEW @"/shares/IDEAs.Prod/Release/Profiles/IDEAsTenantProfile/v1/IDEAsTenantProfile.view" PARAMS( HistoryDate = DateTime.Parse( "01/31/2018" ) );
-TenantProfile_201802 = VIEW @"/shares/IDEAs.Prod/Release/Profiles/IDEAsTenantProfile/v1/IDEAsTenantProfile.view" PARAMS( HistoryDate = DateTime.Parse( "02/28/2018" ) );
-TenantProfile_201803 = VIEW @"/shares/IDEAs.Prod/Release/Profiles/IDEAsTenantProfile/v1/IDEAsTenantProfile.view" PARAMS( HistoryDate = DateTime.Parse( "03/31/2018" ) );
-TenantProfile_201804 = VIEW @"/shares/IDEAs.Prod/Release/Profiles/IDEAsTenantProfile/v1/IDEAsTenantProfile.view" PARAMS( HistoryDate = DateTime.Parse( "04/30/2018" ) );
-TenantProfile_201805 = VIEW @"/shares/IDEAs.Prod/Release/Profiles/IDEAsTenantProfile/v1/IDEAsTenantProfile.view" PARAMS( HistoryDate = DateTime.Parse( "05/31/2018" ) );
-TenantProfile_201806 = VIEW @"/shares/IDEAs.Prod/Release/Profiles/IDEAsTenantProfile/v1/IDEAsTenantProfile.view" PARAMS( HistoryDate = DateTime.Parse( "06/30/2018" ) );
-TenantProfile_201807 = VIEW @"/shares/IDEAs.Prod/Release/Profiles/IDEAsTenantProfile/v1/IDEAsTenantProfile.view" PARAMS( HistoryDate = DateTime.Parse( "07/31/2018" ) );
-TenantProfile_201808 = VIEW @"/shares/IDEAs.Prod/Release/Profiles/IDEAsTenantProfile/v1/IDEAsTenantProfile.view" PARAMS( HistoryDate = DateTime.Parse( "08/31/2018" ) );
-TenantProfile_201809 = VIEW @"/shares/IDEAs.Prod/Release/Profiles/IDEAsTenantProfile/v1/IDEAsTenantProfile.view" PARAMS( HistoryDate = DateTime.Parse( "09/30/2018" ) );
-TenantProfile_201810 = VIEW @"/shares/IDEAs.Prod/Release/Profiles/IDEAsTenantProfile/v1/IDEAsTenantProfile.view" PARAMS( HistoryDate = DateTime.Parse( "10/31/2018" ) );
-TenantProfile_201811 = VIEW @"/shares/IDEAs.Prod/Release/Profiles/IDEAsTenantProfile/v1/IDEAsTenantProfile.view" PARAMS( HistoryDate = DateTime.Parse( "11/30/2018" ) );
-TenantProfile_201812 = VIEW @"/shares/IDEAs.Prod/Release/Profiles/IDEAsTenantProfile/v1/IDEAsTenantProfile.view" PARAMS( HistoryDate = DateTime.Parse( "12/31/2018" ) );
-TenantProfile_201901 = VIEW @"/shares/IDEAs.Prod/Release/Profiles/IDEAsTenantProfile/v1/IDEAsTenantProfile.view" PARAMS( HistoryDate = DateTime.Parse( "01/31/2019" ) );
-TenantProfile_201902 = VIEW @"/shares/IDEAs.Prod/Release/Profiles/IDEAsTenantProfile/v1/IDEAsTenantProfile.view" PARAMS( HistoryDate = DateTime.Parse( "02/28/2019" ) );
-TenantProfile_201903 = VIEW @"/shares/IDEAs.Prod/Release/Profiles/IDEAsTenantProfile/v1/IDEAsTenantProfile.view" PARAMS( HistoryDate = DateTime.Parse( "03/31/2019" ) );
-TenantProfile_201904 = VIEW @"/shares/IDEAs.Prod/Release/Profiles/IDEAsTenantProfile/v1/IDEAsTenantProfile.view" PARAMS( HistoryDate = DateTime.Parse( "04/30/2019" ) );
-TenantProfile_201905 = VIEW @"/shares/IDEAs.Prod/Release/Profiles/IDEAsTenantProfile/v1/IDEAsTenantProfile.view" PARAMS( HistoryDate = DateTime.Parse( "05/31/2019" ) );
-TenantProfile_201906 = VIEW @"/shares/IDEAs.Prod/Release/Profiles/IDEAsTenantProfile/v1/IDEAsTenantProfile.view" PARAMS( HistoryDate = DateTime.Parse( "06/30/2019" ) );
-TenantProfile_201907 = VIEW @"/shares/IDEAs.Prod/Release/Profiles/IDEAsTenantProfile/v1/IDEAsTenantProfile.view" PARAMS( HistoryDate = DateTime.Parse( "07/31/2019" ) );
-TenantProfile_201908 = VIEW @"/shares/IDEAs.Prod/Release/Profiles/IDEAsTenantProfile/v1/IDEAsTenantProfile.view" PARAMS( HistoryDate = DateTime.Parse( "08/31/2019" ) );
-
-
-
-
-//Output
-#DECLARE TenantPAU string = string.Format( "{0}TenantProfileFeatures/TenantPAU_month.ss", @outputRoot );
-#DECLARE TpidPAU string = string.Format( "{0}TenantProfileFeatures/TpidPAU_month.ss", @outputRoot );
-
-//#DECLARE TenantProfileMAUMerge_2017_07_31 string = string.Format( "{0}MAUFeatures/TenantProfileMAUMerge_2017_07_31.ss", @outputRoot );
-//SELECT *
-//FROM ( SSTREAM @TenantProfileMAUMerge_2017_07_31 )
-
-//TenantProfileMAUMerge_2017_07_31 = SSTREAM @"/shares/ACE.proc/local/Projects/ROIonUsageMAUFeatures/TenantProfileMAUMerge_2017_07_31.ss";
-//SELECT *
-//FROM TenantProfileMAUMerge_2017_07_31
-
-
-
-TenantPAU_month =
-    SELECT OMSTenantId, 201707 AS YearMonth, DateTime.Parse( "07/01/2017" ) AS MonthStartDate,
-           PaidAvailableUnits, EXOPaidAvailableUnits, ProPlusPaidAvailableUnits, OD4BPaidAvailableUnits, 
-           ( SPOPaidAvailableUnits > OD4BPaidAvailableUnits ? SPOPaidAvailableUnits : OD4BPaidAvailableUnits ) AS PaidODSPAvailableUnits,
-           SfbPaidAvailableUnits, TeamsPaidAvailableUnits, YammerPaidAvailableUnits, AADPPaidAvailableUnits
-    FROM TenantProfile_201707
-    
-    UNION ALL
-    SELECT OMSTenantId, 201708 AS YearMonth, DateTime.Parse( "08/01/2017" ) AS MonthStartDate,
-           PaidAvailableUnits, EXOPaidAvailableUnits, ProPlusPaidAvailableUnits, OD4BPaidAvailableUnits, 
-           ( SPOPaidAvailableUnits > OD4BPaidAvailableUnits ? SPOPaidAvailableUnits : OD4BPaidAvailableUnits ) AS PaidODSPAvailableUnits,
-           SfbPaidAvailableUnits, TeamsPaidAvailableUnits, YammerPaidAvailableUnits, AADPPaidAvailableUnits
-    FROM TenantProfile_201708
-    
-    UNION ALL
-    SELECT OMSTenantId, 201709 AS YearMonth, DateTime.Parse( "09/01/2017" ) AS MonthStartDate,
-           PaidAvailableUnits, EXOPaidAvailableUnits, ProPlusPaidAvailableUnits, OD4BPaidAvailableUnits, 
-           ( SPOPaidAvailableUnits > OD4BPaidAvailableUnits ? SPOPaidAvailableUnits : OD4BPaidAvailableUnits ) AS PaidODSPAvailableUnits,
-           SfbPaidAvailableUnits, TeamsPaidAvailableUnits, YammerPaidAvailableUnits, AADPPaidAvailableUnits
-    FROM TenantProfile_201709
-    
-    UNION ALL
-    SELECT OMSTenantId, 201710 AS YearMonth, DateTime.Parse( "10/01/2017" ) AS MonthStartDate,
-           PaidAvailableUnits, EXOPaidAvailableUnits, ProPlusPaidAvailableUnits, OD4BPaidAvailableUnits, 
-           ( SPOPaidAvailableUnits > OD4BPaidAvailableUnits ? SPOPaidAvailableUnits : OD4BPaidAvailableUnits ) AS PaidODSPAvailableUnits,
-           SfbPaidAvailableUnits, TeamsPaidAvailableUnits, YammerPaidAvailableUnits, AADPPaidAvailableUnits
-    FROM TenantProfile_201710
-    
-    UNION ALL
-    SELECT OMSTenantId, 201711 AS YearMonth, DateTime.Parse( "11/01/2017" ) AS MonthStartDate,
-           PaidAvailableUnits, EXOPaidAvailableUnits, ProPlusPaidAvailableUnits, OD4BPaidAvailableUnits, 
-           ( SPOPaidAvailableUnits > OD4BPaidAvailableUnits ? SPOPaidAvailableUnits : OD4BPaidAvailableUnits ) AS PaidODSPAvailableUnits,
-           SfbPaidAvailableUnits, TeamsPaidAvailableUnits, YammerPaidAvailableUnits, AADPPaidAvailableUnits
-    FROM TenantProfile_201711
-    
-    UNION ALL
-    SELECT OMSTenantId, 201712 AS YearMonth, DateTime.Parse( "12/01/2017" ) AS MonthStartDate,
-           PaidAvailableUnits, EXOPaidAvailableUnits, ProPlusPaidAvailableUnits, OD4BPaidAvailableUnits, 
-           ( SPOPaidAvailableUnits > OD4BPaidAvailableUnits ? SPOPaidAvailableUnits : OD4BPaidAvailableUnits ) AS PaidODSPAvailableUnits,
-           SfbPaidAvailableUnits, TeamsPaidAvailableUnits, YammerPaidAvailableUnits, AADPPaidAvailableUnits
-    FROM TenantProfile_201712
-    
-    UNION ALL
-    SELECT OMSTenantId, 201801 AS YearMonth, DateTime.Parse( "01/01/2018" ) AS MonthStartDate,
-           PaidAvailableUnits, EXOPaidAvailableUnits, ProPlusPaidAvailableUnits, OD4BPaidAvailableUnits, 
-           ( SPOPaidAvailableUnits > OD4BPaidAvailableUnits ? SPOPaidAvailableUnits : OD4BPaidAvailableUnits ) AS PaidODSPAvailableUnits,
-           SfbPaidAvailableUnits, TeamsPaidAvailableUnits, YammerPaidAvailableUnits, AADPPaidAvailableUnits
-    FROM TenantProfile_201801
-    
-    UNION ALL
-    SELECT OMSTenantId, 201802 AS YearMonth, DateTime.Parse( "02/01/2018" ) AS MonthStartDate,
-           PaidAvailableUnits, EXOPaidAvailableUnits, ProPlusPaidAvailableUnits, OD4BPaidAvailableUnits, 
-           ( SPOPaidAvailableUnits > OD4BPaidAvailableUnits ? SPOPaidAvailableUnits : OD4BPaidAvailableUnits ) AS PaidODSPAvailableUnits,
-           SfbPaidAvailableUnits, TeamsPaidAvailableUnits, YammerPaidAvailableUnits, AADPPaidAvailableUnits
-    FROM TenantProfile_201802
-    
-    UNION ALL
-    SELECT OMSTenantId, 201803 AS YearMonth, DateTime.Parse( "03/01/2018" ) AS MonthStartDate,
-           PaidAvailableUnits, EXOPaidAvailableUnits, ProPlusPaidAvailableUnits, OD4BPaidAvailableUnits, 
-           ( SPOPaidAvailableUnits > OD4BPaidAvailableUnits ? SPOPaidAvailableUnits : OD4BPaidAvailableUnits ) AS PaidODSPAvailableUnits,
-           SfbPaidAvailableUnits, TeamsPaidAvailableUnits, YammerPaidAvailableUnits, AADPPaidAvailableUnits
-    FROM TenantProfile_201803
-    
-    UNION ALL
-    SELECT OMSTenantId, 201804 AS YearMonth, DateTime.Parse( "04/01/2018" ) AS MonthStartDate,
-           PaidAvailableUnits, EXOPaidAvailableUnits, ProPlusPaidAvailableUnits, OD4BPaidAvailableUnits, 
-           ( SPOPaidAvailableUnits > OD4BPaidAvailableUnits ? SPOPaidAvailableUnits : OD4BPaidAvailableUnits ) AS PaidODSPAvailableUnits,
-           SfbPaidAvailableUnits, TeamsPaidAvailableUnits, YammerPaidAvailableUnits, AADPPaidAvailableUnits
-    FROM TenantProfile_201804
-    
-    UNION ALL
-    SELECT OMSTenantId, 201805 AS YearMonth, DateTime.Parse( "05/01/2018" ) AS MonthStartDate,
-           PaidAvailableUnits, EXOPaidAvailableUnits, ProPlusPaidAvailableUnits, OD4BPaidAvailableUnits, 
-           ( SPOPaidAvailableUnits > OD4BPaidAvailableUnits ? SPOPaidAvailableUnits : OD4BPaidAvailableUnits ) AS PaidODSPAvailableUnits,
-           SfbPaidAvailableUnits, TeamsPaidAvailableUnits, YammerPaidAvailableUnits, AADPPaidAvailableUnits
-    FROM TenantProfile_201805
-    
-    UNION ALL
-    SELECT OMSTenantId, 201806 AS YearMonth, DateTime.Parse( "06/01/2018" ) AS MonthStartDate,
-           PaidAvailableUnits, EXOPaidAvailableUnits, ProPlusPaidAvailableUnits, OD4BPaidAvailableUnits, 
-           ( SPOPaidAvailableUnits > OD4BPaidAvailableUnits ? SPOPaidAvailableUnits : OD4BPaidAvailableUnits ) AS PaidODSPAvailableUnits,
-           SfbPaidAvailableUnits, TeamsPaidAvailableUnits, YammerPaidAvailableUnits, AADPPaidAvailableUnits
-    FROM TenantProfile_201806
-    
-    UNION ALL
-    SELECT OMSTenantId, 201807 AS YearMonth, DateTime.Parse( "07/01/2018" ) AS MonthStartDate,
-           PaidAvailableUnits, EXOPaidAvailableUnits, ProPlusPaidAvailableUnits, OD4BPaidAvailableUnits, 
-           ( SPOPaidAvailableUnits > OD4BPaidAvailableUnits ? SPOPaidAvailableUnits : OD4BPaidAvailableUnits ) AS PaidODSPAvailableUnits,
-           SfbPaidAvailableUnits, TeamsPaidAvailableUnits, YammerPaidAvailableUnits, AADPPaidAvailableUnits
-    FROM TenantProfile_201807
-    
-    UNION ALL
-    SELECT OMSTenantId, 201808 AS YearMonth, DateTime.Parse( "08/01/2018" ) AS MonthStartDate,
-           PaidAvailableUnits, EXOPaidAvailableUnits, ProPlusPaidAvailableUnits, OD4BPaidAvailableUnits, 
-           ( SPOPaidAvailableUnits > OD4BPaidAvailableUnits ? SPOPaidAvailableUnits : OD4BPaidAvailableUnits ) AS PaidODSPAvailableUnits,
-           SfbPaidAvailableUnits, TeamsPaidAvailableUnits, YammerPaidAvailableUnits, AADPPaidAvailableUnits
-    FROM TenantProfile_201808
-    
-    UNION ALL
-    SELECT OMSTenantId, 201809 AS YearMonth, DateTime.Parse( "09/01/2018" ) AS MonthStartDate,
-           PaidAvailableUnits, EXOPaidAvailableUnits, ProPlusPaidAvailableUnits, OD4BPaidAvailableUnits, 
-           ( SPOPaidAvailableUnits > OD4BPaidAvailableUnits ? SPOPaidAvailableUnits : OD4BPaidAvailableUnits ) AS PaidODSPAvailableUnits,
-           SfbPaidAvailableUnits, TeamsPaidAvailableUnits, YammerPaidAvailableUnits, AADPPaidAvailableUnits
-    FROM TenantProfile_201809
-    
-    UNION ALL
-    SELECT OMSTenantId, 201810 AS YearMonth, DateTime.Parse( "10/01/2018" ) AS MonthStartDate,
-           PaidAvailableUnits, EXOPaidAvailableUnits, ProPlusPaidAvailableUnits, OD4BPaidAvailableUnits, 
-           ( SPOPaidAvailableUnits > OD4BPaidAvailableUnits ? SPOPaidAvailableUnits : OD4BPaidAvailableUnits ) AS PaidODSPAvailableUnits,
-           SfbPaidAvailableUnits, TeamsPaidAvailableUnits, YammerPaidAvailableUnits, AADPPaidAvailableUnits
-    FROM TenantProfile_201810
-    
-    UNION ALL
-    SELECT OMSTenantId, 201811 AS YearMonth, DateTime.Parse( "11/01/2018" ) AS MonthStartDate,
-           PaidAvailableUnits, EXOPaidAvailableUnits, ProPlusPaidAvailableUnits, OD4BPaidAvailableUnits, 
-           ( SPOPaidAvailableUnits > OD4BPaidAvailableUnits ? SPOPaidAvailableUnits : OD4BPaidAvailableUnits ) AS PaidODSPAvailableUnits,
-           SfbPaidAvailableUnits, TeamsPaidAvailableUnits, YammerPaidAvailableUnits, AADPPaidAvailableUnits
-    FROM TenantProfile_201811
-    
-    UNION ALL
-    SELECT OMSTenantId, 201812 AS YearMonth, DateTime.Parse( "12/01/2018" ) AS MonthStartDate,
-           PaidAvailableUnits, EXOPaidAvailableUnits, ProPlusPaidAvailableUnits, OD4BPaidAvailableUnits, 
-           ( SPOPaidAvailableUnits > OD4BPaidAvailableUnits ? SPOPaidAvailableUnits : OD4BPaidAvailableUnits ) AS PaidODSPAvailableUnits,
-           SfbPaidAvailableUnits, TeamsPaidAvailableUnits, YammerPaidAvailableUnits, AADPPaidAvailableUnits
-    FROM TenantProfile_201812
-    
-    UNION ALL
-    SELECT OMSTenantId, 201901 AS YearMonth, DateTime.Parse( "01/01/2019" ) AS MonthStartDate,
-           PaidAvailableUnits, EXOPaidAvailableUnits, ProPlusPaidAvailableUnits, OD4BPaidAvailableUnits, 
-           ( SPOPaidAvailableUnits > OD4BPaidAvailableUnits ? SPOPaidAvailableUnits : OD4BPaidAvailableUnits ) AS PaidODSPAvailableUnits,
-           SfbPaidAvailableUnits, TeamsPaidAvailableUnits, YammerPaidAvailableUnits, AADPPaidAvailableUnits
-    FROM TenantProfile_201901
-    
-    UNION ALL
-    SELECT OMSTenantId, 201902 AS YearMonth, DateTime.Parse( "02/01/2019" ) AS MonthStartDate,
-           PaidAvailableUnits, EXOPaidAvailableUnits, ProPlusPaidAvailableUnits, OD4BPaidAvailableUnits, 
-           ( SPOPaidAvailableUnits > OD4BPaidAvailableUnits ? SPOPaidAvailableUnits : OD4BPaidAvailableUnits ) AS PaidODSPAvailableUnits,
-           SfbPaidAvailableUnits, TeamsPaidAvailableUnits, YammerPaidAvailableUnits, AADPPaidAvailableUnits
-    FROM TenantProfile_201902
-    
-    UNION ALL
-    SELECT OMSTenantId, 201903 AS YearMonth, DateTime.Parse( "03/01/2019" ) AS MonthStartDate,
-           PaidAvailableUnits, EXOPaidAvailableUnits, ProPlusPaidAvailableUnits, OD4BPaidAvailableUnits, 
-           ( SPOPaidAvailableUnits > OD4BPaidAvailableUnits ? SPOPaidAvailableUnits : OD4BPaidAvailableUnits ) AS PaidODSPAvailableUnits,
-           SfbPaidAvailableUnits, TeamsPaidAvailableUnits, YammerPaidAvailableUnits, AADPPaidAvailableUnits
-    FROM TenantProfile_201903
-    
-    UNION ALL
-    SELECT OMSTenantId, 201904 AS YearMonth, DateTime.Parse( "04/01/2019" ) AS MonthStartDate,
-           PaidAvailableUnits, EXOPaidAvailableUnits, ProPlusPaidAvailableUnits, OD4BPaidAvailableUnits, 
-           ( SPOPaidAvailableUnits > OD4BPaidAvailableUnits ? SPOPaidAvailableUnits : OD4BPaidAvailableUnits ) AS PaidODSPAvailableUnits,
-           SfbPaidAvailableUnits, TeamsPaidAvailableUnits, YammerPaidAvailableUnits, AADPPaidAvailableUnits
-    FROM TenantProfile_201904
-    
-    UNION ALL
-    SELECT OMSTenantId, 201905 AS YearMonth, DateTime.Parse( "05/01/2019" ) AS MonthStartDate,
-           PaidAvailableUnits, EXOPaidAvailableUnits, ProPlusPaidAvailableUnits, OD4BPaidAvailableUnits, 
-           ( SPOPaidAvailableUnits > OD4BPaidAvailableUnits ? SPOPaidAvailableUnits : OD4BPaidAvailableUnits ) AS PaidODSPAvailableUnits,
-           SfbPaidAvailableUnits, TeamsPaidAvailableUnits, YammerPaidAvailableUnits, AADPPaidAvailableUnits
-    FROM TenantProfile_201905
-    
-    UNION ALL
-    SELECT OMSTenantId, 201906 AS YearMonth, DateTime.Parse( "06/01/2019" ) AS MonthStartDate,
-           PaidAvailableUnits, EXOPaidAvailableUnits, ProPlusPaidAvailableUnits, OD4BPaidAvailableUnits, 
-           ( SPOPaidAvailableUnits > OD4BPaidAvailableUnits ? SPOPaidAvailableUnits : OD4BPaidAvailableUnits ) AS PaidODSPAvailableUnits,
-           SfbPaidAvailableUnits, TeamsPaidAvailableUnits, YammerPaidAvailableUnits, AADPPaidAvailableUnits
-    FROM TenantProfile_201906
-    
-    UNION ALL
-    SELECT OMSTenantId, 201907 AS YearMonth, DateTime.Parse( "07/01/2019" ) AS MonthStartDate,
-           PaidAvailableUnits, EXOPaidAvailableUnits, ProPlusPaidAvailableUnits, OD4BPaidAvailableUnits, 
-           ( SPOPaidAvailableUnits > OD4BPaidAvailableUnits ? SPOPaidAvailableUnits : OD4BPaidAvailableUnits ) AS PaidODSPAvailableUnits,
-           SfbPaidAvailableUnits, TeamsPaidAvailableUnits, YammerPaidAvailableUnits, AADPPaidAvailableUnits
-    FROM TenantProfile_201907
-    
-    UNION ALL
-    SELECT OMSTenantId, 201908 AS YearMonth, DateTime.Parse( "08/01/2019" ) AS MonthStartDate,
-           PaidAvailableUnits, EXOPaidAvailableUnits, ProPlusPaidAvailableUnits, OD4BPaidAvailableUnits, 
-           ( SPOPaidAvailableUnits > OD4BPaidAvailableUnits ? SPOPaidAvailableUnits : OD4BPaidAvailableUnits ) AS PaidODSPAvailableUnits,
-           SfbPaidAvailableUnits, TeamsPaidAvailableUnits, YammerPaidAvailableUnits, AADPPaidAvailableUnits
-    FROM TenantProfile_201908
-    
-;
-
-OUTPUT TenantPAU_month
-    TO SSTREAM @TenantPAU
-    CLUSTERED BY OMSTenantId
-    SORTED BY OMSTenantId
-    WITH STREAMEXPIRY @"365";
-
-
-
-TpidPAU_month =
-    SELECT a.MSTPID AS Tpid, YearMonth, MonthStartDate,
-           SUM( PaidAvailableUnits ) AS PaidAvailableUnits,
-           SUM( EXOPaidAvailableUnits ) AS EXOPaidAvailableUnits,
-           SUM( ProPlusPaidAvailableUnits ) AS ProPlusPaidAvailableUnits,
-           SUM( OD4BPaidAvailableUnits ) AS OD4BPaidAvailableUnits,
-           SUM( PaidODSPAvailableUnits ) AS PaidODSPAvailableUnits,
-           SUM( SfbPaidAvailableUnits ) AS SfbPaidAvailableUnits,
-           SUM( TeamsPaidAvailableUnits ) AS TeamsPaidAvailableUnits,
-           SUM( YammerPaidAvailableUnits ) AS YammerPaidAvailableUnits,
-           SUM( AADPPaidAvailableUnits ) AS AADPPaidAvailableUnits
-    FROM tenantCohort AS a
-    INNER JOIN TenantPAU_month AS b
-    ON a.OMSTenantId == b.OMSTenantId
-    GROUP BY Tpid, YearMonth, MonthStartDate
-;
-
-
-OUTPUT TpidPAU_month
-    TO SSTREAM @TpidPAU
-    CLUSTERED BY Tpid
-    SORTED BY Tpid
-    WITH STREAMEXPIRY @"365";
-
+OUTPUT sep19data
+TO SSTREAM @"/my/Sep19MAU.ss";
 
 
 

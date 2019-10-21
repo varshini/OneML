@@ -30,6 +30,7 @@
     <Script Include="Collaboration.script">
       <RemoveUselessParameters>False</RemoveUselessParameters>
       <ScopeOldParameters>PROCESS_DATE_START=(\"2018-07-31\")</ScopeOldParameters>
+      <ScopeClusterParameters>PROCESS_DATE_START=(\"2019-06-30\")</ScopeClusterParameters>
     </Script>
     <Script Include="EMSUsage.script">
       <RemoveUselessParameters>False</RemoveUselessParameters>

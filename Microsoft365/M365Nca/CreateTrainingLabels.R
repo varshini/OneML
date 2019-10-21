@@ -77,3 +77,17 @@ labels_only <- labels %>% select(TPID, CustomerAdd, ym)
 
 write.csv(labels_only, "C:\\Users\\varamase\\Documents\\DataStreams\\M365NCA\\Data\\M365Labels.csv", row.names = FALSE)
 write.csv(labels, "C:\\Users\\varamase\\Documents\\DataStreams\\M365NCA\\Data\\M365LabelsExpanded.csv", row.names = FALSE)
+
+
+# convert two qaurter labels into 1 #
+labels <- read.csv("C:\\Users\\varamase\\Documents\\DataStreams\\M365NCA\\Data\\M365Labels.csv")
+ca_pos <- filter(labels, CustomerAdd == 1) %>% dplyr::select(TPID, CustomerAdd)
+ca_neg <- filter(labels, CustomerAdd == 0) %>% dplyr::select(TPID)
+ca_neg <- data.frame(unique(ca_neg$TPID))
+colnames(ca_neg)[1] <- "TPID"
+ca_neg$CustomerAdd <- 0
+labels <- rbind(ca_pos, ca_neg)
+labels <- labels %>% group_by(TPID) %>% summarise(CustomerAdd = max(CustomerAdd))
+
+write.csv(labels, "C:\\Users\\varamase\\Documents\\DataStreams\\M365NCA\\Data\\M365Labels6months.csv", row.names = FALSE)
+

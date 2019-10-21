@@ -192,7 +192,7 @@ featurizeCollaboration <- function(cohort_data, fy)
     cohort_data$NumWordReferenceAttachmentOpened + cohort_data$NumExcelReferenceAttachmentOpened +  cohort_data$NumPowerPointReferenceAttachmentOpened +  
      cohort_data$NumPDFReferenceAttachmentOpened + cohort_data$NumOneNoteReferenceAttachmentOpened  
   
-  cohort_data <- cohort_data %>% select(FinalTPID, ym, NumAttachmentsSent, NumAttachmentsOpened, NumEmailsSent, NumInboundEmailsReceived, 
+  cohort_data <- cohort_data %>% dplyr::select(FinalTPID, ym, NumAttachmentsSent, NumAttachmentsOpened, NumEmailsSent, NumInboundEmailsReceived, 
                                         NumInboundEmailsRead, NumEmailsInWhichOpenedAttachments, 
                                         NumWXPOUsers, NumWXPOEditors, NumWXPOCoauthors, NumWXPOUsersCollaborated)
   

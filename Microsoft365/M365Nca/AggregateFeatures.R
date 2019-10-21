@@ -9,6 +9,7 @@ smcc_accounts <- read_excel("C:\\Users\\varamase\\Documents\\DataStreams\\M365NC
 colnames(smcc_accounts)[1] <- "FinalTPID"
 smcc_accounts$FinalTPID <- as.numeric(smcc_accounts$FinalTPID)
 target_list <- read_excel("C:\\Users\\varamase\\Documents\\DataStreams\\M365NCA\\TargetList.xlsx", sheet = "TPIDList")
+
 target_list$ym <- "FY20Q1"
 target_list_1 <- target_list
 target_list_1$ym <- "FY20Q2"
@@ -36,7 +37,7 @@ aggregate <- function(labels, tenantprofile, collab, o365, ems, geo, licenses, r
   collab$WXPOEditorsPerc <- collab$NumWXPOEditors/collab$NumWXPOUsers
   collab$WXPOCoauthorsPerc <- collab$NumWXPOCoauthors/collab$NumWXPOUsers
   collab$WXPOCollaboratorsPerc <- collab$NumWXPOUsersCollaborated/collab$NumWXPOUsers
-  collab <- collab %>% select (FinalTPID, ym, WXPOEditorsPerc, WXPOCoauthorsPerc, WXPOCollaboratorsPerc)
+  collab <- collab %>% dplyr::select (FinalTPID, ym, WXPOEditorsPerc, WXPOCoauthorsPerc, WXPOCollaboratorsPerc)
   collab[is.na(collab)] <- 0
   collab[sapply(collab, simplify = 'matrix', is.infinite)] <- 0
   
@@ -78,7 +79,7 @@ aggregate <- function(labels, tenantprofile, collab, o365, ems, geo, licenses, r
   #Geo - replicate for all the cohorts
   colnames(geo_indus)[1] <- "FinalTPID"
   geo_indus$FinalTPID <- as.numeric(geo_indus$FinalTPID)
-  geo_indus <- inner_join(labels, geo_indus, by = "FinalTPID") %>% select(FinalTPID, ym, GeoMapping, IndustryMapping)
+  geo_indus <- inner_join(labels, geo_indus, by = "FinalTPID") %>% dplyr::select(FinalTPID, ym, GeoMapping, IndustryMapping)
   
   #licenses - Per workload/Total
   licenses$o365E3Perc <- (licenses$O365E3+ licenses$O365E3add)/licenses$TotalO365
@@ -112,7 +113,7 @@ aggregate <- function(labels, tenantprofile, collab, o365, ems, geo, licenses, r
   data[sapply(data, simplify = 'matrix', is.nan)] <- 0
   data[sapply(data, simplify = 'matrix', is.na)] <- 0
   
-  data <- data %>% select(-contains("ym1"))
+  data <- data %>% dplyr::select(-contains("ym1"))
   return(data)
 }
 
@@ -141,3 +142,111 @@ revenue <- read.csv("C:\\Users\\varamase\\Documents\\DataStreams\\M365NCA\\Data\
 
 scoring_features <- aggregate(final_target_list, tenant_profile, collab, o365_usage, ems_usage, geo_indus, licenses, revenue)
 write.csv(scoring_features, "C:\\Users\\varamase\\Documents\\DataStreams\\M365NCA\\Data\\Features\\Scoring\\AllFeatures.csv", row.names = FALSE)
+
+
+
+
+# Combining two quarters into one - Predict New Customer Add in the next 6 months 
+# Training #
+aggregate_combined <- function(labels, tenantprofile, collab, o365, ems, geo, licenses, revenue)
+{
+  #labels - join with SMCC accounts 
+  
+  labels <- labels %>% inner_join(smcc_accounts, by = "FinalTPID")
+  
+  
+  
+  #MAU/Paid, MAU/Enabled, Enabled/Paid
+  #Not doing Enabled/Paid , very messed up percentages - 
+  # if needed you can use those percentages (will make inf to 0 and cap at 100%)
+  
+  tenantprofile <- inner_join(labels, tenantprofile, by = c("FinalTPID", "ym"))
+  tenantprofile[sapply(tenantprofile, simplify = 'matrix', is.infinite)] <- 0
+  tenantprofile[ , 77:104 ][ tenantprofile[ , 77:104 ] > 1 ] <- 1
+  tenantprofile <-  subset(tenantprofile, select = -c(SnapshotDate,FirstPaidStartDate) )
+  tenantprofile$IsFastTrackTenant <- as.numeric(as.logical(tenantprofile$IsFastTrackTenant))
+  
+  # Collab 
+  collab$WXPOEditorsPerc <- collab$NumWXPOEditors/collab$NumWXPOUsers
+  collab$WXPOCoauthorsPerc <- collab$NumWXPOCoauthors/collab$NumWXPOUsers
+  collab$WXPOCollaboratorsPerc <- collab$NumWXPOUsersCollaborated/collab$NumWXPOUsers
+  collab <- collab %>% dplyr::select (FinalTPID, ym, WXPOEditorsPerc, WXPOCoauthorsPerc, WXPOCollaboratorsPerc)
+  collab[is.na(collab)] <- 0
+  collab[sapply(collab, simplify = 'matrix', is.infinite)] <- 0
+  
+  # Usage - MAU/Paid, MAU/Enabled 
+  usage_profile <- full_join(o365_usage, tenantprofile, by = c("FinalTPID", "ym")) %>% 
+    full_join(., ems_usage, by = c("FinalTPID", "ym")) 
+  
+  usage_profile[is.na(usage_profile)] <- 0
+  
+  #Compute usage percentages 
+  usage_profile$EXOUsagePaidPerc <- usage_profile$EXOMAU/usage_profile$EXOPaidAvailableUnits
+  usage_profile$EXOUsageEnabledPerc <- usage_profile$EXOMAU/usage_profile$EXOEnabledUsers
+  usage_profile$SPOUsagePaidPerc <- usage_profile$ODSPMAU/usage_profile$SPOPaidAvailableUnits
+  usage_profile$SPOUsageEnabledPerc <- usage_profile$ODSPMAU/usage_profile$SPOEnabledUsers
+  usage_profile$SFBUsagePaidPerc <- usage_profile$SfBMAU/usage_profile$SfbPaidAvailableUnits
+  usage_profile$SFBUsageEnabledPerc <- usage_profile$SfBMAU/usage_profile$SFBEnabledUsers
+  usage_profile$ProPlusUsagePaidPerc <- usage_profile$ProPlusMAU/usage_profile$ProPlusPaidAvailableUnits
+  usage_profile$ProplusUsageEnabledPerc <- usage_profile$ProPlusMAU/usage_profile$PPDEnabledUsers
+  usage_profile$TeamsUsagePaidPerc <- usage_profile$TeamsMAU/usage_profile$TeamsPaidAvailableUnits 
+  usage_profile$TeamsUsageEnabledPerc <- usage_profile$TeamsMAU/usage_profile$TeamsFreemiumEnabledUsers
+  usage_profile$YammerUsagePaidPerc <- usage_profile$YammerMAU/usage_profile$YammerPaidAvailableUnits
+  usage_profile$YammerUsageEnabledPerc <- usage_profile$YammerMAU/usage_profile$YammerEnabledUsers
+  usage_profile$OutlookMobileUsagePaidPerc <- usage_profile$OutlookMAU_Mobile/usage_profile$EXOPaidAvailableUnits
+  usage_profile$OutlookMobileUsageEnabledPerc <- usage_profile$OutlookMAU_Mobile/usage_profile$EXOEnabledUsers
+  usage_profile$ProPlusPerpetualUsagePaidPerc <- usage_profile$DesktopPerpetual/usage_profile$ProPlusPaidAvailableUnits
+  usage_profile$ProPlusPerpetualUsageEnabledPerc <- usage_profile$DesktopPerpetual/usage_profile$PPDEnabledUsers
+  
+  usage_profile$IntuneUsagePaidPerc <- usage_profile$Intune_active_users/usage_profile$IntunePaidAvailableUnits
+  usage_profile$IntuneUsageEnabledPerc <- usage_profile$Intune_active_users/usage_profile$Intune_configured_users
+  usage_profile$AADPUsagePaidPerc <- usage_profile$AADP_active_users/usage_profile$AADPPaidAvailableUnits
+  usage_profile$AADPUsageEnabledPerc <- usage_profile$AADP_active_users/usage_profile$AADP_configured_users
+  usage_profile$AIPUsagePaidPerc <- usage_profile$AIP_active_users/usage_profile$AIPPaidAvailableUnits
+  usage_profile$AIPUsageEnabledPerc <- usage_profile$AIP_active_users/usage_profile$AIP_configured_users
+  usage_profile$OATPUsagePaidPerc <- usage_profile$OATP_active_users/usage_profile$OATPPaidAvailableUnits
+  
+  usage_profile[sapply(usage_profile, simplify = 'matrix', is.infinite)] <- 0 # Checked the distribution, mostly very small MAU like 1 till 90th perc. 
+  usage_profile[ , 157:179 ][ usage_profile[ , 157:179  ] > 1 ] <- 1 
+  
+  #Geo - replicate for all the cohorts
+  colnames(geo_indus)[1] <- "FinalTPID"
+  geo_indus$FinalTPID <- as.numeric(geo_indus$FinalTPID)
+  geo_indus <- inner_join(labels, geo_indus, by = "FinalTPID") %>% dplyr::select(FinalTPID, ym, GeoMapping, IndustryMapping)
+  
+  #licenses - Per workload/Total
+  licenses$o365E3Perc <- (licenses$O365E3+ licenses$O365E3add)/licenses$TotalO365
+  licenses$o365e5Perc <- (licenses$O365E5 + licenses$O365E5add)/licenses$TotalO365
+  licenses$o365E12Perc <- (licenses$O365E12 + licenses$O365E12add)/licenses$TotalO365
+  licenses$o365E4Perc <- (licenses$O365E4 + licenses$O365E4add)/licenses$TotalO365
+  licenses$m365e3Perc <- licenses$M365E3/licenses$TotalM365
+  licenses$m365e5perc <- licenses$M365E5/licenses$TotalM365
+  licenses$m365f1perc <- licenses$M365F1/licenses$TotalM365
+  licenses$TotalEMS <- licenses$EMSE3 + licenses$EMSE5 + 
+    licenses$CloudAppSecurity + licenses$RightsMgmt + licenses$RemoteApp +
+    licenses$MobIdentity + licenses$InfoProtPrem + licenses$AADP2 + licenses$AAD +
+    licenses$Intune +  licenses$IntuneClient
+  licenses$emse3perc <- (licenses$EMSE3)/licenses$TotalEMS
+  licenses$emse5perc <- (licenses$EMSE5)/licenses$TotalEMS
+  licenses$emsAddonsperc <- (licenses$CloudAppSecurity + licenses$RightsMgmt + licenses$RemoteApp +
+                               licenses$MobIdentity + licenses$InfoProtPrem + licenses$AADP2 + licenses$AAD +
+                               licenses$Intune +  licenses$IntuneClient)/licenses$TotalEMS
+  licenses[sapply(licenses, simplify = 'matrix', is.infinite)] <- 0
+  
+  #revenue - keep features as is
+  colnames(licenses)[1] <- "FinalTPID"
+  colnames(revenue)[1] <- "FinalTPID"
+  
+  data <- usage_profile %>% left_join(geo_indus,by = c("FinalTPID", "ym")) %>% 
+    left_join(licenses,by = c("FinalTPID", "ym")) %>% 
+    left_join(revenue,by = c("FinalTPID", "ym"))
+  data <- labels %>% inner_join(data, by = c("FinalTPID", "ym"))
+  
+  data[sapply(data, simplify = 'matrix', is.infinite)] <- 0
+  data[sapply(data, simplify = 'matrix', is.nan)] <- 0
+  data[sapply(data, simplify = 'matrix', is.na)] <- 0
+  
+  data <- data %>% dplyr::select(-contains("ym1"))
+  return(data)
+}
+
