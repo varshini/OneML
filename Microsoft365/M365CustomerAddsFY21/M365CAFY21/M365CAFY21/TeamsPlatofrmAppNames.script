@@ -1,0 +1,56 @@
+﻿//Script GUID:fdca94ca-cc52-4a3c-984c-3a85648434f0
+//Used for tracking history
+
+/* Teams platform data */
+
+#DECLARE date1 DateTime = DateTime.Parse( "08/01/2019" );
+#DECLARE date2 DateTime = DateTime.Parse( "12/31/2019" );
+#DECLARE date1String string = @date1.ToString("yyyy-MM-dd");
+#DECLARE date2String string = @date2.ToString("yyyy-MM-dd");
+
+#DECLARE teamsworkloadoutput  string = string.Format("/local/Projects/M365NCA/O365MAU/TeamsPlatform/{0:yyyy-MM}_TeamsPlatformAppNameAll.ss", @date2);
+
+mal_tenants = SSTREAM @"/local/Projects/M365NCA/FY21SMCTenants.ss";
+
+teamsS =
+    SSTREAM STREAMSET "/shares/IDEAs.Prod.Data/Publish/Usage/User/Commercial/ActiveUsage/TeamsApps/Streams/v1/"
+            PATTERN "%Y/%m/TeamsAppsDailyUsage_%Y_%m_%d.ss"
+            RANGE __date = [@date1String, @date2String];
+teams =
+    SELECT DISTINCT @date2 AS Date,
+           OmsTenantId,
+           AppType,
+           AppName,
+           UserId,
+           1 AS CountIdx
+    FROM teamsS;
+
+teamsGb =
+    SELECT Date,
+           OmsTenantId,
+           AppType,
+           AppName,
+           SUM(CountIdx) AS Count
+    FROM teams
+    GROUP BY Date,
+             OmsTenantId,
+             AppType,
+             AppName;
+ 
+teamsGb = SELECT teamsGb.*, mal_tenants.FinalTPID FROM teamsGb INNER JOIN mal_tenants ON mal_tenants.OmsTenantId == teamsGb.OmsTenantId;
+
+teamsGb =
+    SELECT Date,
+           FinalTPID,
+           AppType,
+           AppName,
+           SUM(Count) AS Mau
+    FROM teamsGb
+    GROUP BY Date,
+             FinalTPID,
+             AppType, 
+             AppName;
+   
+OUTPUT teamsGb
+TO SSTREAM @teamsworkloadoutput
+CLUSTERED BY FinalTPID;

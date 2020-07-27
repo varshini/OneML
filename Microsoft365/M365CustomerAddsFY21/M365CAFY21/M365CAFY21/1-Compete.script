@@ -1,0 +1,88 @@
+﻿//Script GUID:e8fd983e-f05d-477f-97ee-1ea8e1f44a03
+//Used for tracking history
+
+#DECLARE CompetePath string = @"/shares/IDEAs.Prod/Partner/PreRelease/dev/compete/customermxrecordandloginpagedetection/";
+
+#DECLARE CompeteSignal1 string = @"/local/Projects/M365NCA/Compete/CompeteSignal_12_31_2019.ss";
+#DECLARE CompeteSignal2 string = @"/local/Projects/M365NCA/Compete/CompeteSignal_06_30_2020.ss";
+
+competeStream =
+    SSTREAM SPARSE STREAMSET @CompetePath
+            PATTERN "%Y/%m/CustomerMxRecordAndLoginPageDetection_%Y_%m_%d.ss"
+            RANGE __date = ["2019-10-01", "2019-12-31"]; 
+
+Agg1 =
+    SELECT  
+            TPID,
+ 
+           MAX( ( ( ShortCompetitorName == "GApps" OR ShortCompetitorName == "Gmail" )  AND SSOLogin == 1 ) ? 1 : 0)  AS HasGoogle, 
+           
+                      
+           MAX( ( ShortCompetitorName == "Workplace" AND SSOLogin == 1 ) ? 1 : 0)  AS HasFacebook,
+           
+                      
+           MAX( ( ShortCompetitorName == "Zoom"  AND SSOLogin == 1 ) ? 1 : 0)  AS HasZoom,
+           
+           
+           MAX( (  ShortCompetitorName == "Slack" AND SSOLogin == 1 ) ? 1 : 0)  AS HasSlack,
+           
+           
+           MAX( ShortCompetitorName == "Box" ? 1 : 0)  AS HasBox,
+           
+
+           MAX( ShortCompetitorName == "WebEx" ? 1 : 0)  AS HasWebex,
+           
+           
+           MAX( ShortCompetitorName == "Okta" ? 1 : 0)  AS HasOkta
+           
+                      
+    FROM competeStream
+    WHERE    TPID != NULL
+    GROUP BY  TPID;
+
+OUTPUT Agg1
+TO SSTREAM @CompeteSignal1
+    CLUSTERED BY TPID
+    SORTED BY TPID ASC
+        WITH STREAMEXPIRY @"365";
+
+competeStream2 =
+    SSTREAM SPARSE STREAMSET @CompetePath
+            PATTERN "%Y/%m/CustomerMxRecordAndLoginPageDetection_%Y_%m_%d.ss"
+            RANGE __date = ["2020-04-01", "2020-06-30"]; 
+
+
+Agg2 =
+    SELECT 
+           TPID,
+ 
+           MAX( ( ( ShortCompetitorName == "GApps" OR ShortCompetitorName == "Gmail" )  AND SSOLogin == 1 ) ? 1 : 0)  AS HasGoogle, 
+           
+                      
+           MAX( ( ShortCompetitorName == "Workplace" AND SSOLogin == 1 ) ? 1 : 0)  AS HasFacebook,
+           
+                      
+           MAX( ( ShortCompetitorName == "Zoom"  AND SSOLogin == 1 ) ? 1 : 0)  AS HasZoom,
+           
+           
+           MAX( (  ShortCompetitorName == "Slack" AND SSOLogin == 1 ) ? 1 : 0)  AS HasSlack,
+           
+           
+           MAX( ShortCompetitorName == "Box" ? 1 : 0)  AS HasBox,
+           
+
+           MAX( ShortCompetitorName == "WebEx" ? 1 : 0)  AS HasWebex,
+           
+           
+           MAX( ShortCompetitorName == "Okta" ? 1 : 0)  AS HasOkta
+           
+           
+    FROM competeStream2
+    WHERE    TPID != NULL
+    GROUP BY TPID;
+
+OUTPUT Agg2
+TO SSTREAM @CompeteSignal2
+    CLUSTERED BY TPID
+    SORTED BY TPID ASC
+        WITH STREAMEXPIRY @"365";

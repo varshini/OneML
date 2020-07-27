@@ -1,0 +1,62 @@
+﻿//Script GUID:b165e02d-501a-4bf2-89a5-7e55697ee127
+//Used for tracking history
+
+mal_tpids =
+    EXTRACT FinalTPID : int
+    FROM @"/local/Projects/M365NCA/SMCTPIDsCosmos.csv"
+    USING DefaultTextExtractor(delimiter: ',');
+
+date_dim = 
+    SSTREAM @"/shares/IDEAs.Prod/Public/Dimensions/DateDim.ss";
+
+license_data =
+    SSTREAM @"/shares/MODBI.prod/MODBI.dev/AdHocReports/CommercialAnalytics/Commercial_Analytics_DataSet_Combined.ss";
+
+seats =
+    SELECT Top_Parent_Organization_Id AS FinalTpid,
+           Rev_Sum_Category,
+           FiscalMonth_M0,
+           SUM(EOPPaid_M0) AS SeatCount
+    FROM license_data
+    WHERE FiscalMonth_M0 BETWEEN 337 AND 372
+          AND Rev_Sum_Category IN("Advanced Compliance", "Advanced Security Management", "Advanced Threat Protection Plan 1",
+                                     "Advanced Threat Protection Plan 2", "Azure Active Directory", "Azure Active Directory Prem P2", 
+                                     "Azure ATP", "Azure Info Prot Prem P2", "Azure Mob & Identity Svcs", "Azure RemoteApp",
+                                     "Azure Rights Management Services", "Cloud App Security", "EMS - M365 Business", "EMS - M365 E3 CAO",
+                                     "EMS - M365 E3 EDU", "EMS - M365 E3 FUSL", "EMS - M365 F1", "EMS Core K Suite", "EMS E3 Suite CAO", 
+                                     "EMS E3 Suite FUSL", "EMS E5 K Suite", "EMS E5 Suite CAO", "EMS E5 Suite FUSL", "Intune", "Intune - Client",
+                                     "MyAnalytics", "O365 Plan E1/E2", "O365 Plan E1/E2 Cloud Add-On", "O365 Plan E3", "O365 Plan E3 Cloud Add-On", 
+                                     "O365 Plan E4", "O365 Plan E4 Cloud Add-On", "O365 Plan E5", "O365 Plan E5 Cloud Add-On", "Power BI - Office Suites", 
+                                     "Power BI - Standalone Pro", "Power BI Premium", "Power BI Suites - M365", "O365 - M365 Business", "O365 - M365 E3 CAO",
+                                     "O365 - M365 E3 FUSL", "O365 - M365 F1","O365 - M365 F0", "O365 E5 - M365 E5 CAO", "O365 E5 - M365 E5 FUSL", "O365 - M365 A3 EDU", "O365 E5 - M365 A5 EDU"
+                                 )
+    GROUP BY FinalTpid,
+             Rev_Sum_Category,
+             FiscalMonth_M0;
+
+seats_subset =
+SELECT FinalTPID,
+       seats.Rev_Sum_Category,
+       seats.FiscalMonth_M0,
+       seats.SeatCount
+    FROM mal_tpids LEFT JOIN seats 
+         ON mal_tpids.FinalTPID == seats.FinalTpid;
+
+date_map = 
+    SELECT MAX(Day) AS Date,
+           MSSalesFiscalMonthID
+    FROM date_dim
+    GROUP BY MSSalesFiscalMonthID;
+
+seats_date =
+    SELECT seats_subset.FinalTPID,
+           seats_subset.Rev_Sum_Category,
+           date_map.Date,
+           seats_subset.SeatCount
+    FROM seats_subset
+         LEFT JOIN
+             date_map
+         ON seats_subset.FiscalMonth_M0 == date_map.MSSalesFiscalMonthID;
+
+ 
+OUTPUT seats_date TO SSTREAM @"/local/Projects/M365NCA/AllLicensesByRevSumCat.ss";

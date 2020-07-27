@@ -1,0 +1,41 @@
+﻿//Script GUID:88886a21-e62d-4cda-826d-10f9421b9c53
+//Used for tracking history
+
+//OATP Usage 
+
+#DECLARE snapDate DateTime = DateTime.Parse(@@PROCESS_DATE_START@@);
+mal_tenants = SSTREAM @"/local/Projects/M365NCA/FY21SMCTenants.ss";
+
+//Output
+#DECLARE allUpMauWkloadOut      string = string.Format("/local/Projects/M365NCA/EMSUsage/{0:yyyy-MM}_MauByWorkload.ss", @snapDate);
+
+#DECLARE oatp_path string   = string.Format("/shares/IDEAs.Prod/Partner/PreRelease/dev/tenantactiveusagecounts/user/rl28/oatpv2/{0:yyyy}/{0:MM}/ActiveUserCount_{0:yyyy}_{0:MM}_{0:dd}.ss", @snapDate);
+oatp_data = SELECT Date, OmsTenantId, Application, AllUp AS Mau FROM (SSTREAM @oatp_path);
+
+#DECLARE mip_path string   = string.Format("/shares/IDEAs.Prod/Partner/PreRelease/dev/tenantactiveusagecounts/user/rl28/mip/{0:yyyy}/{0:MM}/ActiveUserCount_{0:yyyy}_{0:MM}_{0:dd}.ss", @snapDate);
+mip_data = SELECT Date, OmsTenantId, Application, AllUp AS Mau FROM (SSTREAM @mip_path);
+
+#DECLARE mig_path string   = string.Format("/shares/IDEAs.Prod/Partner/PreRelease/dev/tenantactiveusagecounts/user/rl28/mig/{0:yyyy}/{0:MM}/ActiveUserCount_{0:yyyy}_{0:MM}_{0:dd}.ss", @snapDate);
+mig_data = SELECT Date, OmsTenantId, Application, AllUp AS Mau FROM (SSTREAM @mig_path);
+
+#DECLARE mcas_path string   = string.Format("/shares/IDEAs.Prod/Partner/PreRelease/dev/tenantactiveusagecounts/user/rl28/mcasv2/{0:yyyy}/{0:MM}/ActiveUserCount_{0:yyyy}_{0:MM}_{0:dd}.ss", @snapDate);
+mcas_data = SELECT Date, OmsTenantId, Application, AllUp AS Mau FROM (SSTREAM @mcas_path);
+
+//combine all workloads - TenantId, TPID, Date, Workload, MAU
+data = SELECT * FROM oatp_data UNION ALL 
+        SELECT * FROM mip_data UNION ALL 
+        SELECT * FROM mig_data UNION ALL 
+        SELECT * FROM mcas_data; 
+                         
+data = SELECT data.*, mal_tenants.FinalTPID FROM data INNER JOIN mal_tenants ON mal_tenants.OmsTenantId == data.OmsTenantId;
+data = SELECT Date, FinalTPID, Application, SUM(Mau) AS Mau FROM data GROUP BY Date, FinalTPID, Application;
+
+OUTPUT data TO SSTREAM @allUpMauWkloadOut
+    CLUSTERED BY FinalTPID, Application
+    SORTED BY FinalTPID, Application
+        WITH STREAMEXPIRY @"365";
+
+
+
+
+

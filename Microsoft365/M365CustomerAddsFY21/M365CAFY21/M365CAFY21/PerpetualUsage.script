@@ -1,0 +1,16 @@
+﻿//Script GUID:7d91ee3a-3f98-4cc0-b608-30451c3091fe
+//Used for tracking history
+
+mal_tenants = SSTREAM @"/local/Projects/M365NCA/FY21SMCTenants.ss";
+
+perpetual_data_training = SSTREAM @"/shares/IDEAs.Prod.Data/Publish/Features/Tenant/Commercial/Aggregation/PerpetualCount/Streams/v1/2019/12/PerpetualCount_2019_12_31.ss";
+perpetual_data_scoring = SSTREAM @"/shares/IDEAs.Prod.Data/Publish/Features/Tenant/Commercial/Aggregation/PerpetualCount/Streams/v1/2020/06/PerpetualCount_2020_06_30.ss";
+
+
+training = SELECT perpetual_data_training.*, mal_tenants.FinalTPID FROM perpetual_data_training INNER JOIN mal_tenants ON mal_tenants.OmsTenantId == perpetual_data_training.OmsTenantId;
+
+OUTPUT training TO SSTREAM @"/local/Projects/M365NCA/O365MAU/Perpetual/2019_12_Perpetual.ss";
+
+scoring = SELECT perpetual_data_scoring.*,mal_tenants.FinalTPID  FROM perpetual_data_scoring INNER JOIN mal_tenants ON mal_tenants.OmsTenantId == perpetual_data_scoring.OmsTenantId;
+
+OUTPUT scoring TO SSTREAM @"/local/Projects/M365NCA/O365MAU/Perpetual/2020_06_Perpetual.ss";

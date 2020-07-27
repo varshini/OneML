@@ -1,0 +1,101 @@
+﻿<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>40d5c9d2-0b35-4709-a4f5-5169625519e1</ProjectGuid>
+    <OutputType>File</OutputType>
+    <AssemblyName>Algebra.xml</AssemblyName>
+    <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <Name>M365CAFY21</Name>
+    <RootNamespace>M365CAFY21</RootNamespace>
+    <VCSelectionInProjectProperty>&lt;Use Current VC in VC Selector&gt;</VCSelectionInProjectProperty>
+    <CosmosRuntimeVersion>Default</CosmosRuntimeVersion>
+    <ScopePath>%24(SCRIPT_DIR);%24(CLUSTER_ROOT);%24(SCOPE_DIR);%24(PROJECT_DIR)</ScopePath>
+    <InputStreamSearchPath>%24(PROJECT_DIR);%24(SCRIPT_DIR);%24(CLUSTER_ROOT)</InputStreamSearchPath>
+    <VertexDebugSolution>false</VertexDebugSolution>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\Debug\</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugSymbols>false</DebugSymbols>
+    <OutputPath>bin\Release\</OutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Script Include="1-EMSUsage.script" />
+    <Script Include="2-AggregateEMSUsage.script">
+      <RemoveUselessParameters>False</RemoveUselessParameters>
+      <ScopeOldParameters>PROCESS_DATE_START=(\"2020-05-31\")</ScopeOldParameters>
+      <ScopeClusterParameters>PROCESS_DATE_START=(\"2020-05-31\")</ScopeClusterParameters>
+    </Script>
+    <Script Include="2-AggregateO365Usage.script">
+      <RemoveUselessParameters>False</RemoveUselessParameters>
+      <ScopeClusterParameters>PROCESS_DATE_START=(\"2020-05-31\")</ScopeClusterParameters>
+      <ScopeOldParameters>PROCESS_DATE_START=(\"2020-05-31\")</ScopeOldParameters>
+    </Script>
+    <Script Include="1-O365Usage.script">
+      <RemoveUselessParameters>False</RemoveUselessParameters>
+      <ScopeOldParameters>PROCESS_DATE_START=(\"2019-05-31\")</ScopeOldParameters>
+      <ScopeClusterParameters>PROCESS_DATE_START=(\"2020-05-31\")</ScopeClusterParameters>
+    </Script>
+    <Script Include="1-Compete.script" />
+    <Script Include="1-EMSUsageRL28.script">
+      <RemoveUselessParameters>False</RemoveUselessParameters>
+      <ScopeOldParameters>PROCESS_DATE_START=(\"2020-05-31\")</ScopeOldParameters>
+      <ScopeClusterParameters>PROCESS_DATE_START=(\"2019-06-30\")</ScopeClusterParameters>
+    </Script>
+    <Script Include="ME3ConversionsAnalysis.script">
+      <RemoveUselessParameters>False</RemoveUselessParameters>
+      <ScopeClusterParameters>PROCESS_DATE_START=(\"2020-03-31\")</ScopeClusterParameters>
+    </Script>
+    <Script Include="PerpetualUsage.script" />
+    <Script Include="Sample.script" />
+    <Script Include="1-Licenses.script" />
+    <Script Include="1-TeamsPlatformUsage.script" />
+    <Script Include="0-TenantTPIDMapping.script" />
+    <Script Include="1-TenantProfile.script" />
+    <ScriptCode Include="1-EMSUsage.script.cs">
+      <DependentUpon>1-EMSUsage.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="2-AggregateEMSUsage.script.cs">
+      <DependentUpon>2-AggregateEMSUsage.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="2-AggregateO365Usage.script.cs">
+      <DependentUpon>2-AggregateO365Usage.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="1-O365Usage.script.cs">
+      <DependentUpon>1-O365Usage.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="1-Compete.script.cs">
+      <DependentUpon>1-Compete.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="1-EMSUsageRL28.script.cs">
+      <DependentUpon>1-EMSUsageRL28.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="ME3ConversionsAnalysis.script.cs">
+      <DependentUpon>ME3ConversionsAnalysis.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="PerpetualUsage.script.cs">
+      <DependentUpon>PerpetualUsage.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="Sample.script.cs">
+      <DependentUpon>Sample.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="1-Licenses.script.cs">
+      <DependentUpon>1-Licenses.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="1-TeamsPlatformUsage.script.cs">
+      <DependentUpon>1-TeamsPlatformUsage.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="0-TenantTPIDMapping.script.cs">
+      <DependentUpon>0-TenantTPIDMapping.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="1-TenantProfile.script.cs">
+      <DependentUpon>1-TenantProfile.script</DependentUpon>
+    </ScriptCode>
+  </ItemGroup>
+  <Import Project="$(AppData)\Microsoft\ScopeStudio\MsBuild\1.0\Scope.targets" />
+</Project>

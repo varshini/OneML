@@ -1,0 +1,21 @@
+﻿//Script GUID:5f5d8562-ac8c-448f-ba56-ca8944853b81
+//Used for tracking history
+
+mal_tpids =
+    EXTRACT FinalTPID : int
+    FROM @"/local/Projects/M365NCA/SMCTPIDsCosmos.csv"
+    USING DefaultTextExtractor(delimiter: ',');
+
+
+MappingView = VIEW @"/shares/IDEAs.Prod/Public/Views/IDEAsTenantTPIDMapping/v1/IDEAsTenantTPIDMapping.view"
+    PARAMS( HistoryDate = DateTime.Parse( "2020-06-01" ) );
+
+tenants =
+    SELECT MappingView.OMSTenantId AS OmsTenantId,
+           MappingView.FinalTPID 
+    FROM MappingView
+         INNER JOIN
+             mal_tpids
+         ON mal_tpids.FinalTPID == MappingView.FinalTPID;
+
+OUTPUT tenants TO SSTREAM @"/local/Projects/M365NCA/FY21SMCTenants.ss";

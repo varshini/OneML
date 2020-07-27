@@ -1,0 +1,83 @@
+﻿//Script GUID:19249533-85a9-4071-87e0-8f75a706e4ee
+//Used for tracking history
+
+
+#DECLARE outputRoot     string   = @"/local/Projects/M365NCA/O365MAU/"; 
+#DECLARE snapDate       DateTime = DateTime.Parse(@@PROCESS_DATE_START@@);
+#DECLARE snapDateStr    string   = @snapDate.ToString("yyyy-MM-dd");
+
+//Input
+#DECLARE mauStreamPath      string = string.Format("/local/Projects/M365NCA/EMSUsage/");
+#DECLARE mauStreamPatern    string = "%Y-%m_MauByWorkload.ss?%d";
+
+#DECLARE AADPStreamPath      string = string.Format("/local/Projects/M365NCA/EMSUsage/AADP/");
+#DECLARE AADPStreamPatern    string = "%Y-%m_AADPUsage.ss?%d";
+
+#DECLARE IntuneStreamPath      string = string.Format("/local/Projects/M365NCA/EMSUsage/Intune/");
+#DECLARE IntuneStreamPatern    string = "%Y-%m_IntuneUsage.ss?%d";
+
+//Output
+#DECLARE mauOut         string = string.Format("/local/Projects/M365NCA/EMSUsage/{0:yyyy-MM}_EMSMauTimeseries.ss", @snapDate);
+#DECLARE aadpOut     string = string.Format("/local/Projects/M365NCA/EMSUsage/AADP/{0:yyyy-MM}_AADPMauTimeseries.ss", @snapDate);
+#DECLARE intuneOut       string = string.Format("/local/Projects/M365NCA/EMSUsage/Intune/{0:yyyy-MM}_IntuneMauTimeseries.ss", @snapDate);
+
+// ====================================================================================================================
+// All up MAU
+mauAgg = 
+    SELECT Date,
+           FinalTPID,
+           Application AS Workload,
+           MAX(Mau) AS Mau           
+    FROM
+        (
+        SSTREAM SPARSE STREAMSET @mauStreamPath
+        PATTERN @mauStreamPatern
+        RANGE __date=["2019-06-01", @snapDateStr] 
+        )
+    GROUP BY Date,
+             FinalTPID,
+             Workload;
+
+
+OUTPUT mauAgg TO SSTREAM @mauOut
+    CLUSTERED BY FinalTPID, Date
+    SORTED BY FinalTPID, Date
+        WITH STREAMEXPIRY @"365";
+
+mauAgg = 
+    SELECT Date, FinalTPID, MAX(AADPUsageCount) AS AADPUsageCount,
+           MAX(CAActiveUniqueUserCount) AS CAActiveUniqueUserCount,
+           MAX(ThirdPartyActiveUniqueUserCount) AS ThirdPartyActiveUniqueUserCount,
+           MAX(B2BActiveUniqueUserCount) AS B2BActiveUniqueUserCount,
+           MAX(PIMActiveUniqueUserCount) AS PIMActiveUniqueUserCount       
+    FROM
+        (
+        SSTREAM SPARSE STREAMSET @AADPStreamPath
+        PATTERN @AADPStreamPatern
+        RANGE __date=["2019-06-01", @snapDateStr] 
+        )
+        GROUP BY Date,
+             FinalTPID;
+
+
+OUTPUT mauAgg TO SSTREAM @aadpOut
+    CLUSTERED BY FinalTPID, Date
+    SORTED BY FinalTPID, Date
+        WITH STREAMEXPIRY @"365";
+
+mauAgg = 
+    SELECT Date, FinalTPID, MAX(IntuneCloudManagedMAD) AS IntuneCloudManagedMAD    
+    FROM
+        (
+        SSTREAM SPARSE STREAMSET @IntuneStreamPath
+        PATTERN @IntuneStreamPatern
+        RANGE __date=["2019-06-01", @snapDateStr] 
+        )
+        GROUP BY Date,
+             FinalTPID;
+
+
+OUTPUT mauAgg TO SSTREAM @intuneOut
+    CLUSTERED BY FinalTPID, Date
+    SORTED BY FinalTPID, Date
+        WITH STREAMEXPIRY @"365";

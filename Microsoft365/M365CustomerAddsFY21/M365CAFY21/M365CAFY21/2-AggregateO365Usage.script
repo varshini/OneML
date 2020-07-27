@@ -1,0 +1,112 @@
+﻿//Script GUID:3d70a7c7-17b8-4cd3-81b9-cdebef0bdfb8
+//Used for tracking history
+
+// ====================================================================================================================
+#DECLARE outputRoot     string   = @"/local/Projects/M365NCA/O365MAU/"; 
+#DECLARE snapDate       DateTime = DateTime.Parse(@@PROCESS_DATE_START@@);
+#DECLARE snapDateStr    string   = @snapDate.ToString("yyyy-MM-dd");
+
+//Input
+#DECLARE mauStreamPath      string = string.Format("/local/Projects/M365NCA/O365MAU/");
+#DECLARE mauStreamPatern    string = "%Y-%m_MauByWorkload.ss?%d";
+
+#DECLARE ProPlusStreamPath      string = string.Format("/local/Projects/M365NCA/O365MAU/");
+#DECLARE ProPlusStreamPatern    string = "%Y-%m_ProPlus.ss?%d";
+
+#DECLARE TeamsStreamPath      string = string.Format("/local/Projects/M365NCA/O365MAU/");
+#DECLARE TeamsStreamPatern    string = "%Y-%m_Teams.ss?%d";
+
+#DECLARE TeamsPlatformStreamPath      string = string.Format("/local/Projects/M365NCA/O365MAU/TeamsPlatform");
+#DECLARE TeamsPlatformStreamPatern    string = "%Y-%m_TeamsPlatform.ss?%d";
+
+//Output
+#DECLARE mauOut         string = string.Format("/local/Projects/M365NCA/O365MAU/{0:yyyy-MM}_O365MauTimeseries.ss", @snapDate);
+#DECLARE proplusOut     string = string.Format("/local/Projects/M365NCA/O365MAU/{0:yyyy-MM}_ProPlusMauTimeseries.ss", @snapDate);
+#DECLARE teamsOut       string = string.Format("/local/Projects/M365NCA/O365MAU/{0:yyyy-MM}_TeamsMauTimeseries.ss", @snapDate);
+#DECLARE teamsplatformOut       string = string.Format("/local/Projects/M365NCA/O365MAU/{0:yyyy-MM}_TeamsPlatformMauTimeseries.ss", @snapDate);
+
+// ====================================================================================================================
+// All up MAU
+mauAgg = 
+    SELECT Date,
+           FinalTPID,
+           Application AS Workload,
+           MAX(Mau) AS Mau           
+    FROM
+        (
+        SSTREAM SPARSE STREAMSET @mauStreamPath
+        PATTERN @mauStreamPatern
+        RANGE __date=["2019-01-01", @snapDateStr] 
+        )
+    GROUP BY Date,
+             FinalTPID,
+             Workload;
+
+
+OUTPUT mauAgg TO SSTREAM @mauOut
+    CLUSTERED BY FinalTPID, Date
+    SORTED BY FinalTPID, Date
+        WITH STREAMEXPIRY @"365";
+
+mauAgg = 
+    SELECT Date, FinalTPID, MAX(ProPlusMAU) AS ProPlusMAU, 
+                               MAX(DesktopProPlusMAU) AS DesktopProPlusMAU,
+                               MAX(DesktopPerpetualMAU) AS DesktopPerpetualMAU,
+                               MAX(DesktopSubscriptionMAU) AS DesktopSubscriptionMAU,
+                               MAX(DesktopWebMAU) AS DesktopWebMAU,
+                               MAX(DesktopMobileMAU) AS DesktopMobileMAU          
+    FROM
+        (
+        SSTREAM SPARSE STREAMSET @ProPlusStreamPath
+        PATTERN @ProPlusStreamPatern
+        RANGE __date=["2019-01-01", @snapDateStr] 
+        )
+        GROUP BY Date,
+             FinalTPID;
+
+
+OUTPUT mauAgg TO SSTREAM @proplusOut
+    CLUSTERED BY FinalTPID, Date
+    SORTED BY FinalTPID, Date
+        WITH STREAMEXPIRY @"365";
+
+
+mauAgg = 
+    SELECT  Date, FinalTPID, MAX(TeamsMau) AS TeamsMau, 
+                             MAX(TeamsDesktopMAU) AS TeamsDesktopMAU,
+                             MAX(TeamsMobileMAU) AS TeamsMobileMAU         
+    FROM
+        (
+        SSTREAM SPARSE STREAMSET @TeamsStreamPath
+        PATTERN @TeamsStreamPatern
+        RANGE __date=["2019-01-01", @snapDateStr] 
+        )
+        GROUP BY Date,
+             FinalTPID;
+
+
+OUTPUT mauAgg TO SSTREAM @teamsOut
+    CLUSTERED BY FinalTPID, Date
+    SORTED BY FinalTPID, Date
+        WITH STREAMEXPIRY @"365";
+
+
+mauAgg = 
+    SELECT Date,
+           FinalTPID,
+           AppType, 
+           MAX(Mau) AS Mau
+    FROM
+        (
+        SSTREAM SPARSE STREAMSET @TeamsPlatformStreamPath
+        PATTERN @TeamsPlatformStreamPatern
+        RANGE __date=["2019-08-01", @snapDateStr] 
+        ) GROUP BY Date,
+           FinalTPID,
+           AppType;
+
+
+OUTPUT mauAgg TO SSTREAM @teamsplatformOut
+    CLUSTERED BY FinalTPID, Date
+    SORTED BY FinalTPID, Date
+        WITH STREAMEXPIRY @"365";

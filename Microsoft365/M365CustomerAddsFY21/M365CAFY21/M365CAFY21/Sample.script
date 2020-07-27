@@ -1,0 +1,84 @@
+﻿//Script GUID:83e6151a-c601-4a56-8cd3-8ce8b303de56
+//Used for tracking history
+
+//date_dim = 
+//    SSTREAM @"/shares/IDEAs.Prod/Public/Dimensions/DateDim.ss";
+//
+//license_data =
+//    SSTREAM @"/shares/IDEAs.Prod.Data/Private/Profiles/Subscription/Commercial/IDEAsPrivateSubscriptionProfile/Views/v1/IDEAsPrivateSubscriptionProfile.view";
+//
+
+IDEAsCalcProfile_20200629 = VIEW @"/shares/IDEAs.Prod.Data/Publish/Profiles/Tenant/Commercial/IDEAsCalcProfile/Views/v1/IDEAsCalcProfile.view";
+
+mal_tpids =
+    SELECT TPID, SegmentGroup, AreaName, Industry
+    FROM IDEAsCalcProfile_20200629
+    WHERE SegmentGroup IN ( "Enterprise", "SMC Managed" )
+    ;
+
+license_data =
+    SSTREAM @"/shares/MODBI.prod/MODBI.dev/AdHocReports/CommercialAnalytics/Commercial_Analytics_DataSet_Combined.ss";
+
+SeatsSummary1 =
+    SELECT a.TPID,
+            b.Top_Parent_Organization_Id,
+           a.SegmentGroup,
+           Rev_Sum_Division,
+           Rev_Sum_Category,
+           SUM( FiscalMonth_M0 == 358 ? EOPPaid_M0 : 0 ) AS EOPPaid_M0_201904,
+           SUM( FiscalMonth_M0 == 370 ? EOPPaid_M0 : 0 ) AS EOPPaid_M0_202004
+    FROM mal_tpids AS a
+    LEFT OUTER JOIN license_data AS b
+    ON a.TPID == b.Top_Parent_Organization_Id
+    WHERE Rev_Sum_Category IN (
+                                "O365 E5 - M365 A5 EDU",
+                                "O365 E5 - M365 E5 CAO",
+                                "O365 E5 - M365 E5 FUSL",
+                                "O365 Business Premium",
+                                "O365 - M365 Business",
+                                "O365 - M365 A3 EDU",
+                                "O365 - M365 E3 CAO",
+                                "O365 - M365 E3 FUSL",
+                                "O365 - M365 F1",
+                                "O365 Plan E3",
+                                "O365 Plan E3 Cloud Add-On",
+                                "O365 Plan E4",
+                                "O365 Plan E4 Cloud Add-On",
+                                "O365 Plan E5",
+                                "O365 Plan E5 Cloud Add-On",
+                                "O365 Business Essentials",
+                                "O365 Plan E1/E2",
+                                "O365 Plan E1/E2 Cloud Add-On",
+                                "O365 Plan E3E4E5 wo Office",
+                                "O365 Plan E3E4E5 woCldAddOn"
+                              )
+    GROUP BY TPID,
+             Top_Parent_Organization_Id,
+            SegmentGroup,
+            Rev_Sum_Division,
+            Rev_Sum_Category;
+ 
+ 
+SeatsSummary_Ent =
+    SELECT *,
+           ( EOPPaid_M0_201904 >= 1000 ? 0 : 1 ) AS O365Adds_TrainingBase,
+           ( EOPPaid_M0_202004 >= 1000 ? 1 : 0 ) AS O365Adds_TrainingLabel,
+           ( EOPPaid_M0_202004 >= 1000 ? 0 : 1 ) AS O365Adds_ScoringBase
+    FROM SeatsSummary1
+    WHERE SegmentGroup == "Enterprise"
+ ;
+  
+ 
+SeatsSummary_SMC =
+    SELECT *,
+           ( EOPPaid_M0_201904 >= 300 ? 0 : 1 ) AS O365Adds_TrainingBase,
+           ( EOPPaid_M0_202004 >= 300 ? 1 : 0 ) AS O365Adds_TrainingLabel,
+           ( EOPPaid_M0_202004 >= 300 ? 0 : 1 ) AS O365Adds_ScoringBase
+    FROM SeatsSummary1
+    WHERE SegmentGroup == "SMC Managed"
+ ;
+
+OUTPUT SeatsSummary_Ent TO SSTREAM @"/local/users/alkok/20200625_VUC_Models/O365_Adds/SeatsSummary_Ent_v0.ss";
+OUTPUT SeatsSummary_SMC TO SSTREAM @"/local/users/alkok/20200625_VUC_Models/O365_Adds/SeatsSummary_SMC_v0.ss";
+
+

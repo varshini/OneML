@@ -1,0 +1,82 @@
+﻿//Script GUID:01cfaa7b-caa8-4170-8c92-a91b4da01264
+//Used for tracking history
+
+//AADP Usage 
+
+mal_tenants = SSTREAM @"/local/Projects/M365NCA/FY21SMCTenants.ss";
+
+#DECLARE TargetDate DateTime = DateTime.Parse("06/30/2020");
+#DECLARE TargetDateStr string = @TargetDate.ToString("yyyy-MM-dd");
+
+#DECLARE AADP_Tenant_Data string = string.Format("/shares/AD_DataAnalytics/AD_DataAnalytics/Data/Results/Onedata/PartnerFeed/{0:yyyy}/{0:MM}/{0:dd}/IncentiveFeed/Fy20IncentiveFeedByTenant.ss",@TargetDate);
+#DECLARE output string = string.Format("/local/Projects/M365NCA/EMSUsage/AADP/{0:yyyy-MM}_AADPUsage.ss", @TargetDate);
+
+AADP_Tenant_Data =
+    SSTREAM @AADP_Tenant_Data;
+
+input_data_aadp =
+    SELECT Convert.ToString(ContextId) AS ContextId,
+           FactDate AS Date, 
+           SUM(IncentiveUsageCount) AS AADPUsageCount,
+           SUM(CAActiveUniqueUserCount) AS CAActiveUniqueUserCount,
+           SUM(ThirdPartyActiveUniqueUserCount) AS ThirdPartyActiveUniqueUserCount,
+           SUM(B2BActiveUniqueUserCount) AS B2BActiveUniqueUserCount,
+           SUM(PIMActiveUniqueUserCount) AS PIMActiveUniqueUserCount
+    FROM AADP_Tenant_Data
+    GROUP BY ContextId, Date;
+
+usage_tpid =
+    SELECT input_data_aadp. *,
+           mal_tenants.FinalTPID
+    FROM mal_tenants
+         INNER JOIN
+             input_data_aadp
+         ON input_data_aadp.ContextId == mal_tenants.OmsTenantId;
+
+final = 
+    SELECT FinalTPID,
+           Date,
+           SUM(AADPUsageCount) AS AADPUsageCount,
+           SUM(CAActiveUniqueUserCount) AS CAActiveUniqueUserCount,
+           SUM(ThirdPartyActiveUniqueUserCount) AS ThirdPartyActiveUniqueUserCount,
+           SUM(B2BActiveUniqueUserCount) AS B2BActiveUniqueUserCount,
+           SUM(PIMActiveUniqueUserCount) AS PIMActiveUniqueUserCount
+    FROM usage_tpid
+    GROUP BY FinalTPID, Date;
+
+OUTPUT final TO SSTREAM @output;
+
+//Intune Usage
+
+#DECLARE intune_Tenant_Data string = string.Format("/shares/IDEAs.Prod/Partner/PreRelease/dev/fieldmetrics/fy20/cloudmanageddevices/report/{0:yyyy}/{0:MM}/CloudManangedDevices_Intune_MAD_{0:yyyy}_{0:MM}_{0:dd}.ss", @TargetDate);
+#DECLARE output1 string = string.Format("/local/Projects/M365NCA/EMSUsage/Intune/{0:yyyy-MM}_IntuneUsage.ss", @TargetDate);
+
+intune_data =
+    SSTREAM @intune_Tenant_Data;
+
+intune_data = 
+    SELECT Date, 
+           TenantId,
+           IntuneCloudManagedMAD
+    FROM intune_data;
+
+usage_tpid =
+    SELECT intune_data. *,
+           mal_tenants.FinalTPID
+    FROM mal_tenants
+         INNER JOIN
+             intune_data
+         ON intune_data.TenantId == mal_tenants.OmsTenantId;
+
+final = 
+    SELECT FinalTPID,
+           Date,
+           SUM(IntuneCloudManagedMAD) AS IntuneCloudManagedMAD
+    FROM usage_tpid
+    GROUP BY FinalTPID, Date;
+
+OUTPUT final TO SSTREAM @output1;
+
+
+
+
