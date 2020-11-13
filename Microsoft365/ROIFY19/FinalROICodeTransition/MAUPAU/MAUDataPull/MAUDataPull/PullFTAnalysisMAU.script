@@ -1,0 +1,36 @@
+﻿//Script GUID:b9aad062-f670-4774-aa7e-39e5b53b0a55
+//Used for tracking history
+
+// All Up MAU
+overall_2018 = SSTREAM @"/shares/IDEAs.Prod/Partner/PreRelease/dev/tenantactiveusagecounts/user/rl28/eslt/2018/07/EsltRL28ActiveUserCount_2018_07_31.ss";
+overall_2019 = SSTREAM @"/shares/IDEAs.Prod/Partner/PreRelease/dev/tenantactiveusagecounts/user/rl28/eslt/2019/07/EsltRL28ActiveUserCount_2019_07_31.ss";
+tenants = SSTREAM @"/local/Projects/ROI/FY20MALTenants.ss";
+
+data1 =
+    SELECT OmsTenantId,
+           AllUp AS MAUFY18
+    FROM overall_2018;
+
+data2 =
+    SELECT OmsTenantId,
+           AllUp AS MAUFY19
+    FROM overall_2019;
+
+data =
+    SELECT data1.OmsTenantId,
+           data1.MAUFY18,
+           data2.MAUFY19
+    FROM data1
+         INNER JOIN
+             data2
+         ON data1.OmsTenantId == data2.OmsTenantId;
+
+data =
+    SELECT data.*, tenants.FinalTPID AS MSSalesID
+    FROM data
+         INNER JOIN
+             tenants
+         ON data.OmsTenantId == tenants.OMSTenantId;
+
+OUTPUT data
+TO SSTREAM @"/local/Projects/ROI/FY18_19_MAU.ss";

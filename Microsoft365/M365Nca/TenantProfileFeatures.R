@@ -103,7 +103,7 @@ scoring_cohortq2 <- featurize(scoring_cohortq2, "2019-06-30", "FY20Q2")
 training_cohort <- rbind(training_cohortq3, training_cohortq4)
 scoring_cohort <- rbind(scoring_cohortq1, scoring_cohortq2)
 
-write.csv(training_cohort, "C:\\Users\\varamase\\Documents\\DataStreams\\M365NCA\\Data\\Features\\Training\\TenantProfile.csv", row.names = FALSE)
-write.csv(scoring_cohort, "C:\\Users\\varamase\\Documents\\DataStreams\\M365NCA\\Data\\Features\\Scoring\\TenantProfile.csv", row.names = FALSE)
+write.csv(training_cohort, "C:\\Users\\varamase\\Documents\\DataStreams\\M365NCA\\Data\\Features\\Training\\TenantProfilev2.csv", row.names = FALSE)
+write.csv(scoring_cohort, "C:\\Users\\varamase\\Documents\\DataStreams\\M365NCA\\Data\\Features\\Scoring\\TenantProfilev2.csv", row.names = FALSE)
 
 

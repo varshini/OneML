@@ -1,0 +1,42 @@
+﻿<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>b09f49fd-48b1-49c7-bce3-40576d46ec2d</ProjectGuid>
+    <OutputType>File</OutputType>
+    <AssemblyName>Algebra.xml</AssemblyName>
+    <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <Name>cLTVUpload</Name>
+    <RootNamespace>cLTVUpload</RootNamespace>
+    <VCSelectionInProjectProperty>&lt;Use Current VC in VC Selector&gt;</VCSelectionInProjectProperty>
+    <CosmosRuntimeVersion>Default</CosmosRuntimeVersion>
+    <ScopePath>%24(SCRIPT_DIR);%24(CLUSTER_ROOT);%24(SCOPE_DIR);%24(PROJECT_DIR)</ScopePath>
+    <InputStreamSearchPath>%24(PROJECT_DIR);%24(SCRIPT_DIR);%24(CLUSTER_ROOT)</InputStreamSearchPath>
+    <VertexDebugSolution>false</VertexDebugSolution>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\Debug\</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugSymbols>false</DebugSymbols>
+    <OutputPath>bin\Release\</OutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Script Include="Scope.script" />
+    <Script Include="Tenant.script" />
+    <Script Include="Usage.script" />
+    <ScriptCode Include="Scope.script.cs">
+      <DependentUpon>Scope.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="Tenant.script.cs">
+      <DependentUpon>Tenant.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="Usage.script.cs">
+      <DependentUpon>Usage.script</DependentUpon>
+    </ScriptCode>
+  </ItemGroup>
+  <Import Project="$(AppData)\Microsoft\ScopeStudio\MsBuild\1.0\Scope.targets" />
+</Project>

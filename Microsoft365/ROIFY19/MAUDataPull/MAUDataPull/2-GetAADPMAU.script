@@ -1,0 +1,34 @@
+﻿//Script GUID:3eb9e743-d983-4cba-a077-60d0e662ef0c
+//Used for tracking history
+
+mal_tenants = SSTREAM @"/local/Projects/ROI/FY20MALTenants.ss";
+
+#DECLARE snapDate DateTime = DateTime.Parse(@@PROCESS_DATE_START@@);
+
+#DECLARE aadp_path string   = string.Format("/shares/AD_DataAnalytics/AD_DataAnalytics/Data/Results/Onedata/PartnerFeed/{0:yyyy}/{0:MM}/{0:dd}/IncentiveFeed/Fy19IncentiveFeedByTenant.ss", @snapDate);
+#DECLARE output      string = string.Format("/local/Projects/ROI/AADPMau/{0:yyyy-MM}_AADPMau1.ss", @snapDate); 
+
+input_data_aadp =
+    SELECT Convert.ToString(ContextId) AS TenantId,
+           IncentiveUsageCount AS AADPUsageCount, 
+           IncentiveUsageCount_Capped AS AADPUsageCountCapped,
+           CAActiveUniqueUserCount AS CAUsageCount, 
+           CAActiveUniqueUserCount_Capped AS CAUsageCountCapped
+    FROM
+    (SSTREAM @aadp_path);
+
+usage_tpid =
+    SELECT mal_tenants.OmsTenantId, 
+           @snapDate AS Date,
+           input_data_aadp.AADPUsageCount, 
+           input_data_aadp.CAUsageCount, 
+           input_data_aadp.CAUsageCountCapped,
+           input_data_aadp.AADPUsageCountCapped
+    FROM mal_tenants
+         INNER JOIN
+             input_data_aadp
+         ON input_data_aadp.TenantId == mal_tenants.OmsTenantId;
+
+OUTPUT usage_tpid TO SSTREAM @output
+CLUSTERED BY OmsTenantId;
+

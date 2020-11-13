@@ -4,7 +4,7 @@
 /* Script to generate tenant profile for tenants at the snapshot date - Run on IDEAS.ppe for v3 tenant profile */
 
 #DECLARE snapDate DateTime = DateTime.Parse("2020-06-30");
-#DECLARE output string = string.Format("/local/Projects/{0:yyyy-MM}_TenantProfile.ss", @snapDate);
+#DECLARE output string = string.Format("/local/Projects/M365NCA/{0:yyyy-MM}_TenantProfile.ss", @snapDate);
 
 mal_tenants = SSTREAM @"/local/Projects/M365NCA/FY21SMCTenants.ss";
 

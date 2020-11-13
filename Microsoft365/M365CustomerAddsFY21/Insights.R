@@ -3,6 +3,8 @@
 library(dplyr)
 training_data <- read.csv("C:\\Users\\varamase\\Documents\\DataStreams\\M365NCA\\M365NCAFY21\\Data\\Features\\TrainingFeaturesFinalv2.csv")
 
+training_data <- filter(training_data, TotalM365 <= 300)
+  
 ## Usage Features ##
 # feature 1
 data <- training_data
@@ -93,6 +95,19 @@ data$buckets <- case_when(data$OATPUsagePaidPerc == 0 ~ "0",
                           data$OATPUsagePaidPerc > 20 & data$OATPUsagePaidPerc <= 30 ~ "20-30",
                           data$OATPUsagePaidPerc > 30 & data$OATPUsagePaidPerc <= 40 ~ "30-40",
                           data$OATPUsagePaidPerc > 40 ~ "40+")
+
+data <- data %>% group_by(buckets) %>% summarise(n_cust = n(), n_acq = sum(M365Label ))
+data$perc <- data$n_acq/data$n_cust
+
+data <- training_data
+feature_name <- "MIPUsagePaidPerc"
+data$MIPUsagePaidPerc <- data$MIPUsagePaidPerc * 100
+data$buckets <- case_when(data$MIPUsagePaidPerc == 0 ~ "0", 
+                          data$MIPUsagePaidPerc > 0 & data$MIPUsagePaidPerc <= 10 ~ "1-10",
+                          data$MIPUsagePaidPerc > 10 & data$MIPUsagePaidPerc <= 20 ~ "10-20",
+                          data$MIPUsagePaidPerc > 20 & data$MIPUsagePaidPerc <= 30 ~ "20-30",
+                          data$MIPUsagePaidPerc > 30 & data$MIPUsagePaidPerc <= 40 ~ "30-40",
+                          data$MIPUsagePaidPerc > 40 ~ "40+")
 
 data <- data %>% group_by(buckets) %>% summarise(n_cust = n(), n_acq = sum(M365Label ))
 data$perc <- data$n_acq/data$n_cust

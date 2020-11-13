@@ -1,0 +1,11 @@
+﻿//Script GUID:d8574e18-bd17-4201-bcc3-e80a32ced35b
+//Used for tracking history
+
+source = SSTREAM @"/local/Projects/ROI/FY18_19_MAU.ss";
+
+data =
+    SELECT *
+    FROM source;
+
+OUTPUT data
+TO SSTREAM @"/local/users/brmille/databricks/roi/FY18_19mau.ss";

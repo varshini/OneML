@@ -1,0 +1,64 @@
+﻿//Script GUID:582a2e4c-70b6-4543-9eef-dde64b6fcc51
+//Used for tracking history
+
+// ====================================================================================================================
+// <copyright company="Microsoft Inc">
+//   (c) 2016 Microsoft Inc.
+// </copyright>
+// <summary>
+//     WHERE = cosmos14\ideas.ppe; runtime ~ 6 min 
+//       WHY = Aggregate Commercial PAU timeseries
+// </summary>
+// <history>
+//    [mialdea] 2018-09-27: initial
+// </history>
+// ====================================================================================================================
+// Tools for GDPR tagging
+MODULE "/shares/PXSCosmos14.Prod/PXS.DeleteSignal.PROD/PrivacyAnnotation/PrivacyAnnotation.module";
+USING Privacy;
+// ====================================================================================================================
+#DECLARE outputRoot     string   = @"/local/Projects/ROI/TenantProfile/"; // if running on ACE.proc "/local/Projects/"; if running on office.adhoc "/shares/ACE.proc/local/Projects/"
+#DECLARE snapDate       DateTime = DateTime.Parse(@@PROCESS_DATE_START@@);
+#DECLARE snapDateStr    string   = @snapDate.ToString("yyyy-MM-dd");
+
+//Input
+#DECLARE mauStreamPath      string = string.Format("/local/Projects/ROI/TenantProfile/");
+#DECLARE mauStreamPatern    string = "%Y-%m_TenantProfile.ss?%d";
+
+//Output
+#DECLARE mauOut         string = string.Format("local/Projects/ROI/TenantProfile/{0:yyyy-MM}_O365PauTimeseries.ss", @snapDate);
+
+// ====================================================================================================================
+// All up MAU
+mauAgg = 
+    SELECT Date,
+           Tpid,
+           OmsTenantId,
+           FirstPaidStartDate,
+           MAX(PaidAvailableUnits) AS PaidAvailableUnits,
+           MAX(EXOPaidAvailableUnits) AS EXOPaidAvailableUnits,
+           MAX(SPOPaidAvailableUnits) AS SPOPaidAvailableUnits,
+           MAX(OD4BPaidAvailableUnits) AS OD4BPaidAvailableUnits,
+           MAX(SfbPaidAvailableUnits) AS SfbPaidAvailableUnits,
+           MAX(YammerPaidAvailableUnits) AS YammerPaidAvailableUnits,
+           MAX(TeamsPaidAvailableUnits) AS TeamsPaidAvailableUnits,
+           MAX(ProPlusPaidAvailableUnits) AS ProPlusPaidAvailableUnits                
+    FROM
+        (
+        SSTREAM SPARSE STREAMSET @mauStreamPath
+        PATTERN @mauStreamPatern
+        RANGE __date=["2020-01-01", @snapDateStr] 
+        )
+    GROUP BY Date,
+             Tpid,
+             OmsTenantId,
+             FirstPaidStartDate;
+
+
+[Privacy.Asset.NonPersonal] // GDPR asset tagging
+[Privacy.Column.TenantId(Column="TenantId")] // GDPR column tagging
+
+OUTPUT mauAgg TO SSTREAM @mauOut
+    CLUSTERED BY Tpid, OmsTenantId, Date
+    SORTED BY Tpid, OmsTenantId, Date
+        WITH STREAMEXPIRY @"365";

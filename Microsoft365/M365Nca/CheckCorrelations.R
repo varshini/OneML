@@ -33,9 +33,16 @@ data$buckets <- case_when(data$IntuneUsagePaidPerc == 0 ~ "0",
                           data$IntuneUsagePaidPerc > 50 ~ "50+")
 
 data$buckets <- case_when(data$IntuneUsagePaidPerc == 0 ~ "0", 
-                          data$IntuneUsagePaidPerc > 0 & data$IntuneUsagePaidPerc <= 10 ~ "1-10",
-                          data$IntuneUsagePaidPerc > 10 & data$IntuneUsagePaidPerc <= 30 ~ "10-30",
-                          data$IntuneUsagePaidPerc > 30 ~ "30+")
+                          data$IntuneUsagePaidPerc > 0 & data$IntuneUsagePaidPerc <= 5 ~ "1-5",
+                          data$IntuneUsagePaidPerc > 5 & data$IntuneUsagePaidPerc <= 10 ~ "5-10",
+                          data$IntuneUsagePaidPerc > 10 & data$IntuneUsagePaidPerc <= 15 ~ "10-15",
+                          data$IntuneUsagePaidPerc > 15 & data$IntuneUsagePaidPerc <= 20 ~ "15-20",
+                          data$IntuneUsagePaidPerc > 20 & data$IntuneUsagePaidPerc <= 30 ~ "20-30",
+                          data$IntuneUsagePaidPerc > 30 & data$IntuneUsagePaidPerc <= 40 ~ "30-40",
+                          data$IntuneUsagePaidPerc > 40 & data$IntuneUsagePaidPerc <= 50 ~ "30-40",
+                          data$IntuneUsagePaidPerc > 50 ~ "50+")
+data <- data %>% group_by(buckets) %>% summarise(n_cust = n(), n_acq = sum( CustomerAdd.x ))
+data$perc <- data$n_acq/data$n_cust
 
 data <- training_features
 feature_name <- "IntuneUsageEnabledPerc"
@@ -54,7 +61,7 @@ data$IntuneEnabledPerc <- data$IntuneEnabledPerc * 100
 data$buckets <- case_when(data$IntuneEnabledPerc == 0 ~ "0", 
                           data$IntuneEnabledPerc > 0 & data$IntuneEnabledPerc <= 10 ~ "1-10",
                           data$IntuneEnabledPerc > 10 & data$IntuneEnabledPerc <= 30 ~ "10-30",
-                          data$IntuneEnabledPerc > 30 & data$IntuneEnabledPerc <= 50 ~ "10-30"
+                          data$IntuneEnabledPerc > 30 & data$IntuneEnabledPerc <= 50 ~ "30-50",
                           data$IntuneEnabledPerc > 50 ~ "50+")
 data <- data %>% group_by(buckets) %>% summarise(n_cust = n(), n_acq = sum( CustomerAdd.x ))
 data$perc <- data$n_acq/data$n_cust
@@ -94,9 +101,11 @@ data <- training_features
 feature_name <- "ProPlusUsagePaidPerc"
 data$ProPlusUsagePaidPerc <- data$ProPlusUsagePaidPerc * 100
 data$buckets <- case_when(data$ProPlusUsagePaidPerc == 0 ~ "0", 
-                          data$ProPlusUsagePaidPerc > 0 & data$ProPlusUsagePaidPerc <= 10 ~ "1-30",
+                          data$ProPlusUsagePaidPerc > 0 & data$ProPlusUsagePaidPerc <= 10 ~ "1-10",
                           data$ProPlusUsagePaidPerc > 10 & data$ProPlusUsagePaidPerc <= 30 ~ "10-30",
-                          data$ProPlusUsagePaidPerc > 50 ~ "50+")
+                          data$ProPlusUsagePaidPerc > 30 & data$ProPlusUsagePaidPerc <= 50 ~ "30-50",
+                          data$ProPlusUsagePaidPerc > 50 & data$ProPlusUsagePaidPerc <= 70 ~ "50-70",
+                          data$ProPlusUsagePaidPerc > 70 ~ "70+")
 data <- data %>% group_by(buckets) %>% summarise(n_cust = n(), n_acq = sum( CustomerAdd.x ))
 data$perc <- data$n_acq/data$n_cust
 
@@ -207,6 +216,76 @@ data$buckets <- case_when(data$Intune_active_users == 0 ~ "0",
 data <- data %>% group_by(buckets) %>% summarise(n_cust = n(), n_acq = sum( CustomerAdd.x ))
 data$perc <- data$n_acq/data$n_cust
 
+#Teams 
+data <- training_features
+feature_name <- "TeamsUsagePaidPerc"
+data$TeamsUsagePaidPerc <- data$TeamsUsagePaidPerc * 100
+data$buckets <- case_when(data$TeamsUsagePaidPerc == 0 ~ "0", 
+                          data$TeamsUsagePaidPerc > 0 & data$TeamsUsagePaidPerc <= 10 ~ "1-10",
+                          data$TeamsUsagePaidPerc > 10 & data$TeamsUsagePaidPerc <= 30 ~ "10-30",
+                          data$TeamsUsagePaidPerc > 30 & data$TeamsUsagePaidPerc <= 50 ~ "30-50",
+                          data$TeamsUsagePaidPerc > 50 & data$TeamsUsagePaidPerc <= 70 ~ "50-70",
+                          data$TeamsUsagePaidPerc > 70 ~ "70+")
+data <- data %>% group_by(buckets) %>% summarise(n_cust = n(), n_acq = sum( CustomerAdd.x ))
+data$perc <- data$n_acq/data$n_cust
+
+data <- training_features
+feature_name <- "TeamsUsagePaidPerc"
+data$TeamsUsagePaidPerc <- data$TeamsUsagePaidPerc * 100
+data$buckets <- case_when(data$TeamsUsagePaidPerc == 0 & data$HasEMSSku == 1 ~ "0", 
+                          data$TeamsUsagePaidPerc > 0 & data$TeamsUsagePaidPerc <= 10 & data$HasEMSSku == 1 ~ "1-10",
+                          data$TeamsUsagePaidPerc > 10 & data$TeamsUsagePaidPerc <= 30 & data$HasEMSSku == 1 ~ "10-30",
+                          data$TeamsUsagePaidPerc > 30 & data$TeamsUsagePaidPerc <= 50 & data$HasEMSSku == 1 ~ "30-50",
+                          data$TeamsUsagePaidPerc > 50 & data$TeamsUsagePaidPerc <= 70 & data$HasEMSSku == 1~ "50-70",
+                          data$TeamsUsagePaidPerc > 70 & data$HasEMSSku == 1 ~ "70+")
+data <- data %>% group_by(buckets) %>% summarise(n_cust = n(), n_acq = sum( CustomerAdd.x ))
+data$perc <- data$n_acq/data$n_cust
+
+data <- training_features
+feature_name <- "TeamsUsagePaidPerc"
+data$TeamsUsagePaidPerc <- data$TeamsUsagePaidPerc * 100
+data$buckets <- case_when(data$TeamsUsagePaidPerc == 0 & data$HasEMSSku == 0 ~ "0", 
+                          data$TeamsUsagePaidPerc > 0 & data$TeamsUsagePaidPerc <= 10 & data$HasEMSSku == 0 ~ "1-10",
+                          data$TeamsUsagePaidPerc > 10 & data$TeamsUsagePaidPerc <= 30 & data$HasEMSSku == 0 ~ "10-30",
+                          data$TeamsUsagePaidPerc > 30 & data$TeamsUsagePaidPerc <= 50 & data$HasEMSSku == 0 ~ "30-50",
+                          data$TeamsUsagePaidPerc > 50 & data$TeamsUsagePaidPerc <= 70 & data$HasEMSSku == 0~ "50-70",
+                          data$TeamsUsagePaidPerc > 70 & data$HasEMSSku == 0 ~ "70+")
+data <- data %>% group_by(buckets) %>% summarise(n_cust = n(), n_acq = sum( CustomerAdd.x ))
+data$perc <- data$n_acq/data$n_cust
+
+# Yammer features #
+data <- training_features
+feature_name <- "YammerUsageEnabledPerc"
+data$YammerUsageEnabledPerc <- data$YammerUsageEnabledPerc * 100
+data$buckets <- case_when(data$YammerUsageEnabledPerc == 0 ~ "0", 
+                          data$YammerUsageEnabledPerc > 0 & data$YammerUsageEnabledPerc <= 10 ~ "1-10",
+                          data$YammerUsageEnabledPerc > 10 & data$YammerUsageEnabledPerc <= 30 ~ "10-30",
+                          data$YammerUsageEnabledPerc > 30 & data$YammerUsageEnabledPerc <= 50 ~ "30-50",
+                          data$YammerUsageEnabledPerc > 50 ~ "50+")
+data <- data %>% group_by(buckets) %>% summarise(n_cust = n(), n_acq = sum( CustomerAdd.x ))
+data$perc <- data$n_acq/data$n_cust
+
+data <- training_features
+feature_name <- "YammerUsagePaidPerc"
+data$YammerUsagePaidPerc <- data$YammerUsagePaidPerc * 100
+data$buckets <- case_when(data$YammerUsagePaidPerc == 0 ~ "0", 
+                          data$YammerUsagePaidPerc > 0 & data$YammerUsagePaidPerc <= 10 ~ "1-10",
+                          data$YammerUsagePaidPerc > 10 & data$YammerUsagePaidPerc <= 30 ~ "10-30",
+                          data$YammerUsagePaidPerc > 30 & data$YammerUsagePaidPerc <= 50 ~ "30-50",
+                          data$YammerUsagePaidPerc > 50 ~ "50+")
+data <- data %>% group_by(buckets) %>% summarise(n_cust = n(), n_acq = sum( CustomerAdd.x ))
+data$perc <- data$n_acq/data$n_cust
+
+data <- training_features
+feature_name <- "YammerEnabledPerc"
+data$YammerEnabledPerc <- data$YammerEnabledPerc * 100
+data$buckets <- case_when(data$YammerEnabledPerc == 0 ~ "0", 
+                          data$YammerEnabledPerc > 0 & data$YammerEnabledPerc <= 10 ~ "1-10",
+                          data$YammerEnabledPerc > 10 & data$YammerEnabledPerc <= 30 ~ "10-30",
+                          data$YammerEnabledPerc > 30 & data$YammerEnabledPerc <= 50 ~ "30-50",
+                          data$YammerEnabledPerc > 50 ~ "50+")
+data <- data %>% group_by(buckets) %>% summarise(n_cust = n(), n_acq = sum( CustomerAdd.x ))
+data$perc <- data$n_acq/data$n_cust
 
 ## License Features ##
 #feature 1

@@ -4,10 +4,10 @@
 //maps the entitlement ids from machine status to user and further tenants
 
 licenses =
-    SSTREAM @"/my/BlockedTelemetry/Monthly/Nov/OLSPings.ss";
+    SSTREAM @"/my/BlockedTelemetry/Apr08_RL28/OLSPings.ss";
 
 entitlement_user_mapping = VIEW @"/shares/IDEAs.Prod/Public/Views/IDEAsEntitlementProfile.view"
-    PARAMS( HistoryDate = DateTime.Parse( "2018-11-30" ) );
+    PARAMS( HistoryDate = DateTime.Parse( "2019-04-07" ) );
 
 data =
     SELECT licenses.*, entitlement_user_mapping.UserObjectId, entitlement_user_mapping.OMSTenantId
@@ -23,4 +23,4 @@ data =
 
 
 OUTPUT data
-TO SSTREAM @"/my/BlockedTelemetry/Monthly/Nov/TenantUserCount1.ss";
+TO SSTREAM @"/my/BlockedTelemetry/Monthly/Apr08_RL28/TenantUserCount1.ss";

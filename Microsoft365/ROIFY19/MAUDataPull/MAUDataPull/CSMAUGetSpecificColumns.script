@@ -1,0 +1,25 @@
+﻿//Script GUID:8061131a-e80f-4fb5-a10d-1cfcb62dff20
+//Used for tracking history
+
+data = SSTREAM @"/local/Projects/ROI/CSMAU/TenantProfileMAUMerge_2019_01_30.ss";
+
+data =
+    SELECT OMSTenantId,
+           PaidAvailableUnits,
+           O365MAU, 
+           TeamsPaidAvailableUnits,
+           MSSalesAreaName
+    FROM data;
+
+mal_tenants = SSTREAM @"/local/Projects/ROI/FY20MALTenants.ss";
+
+data =
+    SELECT data.*,
+           mal_tenants.Tpid
+    FROM data
+         INNER JOIN
+             mal_tenants
+         ON data.OMSTenantId == mal_tenants.OmsTenantId;
+
+OUTPUT data
+TO SSTREAM @"/local/Projects/ROI/CSMAU/CSMAU_2019_01.ss";

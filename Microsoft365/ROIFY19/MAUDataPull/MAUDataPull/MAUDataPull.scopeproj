@@ -1,0 +1,90 @@
+﻿<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>3a3441ff-6188-4eb2-9cfc-964c86f01601</ProjectGuid>
+    <OutputType>File</OutputType>
+    <AssemblyName>Algebra.xml</AssemblyName>
+    <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
+    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <Name>MAUDataPull</Name>
+    <RootNamespace>MAUDataPull</RootNamespace>
+    <VCSelectionInProjectProperty>&lt;Use Current VC in VC Selector&gt;</VCSelectionInProjectProperty>
+    <CosmosRuntimeVersion>Default</CosmosRuntimeVersion>
+    <ScopePath>%24(SCRIPT_DIR);%24(CLUSTER_ROOT);%24(SCOPE_DIR);%24(PROJECT_DIR)</ScopePath>
+    <InputStreamSearchPath>%24(PROJECT_DIR);%24(SCRIPT_DIR);%24(CLUSTER_ROOT)</InputStreamSearchPath>
+    <VertexDebugSolution>false</VertexDebugSolution>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <OutputPath>bin\Debug\</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugSymbols>false</DebugSymbols>
+    <OutputPath>bin\Release\</OutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Script Include="1-CreateTenantProfile.script">
+      <RemoveUselessParameters>False</RemoveUselessParameters>
+      <ScopeOldParameters>PROCESS_DATE_START=(\"2018-12-31\")</ScopeOldParameters>
+      <ScopeClusterParameters>PROCESS_DATE_START=(\"2020-01-31\")</ScopeClusterParameters>
+    </Script>
+    <Script Include="2-GetAADPMAU.script">
+      <RemoveUselessParameters>False</RemoveUselessParameters>
+      <ScopeOldParameters>PROCESS_DATE_START=(\"2018-07-31\")</ScopeOldParameters>
+      <ScopeClusterParameters>PROCESS_DATE_START=(\"2019-12-31\")</ScopeClusterParameters>
+    </Script>
+    <Script Include="2-GetWorkloadMAU.script">
+      <RemoveUselessParameters>False</RemoveUselessParameters>
+      <ScopeClusterParameters>PROCESS_DATE_START=(\"2018-01-01\")</ScopeClusterParameters>
+      <ScopeOldParameters>PROCESS_DATE_START=(\"2020-01-31\")</ScopeOldParameters>
+    </Script>
+    <Script Include="3-AggregateAADPMAU.script">
+      <RemoveUselessParameters>False</RemoveUselessParameters>
+      <ScopeOldParameters>PROCESS_DATE_START=(\"2019-12-31\")</ScopeOldParameters>
+      <ScopeClusterParameters>PROCESS_DATE_START=(\"2019-12-31\")</ScopeClusterParameters>
+    </Script>
+    <Script Include="3-AggregateAADPPAU.script" />
+    <Script Include="3-AggregateMAU.script">
+      <RemoveUselessParameters>False</RemoveUselessParameters>
+      <ScopeOldParameters>PROCESS_DATE_START=(\"2019-12-29\")</ScopeOldParameters>
+      <ScopeClusterParameters>PROCESS_DATE_START=(\"2020-02-28\")</ScopeClusterParameters>
+    </Script>
+    <Script Include="3-AggregatePAU.script">
+      <RemoveUselessParameters>False</RemoveUselessParameters>
+      <ScopeClusterParameters>PROCESS_DATE_START=(\"2020-02-28\")</ScopeClusterParameters>
+      <ScopeOldParameters>PROCESS_DATE_START=(\"2019-12-31\")</ScopeOldParameters>
+    </Script>
+    <Script Include="CSMAU.script" />
+    <Script Include="CSMAUGetSpecificColumns.script" />
+    <ScriptCode Include="1-CreateTenantProfile.script.cs">
+      <DependentUpon>1-CreateTenantProfile.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="2-GetAADPMAU.script.cs">
+      <DependentUpon>2-GetAADPMAU.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="2-GetWorkloadMAU.script.cs">
+      <DependentUpon>2-GetWorkloadMAU.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="3-AggregateAADPMAU.script.cs">
+      <DependentUpon>3-AggregateAADPMAU.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="3-AggregateAADPPAU.script.cs">
+      <DependentUpon>3-AggregateAADPPAU.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="3-AggregateMAU.script.cs">
+      <DependentUpon>3-AggregateMAU.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="3-AggregatePAU.script.cs">
+      <DependentUpon>3-AggregatePAU.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="CSMAU.script.cs">
+      <DependentUpon>CSMAU.script</DependentUpon>
+    </ScriptCode>
+    <ScriptCode Include="CSMAUGetSpecificColumns.script.cs">
+      <DependentUpon>CSMAUGetSpecificColumns.script</DependentUpon>
+    </ScriptCode>
+  </ItemGroup>
+  <Import Project="$(AppData)\Microsoft\ScopeStudio\MsBuild\1.0\Scope.targets" />
+</Project>

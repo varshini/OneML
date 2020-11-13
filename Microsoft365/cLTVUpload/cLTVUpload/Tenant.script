@@ -1,0 +1,176 @@
+﻿//Script GUID:2bf68404-5e14-4a01-9198-f07a887697b7
+//Used for tracking history
+
+// ====================================================================================================================
+// <copyright company="Microsoft Inc">
+//   (c) 2019 Microsoft Inc.
+// </copyright>
+// <summary>
+//     WHERE = cosmos14\ideas.ppe; runtime ~ 10 min for 1 month
+//       WHY = Get Commercial Tenant profiles from IDEAs stack
+// </summary>
+//                          [https://microsoft365ideas.visualstudio.com/Commercial/_git/TippingPointsV2/commit/9df80c8ec591a2eaebdd2dbc770fd8368db983f1?refName=refs%2Fheads%2Fmaster&_a=compare&path=%2F1-GetTenantProfiles.script]
+// </history>
+// ====================================================================================================================
+// Tools for GDPR tagging
+MODULE "/shares/PXSCosmos14.Prod/PXS.DeleteSignal.PROD/PrivacyAnnotation/PrivacyAnnotation.module";
+USING Privacy;
+// ====================================================================================================================
+#DECLARE outputPath string = "@@TenantFeatures_Cohort@@";
+
+// NOTE: TenantProfile has an SLA of N-3 days.
+//#DECLARE StartDate DateTime = DateTimeOffset.Parse("@@Slice.StartTime@@").DateTime;
+//#DECLARE EndDate DateTime = DateTimeOffset.Parse("@@Slice.EndTime@@").AddDays(-1).DateTime;
+
+#DECLARE StartDate DateTime = DateTime.Parse("2020-10-31");
+#DECLARE EndDate DateTime = DateTime.Parse("2020-10-31");
+    
+//Input
+#DECLARE tenantProfileView string = @"/shares/IDEAs.Prod.Data/Publish/Profiles/Tenant/Commercial/v3/TenantProfileView/Views/v3/IDEAsTenantProfile.view";
+#DECLARE subscriptionProfileHistory string = @"shares/IDEAs.Prod.Data/Publish/Profiles/Subscription/Commercial/IDEAsCommercialSubscriptionProfile/Views/v3/IDEAsCommercialSubscriptionProfile.view";
+
+// Read Tenant View: 
+//  select active commercial Ent & SMC tenants having paid O365 seats
+tenantView =
+    VIEW @tenantProfileView
+    PARAMS (HistoryDate = @EndDate);
+
+tenure =
+    VIEW @subscriptionProfileHistory
+    PARAMS (HistoryDate = @EndDate);
+
+tenure = 
+    SELECT @StartDate.ToString("yyyyMM") AS YearMonth,
+           OMSTenantId,
+           MAX(StartDate) AS MostRecentSubStartDate,
+           MIN(CurrentStateEndDate) AS NearestUpcomingSubEndDate
+    FROM tenure
+    WHERE SubscriptionState IN ("Active", "InGracePeriod")
+            AND NOT (OfferIsTrial || OfferIsEdu || OfferIsCharity || OfferIsAddOn || IsFraud || OfferIsGovernment) // Note: HasPaidSeats malfunctions for QuickStart offers
+            //AND (HasEXO && HasProPlus && HasSPO)
+    GROUP BY YearMonth,
+             OMSTenantId;
+
+tenantData = 
+    SELECT @StartDate.ToString("yyyyMM") AS YearMonth,
+            OMSTenantId,
+            Name,
+            TenantStatus,
+            IsFastTrackTenant,
+            DataCenterModel,
+            HasM365,//not used
+            Country,
+            Region,
+            CompanyLastDirSyncTime,
+            TenantCategory,
+            TotalAvailableUnits,
+            TotalUsers AS TotalEnabledUsers,
+            IsConcierge,
+            IsViral,
+            HasQuickStartTenantTag,//not used
+            MSSalesCustomerOrgId,
+            MSSalesTopParentOrgName,
+            MSSalesTopParentOrgId,
+            MSSalesEmergingMarket,
+            MSSalesAreaName,
+            MSSalesVerticalName,
+            MSSalesSegmentName,
+            MSSalesIndustryName,
+            MSSalesSubSegmentName,
+            CustomerSegmentGroup,
+            EMSPaidAvailableUnits AS EMSAvailableUnits,//not used
+            //OfficePaidAvailableUnits AS OfficeAvailableUnits,//***OfficeAvailableUnits - used in the filter
+            WindowsAvailableUnits,
+            IsForbes,
+            PaidAvailableUnits,
+            EMSPaidAvailableUnits,
+            M365PaidAvailableUnits,
+            OfficePaidAvailableUnits AS Office365PaidAvailableUnits,
+            //IsS400,
+            ProPlusAvailableUnits,
+            EXOAvailableUnits,
+            SPOAvailableUnits,
+            OD4BAvailableUnits,
+            SfbAvailableUnits AS LyoAvailableUnits,
+            YammerAvailableUnits,
+            TeamsAvailableUnits,
+            EXOEnabledUsers,
+            SPOEnabledUsers,
+            SFBEnabledUsers AS LYOEnabledUsers,
+            PPDEnabledUsers,
+            OD4BEnabledUsers,
+            TeamEnabledUsers,
+            YammerEnabledUsers
+    FROM tenantView
+        WHERE IsTest == false
+          AND State == "Active"
+          AND IsMSODSDeleted != "True"
+          AND TenantCategory IN ("Commercial", "QuickStart", "Gov")
+          AND CustomerSegmentGroup IN ("Enterprise", "SMC - Corporate")
+          AND OfficePaidAvailableUnits > 0; //Replaced OfficeAvailableUnits since this does not exist in the tenant profile v3
+
+
+//summarize cohort
+cohort = 
+    SELECT DISTINCT YearMonth,
+                    OMSTenantId AS OmsTenantId,
+                    Name AS TenantName,
+                    TenantStatus,
+                    bb.MostRecentSubStartDate,
+                    bb.NearestUpcomingSubEndDate,
+                    IsFastTrackTenant,
+                    DataCenterModel,
+                    HasM365 AS IsM365Tenant,
+                    Country,
+                    Region,
+                    CompanyLastDirSyncTime,
+                    TenantCategory,
+                    TotalAvailableUnits,
+                    TotalEnabledUsers,
+                    IsConcierge,
+                    IsViral,
+                    HasQuickStartTenantTag,
+                    MSSalesCustomerOrgId AS MsSalesCustomerOrgId,
+                    MSSalesTopParentOrgName AS MsSalesTopParentOrgName,
+                    MSSalesTopParentOrgId AS MsSalesTopParentOrgId,
+                    MSSalesEmergingMarket AS MsSalesEmergingMarket,
+                    MSSalesAreaName AS MsSalesAreaName,
+                    MSSalesVerticalName AS MsSalesVerticalName,
+                    MSSalesSegmentName AS MsSalesSegmentName,
+                    MSSalesIndustryName AS MsSalesIndustryName,
+                    MSSalesSubSegmentName AS MsSalesSubSegmentName,
+                    CustomerSegmentGroup,
+                    EMSAvailableUnits AS EmsAvailableUnits,
+                    //OfficeAvailableUnits,
+                    WindowsAvailableUnits,
+                    IsForbes,
+                    PaidAvailableUnits,
+                    EMSPaidAvailableUnits AS EmsPaidAvailableUnits,
+                    M365PaidAvailableUnits,
+                    Office365PaidAvailableUnits,
+                    //IsS400,
+                    ProPlusAvailableUnits,
+                    EXOAvailableUnits AS ExoAvailableUnits,
+                    SPOAvailableUnits AS SpoAvailableUnits,
+                    OD4BAvailableUnits AS Od4bAvailableUnits,
+                    LyoAvailableUnits,
+                    YammerAvailableUnits,
+                    TeamsAvailableUnits,
+                    EXOEnabledUsers,
+                    SPOEnabledUsers,
+                    LYOEnabledUsers,
+                    PPDEnabledUsers AS ProPlusEnabledUsers,
+                    OD4BEnabledUsers,
+                    TeamEnabledUsers,
+                    YammerEnabledUsers
+    FROM tenantData AS aa
+    INNER JOIN tenure AS bb
+        ON aa.OMSTenantId == bb.OMSTenantId
+        AND aa.YearMonth == bb.YearMonth;
+ 
+ // Output
+
+[Privacy.Asset.NonPersonal] // GDPR asset tagging
+OUTPUT cohort TO SSTREAM "/my/cLTV/TenantCohort102020.ss"
+    CLUSTERED BY OmsTenantId, YearMonth
+    SORTED BY OmsTenantId, YearMonth;

@@ -4,7 +4,17 @@
 //Script GUID:bd32a0e8-167b-4e13-902b-1b3e7e2a2c6f
 //Used for tracking history
 
-data = SSTREAM @"/shares/OSIPartner.prod/local/partners/OLS/Prod/Private/DataStream/Current/Events/MachineStatus.ss";
+#DECLARE In_path string = "/shares/OSIPartner.prod/local/partners/OLS/Prod/Private/DataStream/Snapshots/Events/MachineStatus/";
+#DECLARE In_patt string = "MachineStatus_%Y_%m_%d.ss";
+#DECLARE startString string = "2019-03-12";
+#DECLARE endString string = "2019-04-08";
+
+
+//Read the Streams
+data =
+    SSTREAM STREAMSET @In_path
+            PATTERN   @In_patt
+            RANGE __date = [@startString, @endString];
 
 data =
     SELECT DateTimeLastHeartBeat, LicenseId,
@@ -21,7 +31,7 @@ data =
                     ClientName,
                     OfficeMajorVersion
     FROM data
-    WHERE DateTimeLastHeartBeat >= DateTime.Parse("2018-11-03") & DateTimeLastHeartBeat <= DateTime.Parse("2018-11-30");
+    WHERE DateTimeLastHeartBeat >= DateTime.Parse("2019-03-12") & DateTimeLastHeartBeat <= DateTime.Parse("2019-04-08");
 
 OLSPings =
     SELECT DISTINCT LicenseId,
@@ -53,5 +63,5 @@ OLSPings =
            
            
 OUTPUT OLSPings 
-TO SSTREAM @"/my/BlockedTelemetry/Monthly/Nov/OLSPings.ss"
+TO SSTREAM @"/my/BlockedTelemetry/Apr08_RL28/OLSPings.ss"
 CLUSTERED BY LicenseId;

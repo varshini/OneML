@@ -4,10 +4,10 @@
 //maps the license ids to tenants directly
 
 data =
-    SSTREAM @"/my/BlockedTelemetry/Monthly/Nov/OLSPings.ss";
+    SSTREAM @"/my/BlockedTelemetry/Apr08_RL28/OLSPings.ss";
                
 license_tenant_mapping = VIEW @"/shares/IDEAs.Prod/Public/Views/IDEAsOlsLicensesProfile.view"
-    PARAMS( HistoryDate = DateTime.Parse( "2018-11-30" ) );
+    PARAMS( HistoryDate = DateTime.Parse( "2019-04-01" ) );
 
 licenses =
     SELECT data. *,
@@ -23,7 +23,7 @@ licenses =
     GROUP BY OMSTenantId;
 
 OUTPUT licenses
-TO SSTREAM @"/my/BlockedTelemetry/Monthly/Nov/TenantLicenseCount.ss";
+TO SSTREAM @"/my/BlockedTelemetry/Monthly/Apr08_RL28/TenantLicenseCount.ss";
 
 
 

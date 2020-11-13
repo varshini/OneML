@@ -1,0 +1,43 @@
+﻿//Script GUID:6aa6437e-b2a3-4b9d-bd60-9c5a0a2d4c48
+//Used for tracking history
+
+// Pull individual workload MAU for for EXO, SPO, OD4B, Proplus, Teams - Run for each month end 
+
+#DECLARE snapDate DateTime = DateTime.Parse(@@PROCESS_DATE_START@@);
+
+//Output
+#DECLARE allUpMauWkloadOut      string = string.Format("/local/Projects/ROI/MauFeatures/{0:yyyy-MM}_AllUpMauByWorkload.ss", @snapDate);
+
+#DECLARE exo_path string   = string.Format("/shares/IDEAs.Prod/Partner/PreRelease/dev/tenantactiveusagecounts/user/rl28/exchange/{0:yyyy}/{0:MM}/ExchangeRL28ActiveUserCount_{0:yyyy}_{0:MM}_{0:dd}.ss", @snapDate);
+exo_data = SELECT Date, OmsTenantId , Application, AllUp AS Mau FROM (SSTREAM @exo_path);
+
+#DECLARE spo_path string   = string.Format("/shares/IDEAs.Prod/Partner/PreRelease/dev/tenantactiveusagecounts/user/rl28/sharepoint/{0:yyyy}/{0:MM}/SharePointRL28ActiveUserCount_{0:yyyy}_{0:MM}_{0:dd}.ss", @snapDate);
+spo_data = SELECT Date, OmsTenantId , Application, AllUp AS Mau FROM (SSTREAM @spo_path);
+
+#DECLARE odb_path string   = string.Format("/shares/IDEAs.Prod/Partner/PreRelease/dev/tenantactiveusagecounts/user/rl28/onedriveforbusiness/{0:yyyy}/{0:MM}/OneDriveForBusinessRL28ActiveUserCount_{0:yyyy}_{0:MM}_{0:dd}.ss", @snapDate);
+odb_data = SELECT Date, OmsTenantId , Application, AllUp AS Mau  FROM (SSTREAM @odb_path);
+
+#DECLARE proplus_path string   = string.Format("/shares/IDEAs.Prod/Partner/PreRelease/dev/tenantactiveusagecounts/user/rl28/officeclient/{0:yyyy}/{0:MM}/OfficeClientRL28ActiveUserCount_{0:yyyy}_{0:MM}_{0:dd}.ss", @snapDate);
+proplus_data = SELECT Date, OmsTenantId , Application, AllUp AS Mau FROM (SSTREAM @proplus_path);
+
+#DECLARE teams_path string   = string.Format("/shares/IDEAs.Prod/Partner/PreRelease/dev/tenantactiveusagecounts/user/rl28/teams/{0:yyyy}/{0:MM}/TeamsRL28ActiveUserCount_{0:yyyy}_{0:MM}_{0:dd}.ss", @snapDate);
+teams_data = SELECT Date, OmsTenantId , Application, AllUp AS Mau FROM (SSTREAM @teams_path);
+
+mal_tenants = SSTREAM @"/local/Projects/ROI/FY20MALTenants.ss";
+
+//inner join all workloads - TenantId, TPID, Date, Workload, MAU
+data = SELECT * FROM exo_data UNION ALL 
+        SELECT * FROM spo_data UNION ALL 
+        SELECT * FROM odb_data UNION ALL 
+        SELECT * FROM proplus_data UNION ALL 
+        SELECT * FROM teams_data;
+                         
+data = SELECT data.*, mal_tenants.Tpid FROM data INNER JOIN mal_tenants ON mal_tenants.OmsTenantId == data.OmsTenantId;
+
+OUTPUT data TO SSTREAM @allUpMauWkloadOut
+    CLUSTERED BY OmsTenantId, Application
+    SORTED BY OmsTenantId, Application
+        WITH STREAMEXPIRY @"365";
+                         
+
+

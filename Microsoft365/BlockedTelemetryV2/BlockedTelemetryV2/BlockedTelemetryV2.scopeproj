@@ -31,7 +31,6 @@
     <Script Include="1-LicenseEntitlementTenant.script" />
     <Script Include="1-LicenseTenantMapping.script" />
     <Script Include="2-ProPlusMAU.script" />
-    <Script Include="3-CombineData.script" />
     <Script Include="Sampling.script" />
     <ScriptCode Include="0-GetMachineStatus.script.cs">
       <DependentUpon>0-GetMachineStatus.script</DependentUpon>
@@ -50,9 +49,6 @@
     </ScriptCode>
     <ScriptCode Include="2-ProPlusMAU.script.cs">
       <DependentUpon>2-ProPlusMAU.script</DependentUpon>
-    </ScriptCode>
-    <ScriptCode Include="3-CombineData.script.cs">
-      <DependentUpon>3-CombineData.script</DependentUpon>
     </ScriptCode>
     <ScriptCode Include="Sampling.script.cs">
       <DependentUpon>Sampling.script</DependentUpon>

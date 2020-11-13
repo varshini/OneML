@@ -1,0 +1,152 @@
+﻿//Script GUID:25b8c0fe-2e77-4fcf-a43c-4f9f28837696
+//Used for tracking history
+
+
+//Script GUID:96bd5d68-78f2-473c-adcc-f80a8f439032
+//Used for tracking history
+// ====================================================================================================================
+// <copyright company="Microsoft Inc">
+//   (c) 2019 Microsoft Inc.
+// </copyright>
+// <summary>
+//     WHERE = cosmos14\ideas.ppe; runtime ~ 1.6h (1h on office.adhoc) for 1 month
+//       WHY = Get Commercial MAU and platform data from IDEAs Dashboard MAU streams
+// </summary>
+// <history>
+//    [mialdea] 2019-02-06: created from Risk Model script "2-GetMauByWorkloadPlatform.script" https://microsoft365ideas.visualstudio.com/Commercial/Commercial%20Team/_git/TenantRiskModel?path=%2F2-GetMauByWorkloadPlatform.script&version=GBmaster
+// </history>
+//
+// <notes>
+//      In Production we need 5 monthly snapshots to calculate recent trends
+// </notes>
+// ====================================================================================================================
+// Tools for GDPR tagging
+MODULE "/shares/PXSCosmos14.Prod/PXS.DeleteSignal.PROD/PrivacyAnnotation/PrivacyAnnotation.module";
+USING Privacy;
+// ====================================================================================================================
+//#DECLARE outputPath string = "@@MauFeatures_Workload@@";
+//#DECLARE StartDate DateTime = DateTimeOffset.Parse("@@Slice.StartTime@@").DateTime;
+
+//#DECLARE StartDate DateTime = DateTime.Parse("2020-07-31");
+
+tenantProfileView = VIEW @"/shares/IDEAs.Prod.Data/Publish/Profiles/Tenant/Commercial/v3/TenantProfileView/Views/v3/IDEAsTenantProfile.view";
+
+// Step 0. Stitch daily streams altogether for each workload 
+mauStreamExo =
+    SSTREAM @"/shares/IDEAs.Prod.Data/Publish/Usage/Tenant/Commercial/TenantActiveUsage/Exchange/Streams/v2/2020/10/ExchangeUser_TenantActiveUsage_RL28_2020_10_31.ss";
+
+mauStreamSfb =
+    SSTREAM @"/shares/IDEAs.Prod.Data/Publish/Usage/Tenant/Commercial/TenantActiveUsage/SkypeForBusiness/Streams/v2/2020/10/SkypeForBusinessUser_TenantActiveUsage_RL28_2020_10_31.ss";
+
+mauStreamOdsp =
+    SSTREAM @"/shares/IDEAs.Prod.Data/Publish/Usage/Tenant/Commercial/TenantActiveUsage/SharePoint/Streams/v2/2020/10/SharePointUser_TenantActiveUsage_MTD_2020_10_31.ss";
+
+mauStreamTeams =
+    SSTREAM @"/shares/IDEAs.Prod.Data/Publish/Usage/Tenant/Commercial/TenantActiveUsage/Teams/Streams/v2/2020/10/TeamsUser_TenantActiveUsage_RL28_2020_10_31.ss";
+
+mauStreamYammer =
+    SSTREAM @"/shares/IDEAs.Prod.Data/Publish/Usage/Tenant/Commercial/TenantActiveUsage/Yammer/Streams/v2/2020/10/YammerUser_TenantActiveUsage_RL28_2020_10_31.ss";
+
+mauStreamLty =
+    SSTREAM @"/shares/IDEAs.Prod.Data/Publish/Usage/Tenant/Commercial/TenantActiveUsage/Office365/Streams/v2/2020/10/LTYUser_TenantActiveUsage_RL28_2020_10_31.ss"; 
+
+mauOfficeClient = 
+    SSTREAM @"/shares/IDEAs.Prod.Data/Publish/Usage/Tenant/Commercial/TenantActiveUsage/Office365/Streams/v2/2020/10/OfficeClient_TenantActiveUsage_RL28_2020_10_31.ss";
+
+mauStreamOutLook =
+    SSTREAM @"/shares/IDEAs.Prod.Data/Publish/Usage/Tenant/Commercial/TenantActiveUsage/Outlook/Streams/v2/2020/10/OutlookUser_TenantActiveUsage_RL28_2020_10_31.ss";
+
+mauStreamEsltyOfficeClient =
+    SSTREAM @"/shares/IDEAs.Prod.Data/Publish/Usage/Tenant/Commercial/TenantActiveUsage/Office365/Streams/v2/2020/10/Office365AllUp_TenantActiveUsage_RL28_2020_10_31.ss";
+
+mauData = SELECT mauStreamExo.OmsTenantId
+                    , Convert.ToInt64(mauStreamExo.AllUp) AS Mau
+                    , "EXO" AS Application
+                    , mauStreamExo.Date.ToString("yyyyMM") AS YearMonth
+    FROM mauStreamExo 
+
+    UNION ALL
+
+    SELECT mauStreamOdsp.OmsTenantId
+                    ,Convert.ToInt64(mauStreamOdsp.AllUp) AS Mau
+                    , "ODSP" AS Application
+                    , mauStreamOdsp.Date.ToString("yyyyMM") AS YearMonth
+    FROM mauStreamOdsp 
+
+    UNION ALL
+
+    SELECT mauOfficeClient.OmsTenantId
+                    , Convert.ToInt64(mauOfficeClient.AllUp) AS Mau
+                    , "ProPlus" AS Application
+                    , mauOfficeClient.Date.ToString("yyyyMM") AS YearMonth
+    FROM mauOfficeClient 
+
+    UNION ALL
+
+    SELECT mauStreamOutLook.OmsTenantId
+                    , Convert.ToInt64(mauStreamOutLook.Mobile) AS Mau
+                    , "OLmob" AS Application
+                    , mauStreamOutLook.Date.ToString("yyyyMM") AS YearMonth
+    FROM mauStreamOutLook 
+
+    UNION ALL
+
+    SELECT mauStreamLty.OmsTenantId
+                    , Convert.ToInt64(mauStreamLty.AllUp) AS Mau
+                    , "ModernComms" AS Application
+                    , mauStreamLty.Date.ToString("yyyyMM") AS YearMonth
+    FROM mauStreamLty 
+
+    UNION ALL
+
+    SELECT mauStreamSfb.OmsTenantId
+                    , Convert.ToInt64(mauStreamSfb.AllUp) AS Mau
+                    , "SfB" AS Application
+                    , mauStreamSfb.Date.ToString("yyyyMM") AS YearMonth
+    FROM mauStreamSfb 
+
+    UNION ALL
+
+    SELECT mauStreamTeams.OmsTenantId
+                    , Convert.ToInt64(mauStreamTeams.AllUp) AS Mau
+                    , "Teams" AS Application
+                    , mauStreamTeams.Date.ToString("yyyyMM") AS YearMonth
+    FROM mauStreamTeams 
+
+    UNION ALL
+
+    SELECT mauStreamYammer.OmsTenantId
+                    , Convert.ToInt64(mauStreamYammer.AllUp) AS Mau
+                    , "Yammer" AS Application
+                    , mauStreamYammer.Date.ToString("yyyyMM") AS YearMonth
+    FROM mauStreamYammer;
+
+//all up MAU
+allUpMau = SELECT mauData.YearMonth
+                , mauData.OmsTenantId
+                , tenantProfileView.TotalAvailableUnits AS TotalAvailableUnits
+                , mauStreamEsltyOfficeClient.AllUp AS TenantTotalActiveUsersL28
+FROM mauData
+JOIN mauStreamEsltyOfficeClient
+    ON mauData.OmsTenantId == mauStreamEsltyOfficeClient.OmsTenantId
+JOIN tenantProfileView
+    ON mauData.OmsTenantId == tenantProfileView.OMSTenantId
+GROUP BY YearMonth, OmsTenantId, TotalAvailableUnits, TenantTotalActiveUsersL28;
+
+// join MAU by workload with all-up MAU
+workloadMau =
+    SELECT aa.YearMonth,
+           aa.OmsTenantId,
+           bb.TotalAvailableUnits,
+           aa.Application AS Workload,
+           bb.TenantTotalActiveUsersL28,
+           aa.Mau
+    FROM mauData AS aa
+        LEFT OUTER JOIN allUpMau AS bb 
+            ON aa.YearMonth == bb.YearMonth
+            AND aa.OmsTenantId == bb.OmsTenantId;
+
+[Privacy.Asset.NonPersonal] // GDPR asset tagging
+OUTPUT workloadMau TO SSTREAM "/my/cLTV/Usage102020.ss"
+    CLUSTERED BY OmsTenantId, Workload
+    SORTED BY OmsTenantId, Workload;

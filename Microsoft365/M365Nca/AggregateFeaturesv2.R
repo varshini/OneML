@@ -130,7 +130,7 @@ aggregate <- function(labels, tenantprofile, collab, o365, ems, geo, licenses, r
 labels <- read.csv("C:\\Users\\varamase\\Documents\\DataStreams\\M365NCA\\Data\\M365Labels6months.csv")
 colnames(labels)[1] <- "FinalTPID"
 labels$ym <- "FY19Q3"
-tenant_profile <- read.csv("C:\\Users\\varamase\\Documents\\DataStreams\\M365NCA\\Data\\Features\\Training\\TenantProfile.csv")
+tenant_profile <- read.csv("C:\\Users\\varamase\\Documents\\DataStreams\\M365NCA\\Data\\Features\\Training\\TenantProfilev2.csv")
 tenant_profile <- tenant_profile %>% filter(ym == "FY19Q3")
 collab <- read.csv("C:\\Users\\varamase\\Documents\\DataStreams\\M365NCA\\Data\\Features\\Training\\Collaboration.csv")
 collab <- collab %>% filter(ym == "FY19Q3")
@@ -146,10 +146,10 @@ revenue <- read.csv("C:\\Users\\varamase\\Documents\\DataStreams\\M365NCA\\Data\
 revenue <- revenue %>% filter(ym == "FY19Q3")
 
 training_features <- aggregate(labels, tenant_profile, collab, o365_usage, ems_usage, geo_indus, licenses, revenue)
-write.csv(training_features, "C:\\Users\\varamase\\Documents\\DataStreams\\M365NCA\\Data\\Features\\Training\\AllFeaturesv3.csv", row.names = FALSE)
+write.csv(training_features, "C:\\Users\\varamase\\Documents\\DataStreams\\M365NCA\\Data\\Features\\Training\\AllFeaturesv4.csv", row.names = FALSE)
 
 #Scoring
-tenant_profile <- read.csv("C:\\Users\\varamase\\Documents\\DataStreams\\M365NCA\\Data\\Features\\Scoring\\TenantProfile.csv")
+tenant_profile <- read.csv("C:\\Users\\varamase\\Documents\\DataStreams\\M365NCA\\Data\\Features\\Scoring\\TenantProfilev2.csv")
 tenant_profile <- tenant_profile %>% filter(ym == "FY20Q1")
 collab <- read.csv("C:\\Users\\varamase\\Documents\\DataStreams\\M365NCA\\Data\\Features\\Scoring\\Collaboration.csv")
 collab <- collab %>% filter(ym == "FY20Q1")
@@ -165,6 +165,6 @@ revenue <- read.csv("C:\\Users\\varamase\\Documents\\DataStreams\\M365NCA\\Data\
 revenue <- revenue %>% filter(ym == "FY20Q1")
 
 scoring_features <- aggregate(target_list, tenant_profile, collab, o365_usage, ems_usage, geo_indus, licenses, revenue)
-write.csv(scoring_features, "C:\\Users\\varamase\\Documents\\DataStreams\\M365NCA\\Data\\Features\\Scoring\\AllFeaturesv3.csv", row.names = FALSE)
+write.csv(scoring_features, "C:\\Users\\varamase\\Documents\\DataStreams\\M365NCA\\Data\\Features\\Scoring\\AllFeaturesv4.csv", row.names = FALSE)
 
 

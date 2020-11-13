@@ -1,0 +1,57 @@
+﻿//Script GUID:72d6dfa4-8ce0-4f41-bf16-c098eb07882a
+//Used for tracking history
+
+// ====================================================================================================================
+// <copyright company="Microsoft Inc">
+//   (c) 2016 Microsoft Inc.
+// </copyright>
+// <summary>
+//     WHERE = cosmos14\ideas.ppe; runtime ~ 6 min 
+//       WHY = Aggregate Commercial MAU timeseries
+// </summary>
+// <history>
+//    [mialdea] 2018-09-27: initial
+// </history>
+// ====================================================================================================================
+// Tools for GDPR tagging
+MODULE "/shares/PXSCosmos14.Prod/PXS.DeleteSignal.PROD/PrivacyAnnotation/PrivacyAnnotation.module";
+USING Privacy;
+// ====================================================================================================================
+#DECLARE outputRoot     string   = @"/shares/ACE.proc/local/Projects/ROI/MauFeatures/"; // if running on ACE.proc "/local/Projects/"; if running on office.adhoc "/shares/ACE.proc/local/Projects/"
+#DECLARE snapDate       DateTime = DateTime.Parse(@@PROCESS_DATE_START@@);
+#DECLARE snapDateStr    string   = @snapDate.ToString("yyyy-MM-dd");
+
+//Input
+#DECLARE mauStreamPath      string = string.Format("/local/Projects/ROI/MauFeatures/");
+#DECLARE mauStreamPatern    string = "%Y-%m_AllUpMauByWorkload.ss?%d";
+
+//Output
+#DECLARE mauOut         string = string.Format("/local/Projects/ROI/MauFeatures/{0:yyyy-MM}_O365MauTimeseries.ss", @snapDate);
+
+// ====================================================================================================================
+// All up MAU
+mauAgg = 
+    SELECT Date,
+           Tpid,
+           OmsTenantId,
+           Application AS Workload,
+           MAX(Mau) AS Mau           
+    FROM
+        (
+        SSTREAM SPARSE STREAMSET @mauStreamPath
+        PATTERN @mauStreamPatern
+        RANGE __date=["2020-01-01", @snapDateStr] 
+        )
+    GROUP BY Date,
+             Tpid,
+             OmsTenantId,
+             Workload;
+
+
+[Privacy.Asset.NonPersonal] // GDPR asset tagging
+[Privacy.Column.TenantId(Column="TenantId")] // GDPR column tagging
+
+OUTPUT mauAgg TO SSTREAM @mauOut
+    CLUSTERED BY Tpid, OmsTenantId, Date
+    SORTED BY Tpid, OmsTenantId, Date
+        WITH STREAMEXPIRY @"365";

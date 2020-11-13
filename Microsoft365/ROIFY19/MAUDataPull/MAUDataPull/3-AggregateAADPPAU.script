@@ -1,0 +1,34 @@
+﻿//Script GUID:b0b6bddc-3bcd-4379-8af0-759d9459c503
+//Used for tracking history
+
+data1 = SSTREAM @"local/Projects/ROI/TenantProfile/2018-07_TenantProfile.ss";
+data2 = SSTREAM @"local/Projects/ROI/TenantProfile/2018-08_TenantProfile.ss";
+data3 = SSTREAM @"local/Projects/ROI/TenantProfile/2018-09_TenantProfile.ss";
+data4 = SSTREAM @"local/Projects/ROI/TenantProfile/2018-10_TenantProfile.ss";
+data5 = SSTREAM @"local/Projects/ROI/TenantProfile/2018-11_TenantProfile.ss";
+data6 = SSTREAM @"local/Projects/ROI/TenantProfile/2018-12_TenantProfile.ss";
+
+data6 =
+    SELECT Date,
+           OmsTenantId,
+           PaidAvailableUnits,
+           AADPEnabledUsers,
+           AIPEnabledUsers,
+           AATPEnabledUsers,
+           IntuneEnabledUsers,
+           MCASEnabledUsers,
+           AADPP2EnabledUsers,
+           AIPP2EnabledUsers,
+           AADPPaidAvailableUnits,
+           AIPPaidAvailableUnits,
+           AATPPaidAvailableUnits,
+           IntunePaidAvailableUnits,
+           MCASPaidAvailableUnits,
+           AADPP2PaidAvailableUnits,
+           AIPP2PaidAvailableUnits
+    FROM data6;
+
+OUTPUT data6
+TO SSTREAM @"local/Projects/ROI/TenantProfile/2018-12_TenantProfile_1.ss"
+CLUSTERED BY OmsTenantId, Date;
+

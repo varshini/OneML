@@ -4,10 +4,10 @@
 //map the license to entitlement from ideas and map to tenants
 
 data =
-    SSTREAM @"/my/BlockedTelemetry/Monthly/Nov/OLSPings.ss";
+    SSTREAM @"/my/BlockedTelemetry/Apr08_RL28/OLSPings.ss";
 
 entitlement_lic_mapping = VIEW @"/shares/IDEAs.Prod/Public/Views/IDEAsDeviceLicenses.view"
-    PARAMS( HistoryDate = DateTime.Parse( "2018-11-30" ) );
+    PARAMS( HistoryDate = DateTime.Parse( "2019-04-01" ) );
 
 data =
     SELECT data.*, entitlement_lic_mapping.OlsEntitlementId AS EntitlementId2
@@ -17,7 +17,7 @@ data =
          ON data.LicenseId == entitlement_lic_mapping.OlsLicenseId;
 
 entitlement_user_mapping = VIEW @"/shares/IDEAs.Prod/Public/Views/IDEAsEntitlementProfile.view"
-    PARAMS( HistoryDate = DateTime.Parse( "2018-11-30" ) );
+    PARAMS( HistoryDate = DateTime.Parse( "2019-04-07" ) );
 
 data =
     SELECT data.*, entitlement_user_mapping.UserObjectId, entitlement_user_mapping.OMSTenantId
@@ -33,4 +33,4 @@ data =
 
 
 OUTPUT data
-TO SSTREAM @"/my/BlockedTelemetry/Monthly/Nov/TenantUserCount2.ss";
+TO SSTREAM @"/my/BlockedTelemetry/Monthly/Apr08_RL28/TenantUserCount2.ss";

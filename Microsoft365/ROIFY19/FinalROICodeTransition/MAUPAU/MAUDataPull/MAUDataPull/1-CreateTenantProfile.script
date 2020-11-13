@@ -1,0 +1,114 @@
+﻿//Script GUID:fdb21761-d1fe-4407-b6f7-848119bc78cf
+//Used for tracking history
+
+// ====================================================================================================================
+// <copyright company="Microsoft Inc">
+//   (c) 2016 Microsoft Inc.
+// </copyright>
+// <summary>
+//     WHERE = cosmos14\office.adhoc; 
+//       WHY = Create the tenant cohort for ROI from the MAL list of TPIDs and pull the tenant profile attributes 
+// </summary>
+// <history>
+//    [varamase] 2019-01-02: initial
+// </history>
+// ====================================================================================================================
+// Tools for GDPR tagging
+MODULE "/shares/PXSCosmos14.Prod/PXS.DeleteSignal.PROD/PrivacyAnnotation/PrivacyAnnotation.module";
+USING Privacy;
+// ====================================================================================================================
+//Analytical resources
+REFERENCE @"/shares/IDEAs.Prod/SharedResources/Binaries/Relevance.ScopeLib.dll";
+USING Microsoft.SegmentRelevance.ScopeLib;
+// ====================================================================================================================
+
+//Step 1- Mapping the MAL list to tenants
+#DECLARE tpidCohort string = @"/local/Projects/ROI/FY20MAL.csv"; //comes from R script. IDEAS CALC View - Download the MAL list Varshini: Add the calc view link, filter out edu. 
+#DECLARE snapDate DateTime = DateTime.Parse(@@PROCESS_DATE_START@@);
+
+//Output
+#DECLARE output      string = string.Format("/local/Projects/ROI/TenantProfile/{0:yyyy-MM}_TenantProfile.ss", @snapDate);
+
+tpid_list = 
+    EXTRACT 
+        Tpid : int
+    FROM
+    @tpidCohort
+    USING DefaultTextExtractor(delimiter: ',');
+
+MappingView = VIEW @"/shares/IDEAs.Prod/Public/Views/IDEAsTenantTPIDMapping/v1/IDEAsTenantTPIDMapping.view"
+    PARAMS( HistoryDate = DateTime.Parse( "2019-12-01" ) ); //Jan 2019 to Dec 2019
+
+tenants =
+    SELECT OMSTenantId AS OmsTenantId,
+           FinalTPID AS Tpid
+    FROM MappingView
+         INNER JOIN
+             tpid_list
+         ON tpid_list.Tpid == MappingView.FinalTPID;
+
+OUTPUT tenants TO SSTREAM @"/local/Projects/ROI/FY20MALTenants.ss";
+
+//Step 2 - Getting the profile attributes for the tenant cohort
+
+TenantProfileView = VIEW @"/shares/IDEAs.Prod/Release/Profiles/IDEAsTenantProfile/v1/IDEAsTenantProfile.view"
+    PARAMS( HistoryDate = @snapDate);
+
+profile = 
+    SELECT @snapDate AS Date,
+           //DateTime.Parse("2019/12/31") AS Date,
+           OMSTenantId AS OmsTenantId,
+           FirstPaidStartDate,
+           PaidAvailableUnits,
+           EXOPaidAvailableUnits,
+           SPOPaidAvailableUnits,
+           OD4BPaidAvailableUnits,
+           SfbPaidAvailableUnits,
+           YammerPaidAvailableUnits,
+           TeamsPaidAvailableUnits,
+           ProPlusPaidAvailableUnits,
+           EXOEnabledUsers,
+           SPOEnabledUsers,
+           SFBEnabledUsers,
+           PPDEnabledUsers,
+           OD4BEnabledUsers,
+           TeamEnabledUsers,
+           AADPEnabledUsers,
+           AIPEnabledUsers,
+           AATPEnabledUsers, 
+           IntuneEnabledUsers, 
+           MCASEnabledUsers, 
+           AADPP2EnabledUsers, 
+           AIPP2EnabledUsers, 
+           AADPPaidAvailableUnits, 
+           AIPPaidAvailableUnits, 
+           AATPPaidAvailableUnits, 
+           IntunePaidAvailableUnits, 
+           MCASPaidAvailableUnits, 
+           AADPP2PaidAvailableUnits, 
+           AIPP2PaidAvailableUnits, 
+           TeamsFreemiumEnabledUsers,
+           YammerEnabledUsers,
+           MSSalesCountryName,
+           MSSalesSubsidiaryName,
+           MSSalesEmergingMarket,
+           MSSalesSubRegionName,
+           MSSalesVerticalName,
+           MSSalesIndustryName
+    FROM TenantProfileView;
+
+profile = 
+    SELECT profile.*, tenants.Tpid
+    FROM tenants
+         INNER JOIN profile
+         ON profile.OmsTenantId == tenants.OmsTenantId;
+
+
+OUTPUT profile
+TO SSTREAM @output
+    CLUSTERED BY Tpid, OmsTenantId
+    SORTED BY Tpid, OmsTenantId DESC
+        WITH STREAMEXPIRY @"365";
+
+
+

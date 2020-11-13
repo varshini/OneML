@@ -1,0 +1,20 @@
+﻿
+//Script GUID:45a58e39-af27-4a1f-bd05-57e533a79b5b
+//Used for tracking history
+#DECLARE snapDate DateTime = DateTime.Parse(@@PROCESS_DATE_START@@);
+
+//Output
+#DECLARE allUpMauWkloadOut string = string.Format("/local/Projects/ROI/MauFeatures/{0:yyyy-MM}_Teams.ss", @snapDate);
+
+#DECLARE teams_path string   = string.Format("/shares/IDEAs.Prod/Partner/PreRelease/dev/tenantactiveusagecounts/user/rl28/teams/{0:yyyy}/{0:MM}/TeamsRL28ActiveUserCount_{0:yyyy}_{0:MM}_{0:dd}.ss", @snapDate);
+
+teams_data = SELECT Date, OmsTenantId , Application, AllUp AS Mau FROM (SSTREAM @teams_path);
+
+mal_tenants = SSTREAM @"/local/Projects/ROI/FY20MALTenants.ss";
+                         
+data = SELECT teams_data.*, mal_tenants.Tpid FROM teams_data INNER JOIN mal_tenants ON mal_tenants.OmsTenantId == teams_data.OmsTenantId;
+
+OUTPUT data TO SSTREAM @allUpMauWkloadOut
+    CLUSTERED BY OmsTenantId, Application
+    SORTED BY OmsTenantId, Application
+        WITH STREAMEXPIRY @"365";

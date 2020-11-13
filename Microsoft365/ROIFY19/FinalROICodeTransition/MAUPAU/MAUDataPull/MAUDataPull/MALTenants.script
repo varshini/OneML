@@ -1,0 +1,25 @@
+﻿//Script GUID:dbf00858-11e8-4281-a286-28cec3f62019
+//Used for tracking history
+
+//Pull all the FY20 MAL tenants
+
+MappingView = VIEW @"/shares/IDEAs.Prod/Public/Views/IDEAsTenantTPIDMapping/v1/IDEAsTenantTPIDMapping.view"
+    PARAMS( HistoryDate = DateTime.Parse( "2019-07-31" ) );
+
+tpid_list = 
+    EXTRACT 
+        MSSalesID     : int
+    FROM
+    @"/local/Projects/ROI/FY20MAL.csv"
+    USING DefaultTextExtractor(delimiter: ',');
+
+mapping =
+    SELECT OMSTenantId,
+           FinalTPID
+    FROM MappingView
+         INNER JOIN
+             tpid_list
+         ON tpid_list.MSSalesID == MappingView.FinalTPID;
+
+OUTPUT mapping
+TO SSTREAM @"/local/Projects/ROI/FY20MALTenants.ss";
