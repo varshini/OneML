@@ -1,0 +1,34 @@
+﻿//Script GUID:52762f11-bb90-4601-8b3f-4d47fe2b30f6
+//Used for tracking history
+
+data = SSTREAM @"/shares/IDEAs.Prod.Data/Private/Features/TPID/Commercial/FeatureStore/ME5_DBRaw/Streams/v1/2020/12/ME5_DBRaw_2020_12_31.ss";
+
+//Usage 
+usage_data =
+    SELECT TPID, 
+           Date,
+           AzureRev,
+           DynamicsRev,
+           OnPremRev,
+           MWRev,
+           EnterpriseMobilityCoreM365Rev,
+           EnterpriseMobilityCoreNonM365Rev,
+           EnterpriseMobilityE5M365Rev,
+           EnterpriseMobilityE5NonM365Rev, 
+           O365CoreM365Rev, 
+           O365CoreNonM365Rev, 
+           O365E5M365Rev,
+           O365E5NonM365Rev,
+           OfficeRev,
+           PowerBIM365Rev,
+           PowerBINonM365Rev,
+           WindowsCoreM365Rev,
+           WindowsCoreNonM365E3Rev,
+           WindowsCoreNonM365EnterpriseRev,
+           WindowsE5M365Rev,
+           WindowsE5NonM365Rev
+    FROM data
+    WHERE Date >= DateTime.Parse("01/31/2019");
+
+OUTPUT usage_data
+TO SSTREAM @"/my/UToR/Revenue.ss";

@@ -1,0 +1,148 @@
+﻿//Script GUID:7785b350-8555-4515-b951-9de9c4313d83
+//Used for tracking history
+
+teams_apps1 =
+    SSTREAM @"/shares/IDEAs.Prod.Data/Publish/Usage/Tenant/Commercial/TenantActiveUsage/TeamsApps/Streams/v1/2019/08/TenantActiveUsageCount_RL28_2019_08_31.ss";
+teams_apps2 =
+    SSTREAM @"/shares/IDEAs.Prod.Data/Publish/Usage/Tenant/Commercial/TenantActiveUsage/TeamsApps/Streams/v1/2019/09/TenantActiveUsageCount_RL28_2019_09_30.ss";
+teams_apps3 =
+    SSTREAM @"/shares/IDEAs.Prod.Data/Publish/Usage/Tenant/Commercial/TenantActiveUsage/TeamsApps/Streams/v1/2019/10/TenantActiveUsageCount_RL28_2019_10_31.ss";
+teams_apps4 =
+    SSTREAM @"/shares/IDEAs.Prod.Data/Publish/Usage/Tenant/Commercial/TenantActiveUsage/TeamsApps/Streams/v1/2019/11/TenantActiveUsageCount_RL28_2019_11_30.ss";
+teams_apps5 =
+    SSTREAM @"/shares/IDEAs.Prod.Data/Publish/Usage/Tenant/Commercial/TenantActiveUsage/TeamsApps/Streams/v1/2019/12/TenantActiveUsageCount_RL28_2019_12_31.ss";
+teams_apps6 =
+    SSTREAM @"/shares/IDEAs.Prod.Data/Publish/Usage/Tenant/Commercial/TenantActiveUsage/TeamsApps/Streams/v1/2020/01/TenantActiveUsageCount_RL28_2020_01_31.ss";
+teams_apps7 =
+    SSTREAM @"/shares/IDEAs.Prod.Data/Publish/Usage/Tenant/Commercial/TenantActiveUsage/TeamsApps/Streams/v1/2020/02/TenantActiveUsageCount_RL28_2020_02_28.ss";
+teams_apps8 =
+    SSTREAM @"/shares/IDEAs.Prod.Data/Publish/Usage/Tenant/Commercial/TenantActiveUsage/TeamsApps/Streams/v1/2020/03/TenantActiveUsageCount_RL28_2020_03_31.ss";
+teams_apps9 =
+    SSTREAM @"/shares/IDEAs.Prod.Data/Publish/Usage/Tenant/Commercial/TenantActiveUsage/TeamsApps/Streams/v1/2020/04/TenantActiveUsageCount_RL28_2020_04_30.ss";
+teams_apps10 =
+    SSTREAM @"/shares/IDEAs.Prod.Data/Publish/Usage/Tenant/Commercial/TenantActiveUsage/TeamsApps/Streams/v1/2020/05/TenantActiveUsageCount_RL28_2020_05_31.ss";
+teams_apps11 =
+    SSTREAM @"/shares/IDEAs.Prod.Data/Publish/Usage/Tenant/Commercial/TenantActiveUsage/TeamsApps/Streams/v1/2020/06/TenantActiveUsageCount_RL28_2020_06_28.ss";
+
+teams_apps1 =
+    SELECT Date,
+           TenantId,
+           AllUp AS TeamsApps_MAU
+    FROM teams_apps1;
+
+teams_apps2 =
+    SELECT Date,
+           TenantId,
+           AllUp AS TeamsApps_MAU
+    FROM teams_apps2;
+
+teams_apps3 =
+    SELECT Date,
+           TenantId,
+           AllUp AS TeamsApps_MAU
+    FROM teams_apps3;
+
+teams_apps4 =
+    SELECT Date,
+           TenantId,
+           AllUp AS TeamsApps_MAU
+    FROM teams_apps4;
+
+teams_apps5 =
+    SELECT Date,
+           TenantId,
+           AllUp AS TeamsApps_MAU
+    FROM teams_apps5;
+
+teams_apps6 =
+    SELECT Date,
+           TenantId,
+           AllUp AS TeamsApps_MAU
+    FROM teams_apps6;
+
+
+teams_apps7 =
+    SELECT Date,
+           TenantId,
+           AllUp AS TeamsApps_MAU
+    FROM teams_apps7;
+
+teams_apps8 =
+    SELECT Date,
+           TenantId,
+           AllUp AS TeamsApps_MAU
+    FROM teams_apps8;
+
+teams_apps9 =
+    SELECT Date,
+           TenantId,
+           AllUp AS TeamsApps_MAU
+    FROM teams_apps9;
+
+teams_apps10 =
+    SELECT Date,
+           TenantId,
+           AllUp AS TeamsApps_MAU
+    FROM teams_apps10;
+
+teams_apps11 =
+    SELECT DateTime.Parse("6/30/2020 12:00:00 AM") AS Date,
+           TenantId,
+           AllUp AS TeamsApps_MAU
+    FROM teams_apps11;
+
+teams_data =
+    SELECT *
+    FROM teams_apps1
+    UNION ALL
+    SELECT *
+    FROM teams_apps2 UNION ALL
+    SELECT *
+    FROM teams_apps3 UNION ALL
+    SELECT *
+    FROM teams_apps4 UNION ALL
+    SELECT *
+    FROM teams_apps5 UNION ALL
+    SELECT *
+    FROM teams_apps6 UNION ALL
+    SELECT *
+    FROM teams_apps7 UNION ALL
+    SELECT *
+    FROM teams_apps8 UNION ALL
+    SELECT *
+    FROM teams_apps9 UNION ALL
+    SELECT *
+    FROM teams_apps10 UNION ALL
+    SELECT *
+    FROM teams_apps11;
+
+#DECLARE tenant_tpid_mapping string = @"/shares/IDEAs.Prod.Data/Publish/Profiles/Tenant/Commercial/IDEAsTenantTPIDMappingProfile/Views/v1/IDEAsTenantTPIDMappingProfile.view";
+
+mapping = 
+    VIEW @tenant_tpid_mapping
+    PARAMS (HistoryDate = DateTime.Parse("12/31/2020"));
+
+mapping =
+    SELECT OMSTenantId,
+           FinalTPID AS TPId
+    FROM mapping;
+
+teams_data =
+    SELECT teams_data.*, mapping.TPId
+    FROM teams_data
+         INNER JOIN
+             mapping
+         ON teams_data.TenantId == mapping.OMSTenantId;
+
+teams_data =
+    SELECT TPId,
+           Date,
+           SUM(TeamsApps_MAU) AS TeamsApps_MAU
+    FROM teams_data
+    GROUP BY TPId,
+             Date;
+
+OUTPUT teams_data
+TO SSTREAM @"/my/UToR/TeamsApps_MAU.ss"
+CLUSTERED BY TPId, Date
+SORTED BY TPId, Date;

@@ -1,0 +1,273 @@
+﻿//Script GUID:6e4aa6ed-92ff-4e00-b45f-22f8b6233819
+//Used for tracking history
+
+#DECLARE aadpView string = @"/shares/IDEAs.Prod.Data/Publish/Usage/Tenant/Commercial/TenantActiveUsage/AADP/Views/v2/AADPTenantActiveUsage.view";
+
+
+aadp1 = 
+    VIEW @aadpView
+    PARAMS (InputDate  = DateTime.Parse("01/30/2019"));
+
+aadp1 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp AS AADP_MAU,
+           Premium AS AADPPremium_MAU
+    FROM aadp1;
+
+aadp2 = 
+    VIEW @aadpView
+    PARAMS (InputDate  = DateTime.Parse("02/28/2019"));
+
+aadp2 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp AS AADP_MAU,
+           Premium AS AADPPremium_MAU
+    FROM aadp2;
+
+aadp3 = 
+    VIEW @aadpView
+    PARAMS (InputDate  = DateTime.Parse("03/31/2019"));
+
+aadp3 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp AS AADP_MAU,
+           Premium AS AADPPremium_MAU
+    FROM aadp3;
+
+aadp4 = 
+    VIEW @aadpView
+    PARAMS (InputDate  = DateTime.Parse("04/30/2019"));
+
+aadp4 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp AS AADP_MAU,
+           Premium AS AADPPremium_MAU
+    FROM aadp4;
+
+aadp5 = 
+    VIEW @aadpView
+    PARAMS (InputDate  = DateTime.Parse("05/31/2019"));
+
+aadp5 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp AS AADP_MAU,
+           Premium AS AADPPremium_MAU
+    FROM aadp5;
+
+aadp6 = 
+    VIEW @aadpView
+    PARAMS (InputDate  = DateTime.Parse("06/30/2019"));
+
+aadp6 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp AS AADP_MAU,
+           Premium AS AADPPremium_MAU
+    FROM aadp6;
+
+aadp7 = 
+    VIEW @aadpView
+    PARAMS (InputDate  = DateTime.Parse("07/31/2019"));
+
+aadp7 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp AS AADP_MAU,
+           Premium AS AADPPremium_MAU
+    FROM aadp7;
+
+aadp8 = 
+    VIEW @aadpView
+    PARAMS (InputDate  = DateTime.Parse("08/31/2019"));
+
+aadp8 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp AS AADP_MAU,
+           Premium AS AADPPremium_MAU
+    FROM aadp8;
+
+
+aadp9 = 
+    VIEW @aadpView
+    PARAMS (InputDate  = DateTime.Parse("09/30/2019"));
+
+aadp9 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp AS AADP_MAU,
+           Premium AS AADPPremium_MAU
+    FROM aadp9;
+
+aadp10 = 
+    VIEW @aadpView
+    PARAMS (InputDate  = DateTime.Parse("10/31/2019"));
+
+aadp10 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp AS AADP_MAU,
+           Premium AS AADPPremium_MAU
+    FROM aadp10;
+
+aadp11 = 
+    VIEW @aadpView
+    PARAMS (InputDate  = DateTime.Parse("11/30/2019"));
+
+aadp11 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp AS AADP_MAU,
+           Premium AS AADPPremium_MAU
+    FROM aadp11;
+
+aadp12 = 
+    VIEW @aadpView
+    PARAMS (InputDate  = DateTime.Parse("12/31/2019"));
+
+aadp12 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp AS AADP_MAU,
+           Premium AS AADPPremium_MAU
+    FROM aadp12;
+
+aadp13 = 
+    VIEW @aadpView
+    PARAMS (InputDate  = DateTime.Parse("01/30/2020"));
+
+aadp13 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp AS AADP_MAU,
+           Premium AS AADPPremium_MAU
+    FROM aadp13;
+
+aadp14 = 
+    VIEW @aadpView
+    PARAMS (InputDate  = DateTime.Parse("02/28/2020"));
+
+aadp14 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp AS AADP_MAU,
+           Premium AS AADPPremium_MAU
+    FROM aadp14;
+
+aadp15 = 
+    VIEW @aadpView
+    PARAMS (InputDate  = DateTime.Parse("03/31/2020"));
+
+aadp15 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp AS AADP_MAU,
+           Premium AS AADPPremium_MAU
+    FROM aadp15;
+
+aadp16 = 
+    VIEW @aadpView
+    PARAMS (InputDate  = DateTime.Parse("04/30/2020"));
+
+aadp16 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp AS AADP_MAU,
+           Premium AS AADPPremium_MAU
+    FROM aadp16;
+
+aadp17 = 
+    VIEW @aadpView
+    PARAMS (InputDate  = DateTime.Parse("05/31/2020"));
+
+aadp17 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp AS AADP_MAU,
+           Premium AS AADPPremium_MAU
+    FROM aadp17;
+
+aadp18 = 
+    VIEW @aadpView
+    PARAMS (InputDate  = DateTime.Parse("06/30/2020"));
+
+aadp18 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp AS AADP_MAU,
+           Premium AS AADPPremium_MAU
+    FROM aadp18;
+
+aadp_data =
+    SELECT *
+    FROM aadp1
+     UNION ALL
+    SELECT *
+    FROM aadp2 UNION ALL
+    SELECT *
+    FROM aadp3 UNION ALL
+    SELECT *
+    FROM aadp4 UNION ALL
+    SELECT *
+    FROM aadp5 UNION ALL
+    SELECT *
+    FROM aadp6 UNION ALL
+    SELECT *
+    FROM aadp7 UNION ALL
+    SELECT *
+    FROM aadp8 UNION ALL
+    SELECT *
+    FROM aadp9 UNION ALL
+    SELECT *
+    FROM aadp10 UNION ALL
+    SELECT *
+    FROM aadp11 UNION ALL
+    SELECT *
+    FROM aadp12 UNION ALL
+    SELECT *
+    FROM aadp13 UNION ALL
+    SELECT *
+    FROM aadp14 UNION ALL
+    SELECT *
+    FROM aadp15 UNION ALL
+    SELECT *
+    FROM aadp16 UNION ALL
+    SELECT *
+    FROM aadp17 UNION ALL
+    SELECT *
+    FROM aadp18; 
+
+#DECLARE tenant_tpid_mapping string = @"/shares/IDEAs.Prod.Data/Publish/Profiles/Tenant/Commercial/IDEAsTenantTPIDMappingProfile/Views/v1/IDEAsTenantTPIDMappingProfile.view";
+
+mapping = 
+    VIEW @tenant_tpid_mapping
+    PARAMS (HistoryDate = DateTime.Parse("12/31/2020"));
+
+mapping =
+    SELECT OMSTenantId,
+           FinalTPID AS TPId
+    FROM mapping;
+
+aadp_data =
+    SELECT aadp_data.*, mapping.TPId
+    FROM aadp_data
+         INNER JOIN
+             mapping
+         ON aadp_data.OmsTenantId == mapping.OMSTenantId;
+
+aadp_data =
+    SELECT TPId,
+           Date,
+           SUM(AADP_MAU) AS AADP_MAU,
+           SUM(AADPPremium_MAU) AS AADPPremium_MAU
+    FROM aadp_data
+    GROUP BY TPId,
+             Date;
+
+OUTPUT aadp_data
+TO SSTREAM @"/my/UToR/AADP_MAU.ss";

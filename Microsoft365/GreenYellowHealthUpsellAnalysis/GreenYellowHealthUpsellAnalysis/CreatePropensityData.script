@@ -1,0 +1,203 @@
+﻿//Script GUID:e653d460-71ea-4bb3-aaf1-60236bb4ef47
+//Used for tracking history
+
+
+propensity = 
+    SSTREAM @"/shares/IDEAs.Prod.Data/Private/Features/TPID/Commercial/FeatureStore/ME5EntScoringOutput/Streams/v1/2020/10/ME5EntScoringOutput_2020_10_31.ss";
+
+features =
+    SSTREAM @"/shares/IDEAs.Prod.Data/Private/Features/TPID/Commercial/FeatureStore/ME5_DBRaw/Streams/v1/2020/10/ME5_DBRaw_2020_10_31.ss";
+
+e3health =
+    SSTREAM @"/shares/IDEAs.Prod.Data/Publish/Usage/Tenant/Commercial/Metrics/Field/CustomerHealth/E3TPIDCommercial/Streams/v1/2020/09/E3TPIDCommercial_2020_09_30.ss";
+
+#DECLARE timelag DateTime = DateTime.Parse("2020-09-30");
+
+propensity =
+    SELECT TPID,
+           Recommendation,
+           Propensity
+    FROM propensity;
+
+features = SELECT * 
+    FROM features 
+    WHERE Date == @timelag;
+
+e3health =
+    SELECT TPId,
+           IsS2500,
+           Exo_Score,
+           Odsp_Score,
+           OfficeMobile_Score,
+           Edge_Score,
+           Aadp_Score,
+           ManagedWin10_Score,
+           Group1_Score,
+           Group2_Score,
+           Group3_Score,
+           CustomerHealthScore
+    FROM e3health;
+
+final =
+    SELECT e3health.TPId,
+           e3health.IsS2500,
+           e3health.Exo_Score,
+           e3health.Odsp_Score,
+           e3health.OfficeMobile_Score,
+           e3health.Edge_Score,
+           e3health.Aadp_Score,
+           e3health.ManagedWin10_Score,
+           e3health.Group1_Score,
+           e3health.Group2_Score,
+           e3health.Group3_Score,
+           e3health.CustomerHealthScore,
+           propensity.Recommendation,
+           propensity.Propensity,
+           features.AreaName,
+           features.SegmentGroup,
+           features.EXO_MAU,
+           features.ODB_MAU,
+           features.OfficeClientAllUp_MAU,
+           features.OfficeClientDesktop_MAU,
+           features.OfficeClientDesktopPerpetual_MAU,
+           features.OfficeClientDesktopSubscription_MAU,
+           features.OutlookAllUp_MAU,
+           features.OutlookDesktop_MAU,
+           features.OutlookWeb_MAU,
+           features.OutlookMobile_MAU,
+           features.SfB_MAU,
+           features.SPO_MAU,
+           features.TeamsAllUp_MAU,
+           features.TeamsMobile_MAU,
+           features.AADPAllUp_MAU,
+           features.AADPPremium_MAU,
+           features.AADPAllUp_AccessReviews_MAU,
+           features.AADPPremium_AccessReviews_MAU,
+           features.AADPAllUp_ThirdParty_MAU,
+           features.AADPPremium_ThirdParty_MAU,
+           features.AADPAllUp_RiskBasedCa_MAU,
+           features.AADPPremium_RiskBasedCa_MAU,
+           features.AADPAllUp_PIM_MAU,
+           features.AADPPremium_PIM_MAU,
+           features.AADPAllUp_IP_MAU,
+           features.AADPPremium_IP_MAU,
+           features.AADPAllUp_CA_MAU,
+           features.AADPPremium_CA_MAU,
+           features.AADPAllUp_SaasLogin_MAU,
+           features.AADPPremium_SaasLogin_MAU,
+           features.IntuneAllUp_MAU,
+           features.IntunePremium_MAU,
+           features.MIGAllUp_MAU,
+           features.MIGPremium_MAU,
+           features.MIPAllUp_MAU,
+           features.MIPPremium_MAU,
+           features.OATPAllUp_MAU,
+           features.OATPPremium_MAU,
+           features.MDATPAllUp_MAU,
+           features.MDATPPremium_MAU,
+           features.MCASAllUp_MAU,
+           features.MCASPremium_MAU,
+           features.EXOPaidAvailableUnits,
+           features.ProPlusPaidAvailableUnits,
+           features.OD4BPaidAvailableUnits,
+           features.SfBPaidAvailableUnits,
+           features.TeamsPaidAvailableUnits,
+           features.AADPPaidAvailableUnits,
+           features.ODSPPaidAvailableUnits,
+           features.SPOPaidAvailableUnits,
+           features.TeamsAvailableUnits,
+           features.PPDEnabledUsers,
+           features.AIPPaidAvailableUnits,
+           features.AATPPaidAvailableUnits,
+           features.IntunePaidAvailableUnits,
+           features.MCASPaidAvailableUnits,
+           features.MDATPPaidAvailableUnits,
+           features.AIPP2PaidAvailableUnits,
+           features.AADPP2PaidAvailableUnits,
+           features.OATPPaidAvailableUnits,
+           features.EdiscoveryPaidAvailableUnits,
+           features.CustomerLockboxPaidAvailableUnits,
+           features.ThreatIntelligencePaidAvailableUnits,
+           features.MIGPaidAvailableUnits,
+           features.MIPPaidAvailableUnits,
+           features.AudioConferenceEnabledUsers,
+           features.AudioConferencePaidAvailableUnits,
+           features.PhoneSystemEnabledUsers,
+           features.PhoneSystemPaidAvailableUnits,
+           features.PowerBIEnabledUsers,
+           features.PowerBIPremiumEnabledUsers,
+           features.PowerBIProEnabledUsers,
+           features.PowerBIPaidAvailableUnits,
+           features.PowerBIPremiumPaidAvailableUnits,
+           features.PowerBIProPaidAvailableUnits,
+           features.OutlookPaidAvailableUnits,
+           features.MIPPremiumPaidAvailableUnits,
+           features.MIGPremiumPaidAvailableUnits,
+           features.OATPP2PaidAvailableUnits,
+           features.DLPPaidAvailableUnits,
+           features.OutlookMobilePaidAvailableUnits,
+           features.MyAnalyticsPaidAvailableUnits,
+           features.PowerAppsPaidAvailableUnits,
+           features.AADPAllUp_MAU_PAU,
+           features.AADPPremium_MAU_PAU,
+           features.AADPAllUp_AccessReviews_MAU_Flag,
+           features.AADPAllUp_ThirdParty_MAU_PAU,
+           features.AADPAllUp_RiskBasedCa_MAU_PAU,
+           features.AADPAllUp_PIM_MAU_Flag,
+           features.AADPAllUp_IP_MAU_PAU,
+           features.AADPAllUp_CA_MAU_PAU,
+           features.AADPAllUp_SaasLogin_MAU_PAU,
+           features.IntuneAllUp_MAU_PAU,
+           features.MIGAllUp_MAU_PAU,
+           features.MIGPremium_MAU_PAU,
+           features.MIPAllUp_MAU_PAU,
+           features.MIPPremium_MAU_PAU,
+           features.OATPAllUp_MAU_PAU,
+           features.OATPPremium_MAU_PAU,
+           features.MDATPAllUp_MAU_PAU,
+           features.MCASAllUp_MAU_PAU,
+           features.EXO_MAU_PAU,
+           features.ODB_MAU_PAU,
+           features.OfficeClientAllUp_MAU_PAU,
+           features.OfficeClientDesktop_MAU_PAU,
+           features.OfficeClientDesktopSubscription_MAU_PAU,
+           features.OutlookAllUp_MAU_PAU,
+           features.OutlookDesktop_MAU_PAU,
+           features.OutlookMobile_MAU_PAU,
+           features.OutlookWeb_MAU_PAU,
+           features.SfB_MAU_PAU,
+           features.SPO_MAU_PAU,
+           features.TeamsAllUp_MAU_PAU,
+           features.TeamsMobile_MAU_PAU,
+           features.AzureRev,
+           features.DynamicsRev,
+           features.OnPremRev,
+           features.MWRev,
+           features.EnterpriseMobilityCoreM365Rev,
+           features.EnterpriseMobilityCoreNonM365Rev,
+           features.EnterpriseMobilityE5M365Rev,
+           features.EnterpriseMobilityE5NonM365Rev,
+           features.O365CoreM365Rev,
+           features.O365CoreNonM365Rev,
+           features.O365E5M365Rev,
+           features.O365E5NonM365Rev,
+           features.OfficeRev,
+           features.PowerBIM365Rev,
+           features.PowerBINonM365Rev,
+           features.WindowsCoreM365Rev,
+           features.WindowsCoreNonM365E3Rev,
+           features.WindowsCoreNonM365EnterpriseRev,
+           features.WindowsDeviceLicensingRev,
+           features.WindowsE5M365Rev,
+           features.WindowsE5NonM365Rev, 
+           features.Industry
+    FROM e3health
+         LEFT JOIN
+             propensity
+         ON e3health.TPId == propensity.TPID
+         LEFT JOIN
+             features
+         ON e3health.TPId == features.TPID;
+
+OUTPUT final
+TO SSTREAM @"/shares/IDEAs.Prod.Data/Users.Sensitive/varamase/PropensityHealth_10_30_2020.ss";

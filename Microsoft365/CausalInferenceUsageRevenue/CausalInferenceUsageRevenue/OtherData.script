@@ -1,0 +1,94 @@
+﻿//Script GUID:5ffddc66-c398-459f-bca5-9a34c6a3ae3b
+//Used for tracking history
+
+data = SSTREAM @"/shares/IDEAs.Prod.Data/Private/Features/TPID/Commercial/FeatureStore/ME5_DBRaw/Streams/v1/2020/12/ME5_DBRaw_2020_12_31.ss";
+
+//Standard fields
+gen_data =
+    SELECT TPID,
+           AreaName,
+           Industry,
+           SegmentGroup
+    FROM data
+    WHERE Date == DateTime.Parse("12/31/2020");
+
+OUTPUT gen_data
+TO SSTREAM @"/my/UToR/AccountAttributes.ss";
+
+//Usage 
+usage_data =
+    SELECT TPID, 
+           Date,
+           EXO_MAU,
+           ODB_MAU,
+           OfficeClientAllUp_MAU,
+           SPO_MAU,
+           TeamsAllUp_MAU,
+           AADPAllUp_MAU,
+           AADPPremium_MAU,
+           IntuneAllUp_MAU
+    FROM data
+    WHERE Date >= DateTime.Parse("01/31/2019");
+
+OUTPUT usage_data
+TO SSTREAM @"/my/UToR/MAU.ss";
+
+//PAU
+pau_data =
+    SELECT TPID, 
+           Date,
+           EXOPaidAvailableUnits,
+           ProPlusPaidAvailableUnits,
+           OD4BPaidAvailableUnits,
+           TeamsPaidAvailableUnits,
+           AADPPaidAvailableUnits,
+           ODSPPaidAvailableUnits,
+           SPOPaidAvailableUnits,
+           IntunePaidAvailableUnits, 
+           AADPP2PaidAvailableUnits
+    FROM data
+    WHERE Date >= DateTime.Parse("01/31/2019");
+
+OUTPUT pau_data
+TO SSTREAM @"/my/UToR/PAU.ss";
+
+//Licenses
+licenses = SELECT TPID, Date, Annuity, NonAnnuity, DarkAnnuity, M365F1Seats, M365E3Seats, M365E5Seats, O365PlanE3Seats, O365PlanE5Seats, EMSE3Seats, EMSE5Seats, AdvancedComplianceSeats, AdvancedSecurityManagementSeats, ATPP1Seats, ATPP2Seats, AzureATPSeats, AADSeats, AADPremP2Seats, 
+                    AzureInfoProtPremP2Seats, AzureMobIdentitySvcsSeats, AzureRightsManagementServicesSeats, CloudAppSecuritySeats, IntuneSeats, IntuneClientSeats, MyAnalyticsSeats, PowerBIPremiumSeats, PowerBIStandaloneSeats, PowerBIOfficeSuiteSeats FROM data
+    WHERE Date >= DateTime.Parse("01/31/2019");
+
+OUTPUT licenses
+TO SSTREAM @"/my/UToR/Licenses.ss";
+
+//PCIB
+#DECLARE pcibView string = @"/shares/IDEAs.Prod.Data/Publish/Usage/Tenant/Commercial/Metrics/Field/Win10MAD/AdjustedPCIB/Views/v2/AdjustedPCIB.view";
+
+pcib = 
+    VIEW @pcibView
+    PARAMS (StreamDate  = DateTime.Parse("06/30/2020"));
+
+pcib =
+    SELECT TPID, AdjustedPCIBDate, 
+           AdjustedPCIB 
+    FROM pcib;
+
+pcib1 = 
+    VIEW @pcibView
+    PARAMS (StreamDate  = DateTime.Parse("03/31/2020"));
+
+pcib1 =
+    SELECT TPID, AdjustedPCIBDate, 
+           AdjustedPCIB
+    FROM pcib1;
+
+pcib_data =
+    SELECT *
+    FROM pcib
+    UNION ALL
+    SELECT *
+    FROM pcib1;
+
+OUTPUT pcib_data
+TO SSTREAM @"/my/UToR/PCIB.ss";
+
+

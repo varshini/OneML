@@ -1,0 +1,285 @@
+﻿//Script GUID:20951a3c-c5fd-40a7-b4cc-727e31a9f099
+//Used for tracking history
+
+#DECLARE o365View string = @"/shares/IDEAs.Prod.Data/Publish/Usage/Tenant/Commercial/TenantActiveUsage/Office365/Views/v2/Office365TenantActiveUsage.view";
+
+
+o3651 = 
+    VIEW @o365View
+    PARAMS (InputDate  = DateTime.Parse("01/31/2019"), 
+            SubWorkload = "AllUp");
+
+o3651 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp AS o365_MAU          
+    FROM o3651;
+
+o3652 = 
+    VIEW @o365View
+    PARAMS (InputDate  = DateTime.Parse("02/28/2019"), 
+            SubWorkload = "AllUp");
+
+o3652 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp AS o365_MAU
+    FROM o3652;
+
+o3653 = 
+    VIEW @o365View
+    PARAMS (InputDate  = DateTime.Parse("03/31/2019"), 
+            SubWorkload = "AllUp");
+
+o3653 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp AS o365_MAU
+    FROM o3653;
+
+o3654 = 
+    VIEW @o365View
+    PARAMS (InputDate  = DateTime.Parse("04/30/2019"), 
+            SubWorkload = "AllUp");
+
+o3654 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp AS o365_MAU
+    FROM o3654;
+
+o3655 = 
+    VIEW @o365View
+    PARAMS (InputDate  = DateTime.Parse("05/31/2019"), 
+            SubWorkload = "AllUp");
+
+o3655 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp AS o365_MAU
+    FROM o3655;
+
+o3656 = 
+    VIEW @o365View
+    PARAMS (InputDate  = DateTime.Parse("06/30/2019"), 
+            SubWorkload = "AllUp");
+
+o3656 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp AS o365_MAU
+    FROM o3656;
+
+o3657 = 
+    VIEW @o365View
+    PARAMS (InputDate  = DateTime.Parse("07/31/2019"), 
+            SubWorkload = "AllUp");
+
+o3657 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp AS o365_MAU
+    FROM o3657;
+
+o3658 = 
+    VIEW @o365View
+    PARAMS (InputDate  = DateTime.Parse("08/31/2019"), 
+            SubWorkload = "AllUp");
+
+o3658 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp AS o365_MAU
+    FROM o3658;
+
+
+o3659 = 
+    VIEW @o365View
+    PARAMS (InputDate  = DateTime.Parse("09/30/2019"), 
+            SubWorkload = "AllUp");
+
+o3659 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp AS o365_MAU
+    FROM o3659;
+
+o36510 = 
+    VIEW @o365View
+    PARAMS (InputDate  = DateTime.Parse("10/31/2019"), 
+            SubWorkload = "AllUp");
+
+o36510 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp AS o365_MAU
+    FROM o36510;
+
+o36511 = 
+    VIEW @o365View
+    PARAMS (InputDate  = DateTime.Parse("11/30/2019"), 
+            SubWorkload = "AllUp");
+
+o36511 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp AS o365_MAU
+    FROM o36511;
+
+o36512 = 
+    VIEW @o365View
+    PARAMS (InputDate  = DateTime.Parse("12/31/2019"), 
+            SubWorkload = "AllUp");
+
+o36512 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp AS o365_MAU
+    FROM o36512;
+
+o36513 = 
+    VIEW @o365View
+    PARAMS (InputDate  = DateTime.Parse("01/31/2020"), 
+            SubWorkload = "AllUp");
+
+o36513 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp AS o365_MAU
+    FROM o36513;
+
+o36514 = 
+    VIEW @o365View
+    PARAMS (InputDate  = DateTime.Parse("02/28/2020"), 
+            SubWorkload = "AllUp");
+
+o36514 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp AS o365_MAU
+    FROM o36514;
+
+o36515 = 
+    VIEW @o365View
+    PARAMS (InputDate  = DateTime.Parse("03/31/2020"), 
+            SubWorkload = "AllUp");
+
+o36515 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp AS o365_MAU
+    FROM o36515;
+
+o36516 = 
+    VIEW @o365View
+    PARAMS (InputDate  = DateTime.Parse("04/30/2020"), 
+            SubWorkload = "AllUp");
+
+o36516 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp AS o365_MAU
+    FROM o36516;
+
+o36517 = 
+    VIEW @o365View
+    PARAMS (InputDate  = DateTime.Parse("05/31/2020"), 
+            SubWorkload = "AllUp");
+
+o36517 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp AS o365_MAU
+    FROM o36517;
+
+o36518 = 
+    VIEW @o365View
+    PARAMS (InputDate  = DateTime.Parse("06/30/2020"), 
+            SubWorkload = "AllUp");
+
+o36518 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp AS o365_MAU
+    FROM o36518;
+
+o365_data =
+    SELECT *
+    FROM o3651
+     UNION ALL
+    SELECT *
+    FROM o3652 UNION ALL
+    SELECT *
+    FROM o3653 UNION ALL
+    SELECT *
+    FROM o3654 UNION ALL
+    SELECT *
+    FROM o3655 UNION ALL
+    SELECT *
+    FROM o3656 UNION ALL
+    SELECT *
+    FROM o3657 UNION ALL
+    SELECT *
+    FROM o3658 UNION ALL
+    SELECT *
+    FROM o3659 UNION ALL
+    SELECT *
+    FROM o36510 UNION ALL
+    SELECT *
+    FROM o36511 UNION ALL
+    SELECT *
+    FROM o36512 UNION ALL
+    SELECT *
+    FROM o36513 UNION ALL
+    SELECT *
+    FROM o36514 UNION ALL
+    SELECT *
+    FROM o36515 UNION ALL
+    SELECT *
+    FROM o36516 UNION ALL
+    SELECT *
+    FROM o36517 UNION ALL
+    SELECT *
+    FROM o36518; 
+
+#DECLARE tenant_tpid_mapping string = @"/shares/IDEAs.Prod.Data/Publish/Profiles/Tenant/Commercial/IDEAsTenantTPIDMappingProfile/Views/v1/IDEAsTenantTPIDMappingProfile.view";
+
+mapping = 
+    VIEW @tenant_tpid_mapping
+    PARAMS (HistoryDate = DateTime.Parse("12/31/2020"));
+
+mapping =
+    SELECT OMSTenantId,
+           FinalTPID AS TPId
+    FROM mapping;
+
+o365_data =
+    SELECT o365_data.*, mapping.TPId
+    FROM o365_data
+         INNER JOIN
+             mapping
+         ON o365_data.OmsTenantId == mapping.OMSTenantId;
+
+o365_data =
+    SELECT TPId,
+           Date,
+           SUM(o365_MAU) AS o365_MAU
+    FROM o365_data
+    GROUP BY TPId,
+             Date;
+
+dbraw = SSTREAM @"/shares/IDEAs.Prod.Data/Private/Features/TPID/Commercial/FeatureStore/ME5_DBRaw/Streams/v1/2020/12/ME5_DBRaw_2020_12_31.ss";
+
+tpids =
+    SELECT DISTINCT TPID
+    FROM dbraw;
+
+o365_data =
+    SELECT o365_data.*
+    FROM o365_data
+         INNER JOIN
+             tpids
+         ON tpids.TPID == o365_data.TPId;
+
+OUTPUT o365_data
+TO SSTREAM @"/my/UToR/O365_MAU.ss";

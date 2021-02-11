@@ -1,0 +1,909 @@
+﻿//Script GUID:49c12718-0b7b-4c5b-b8b3-6e2a80b9073f
+//Used for tracking history
+//Script GUID:bf454a09-6673-4223-ad9d-26356fd917fa
+//Used for tracking history
+
+// DO NOT MODIFY templateVersion=cec5a012-b86b-44e2-888b-a6c33ca0b2ea
+[PIN] REFERENCE "/shares/IDEAs.Prod.Data/Common/PrivacyAnnotation/Microsoft.PrivacyServices.PrivacyAnnotation.dll";
+[PIN] REFERENCE "/shares/IDEAs.Prod.Data/Common/PrivacyAnnotation/Microsoft.DataMap.CodeAnnotation.Cosmos.dll";
+USING Microsoft.DataMap.CodeAnnotation.Cosmos;
+USING Privacy;
+
+#DECLARE windowStart DateTime = DateTimeOffset.Parse(@@windowStart@@).UtcDateTime;
+#DECLARE windowEnd DateTime = DateTimeOffset.Parse(@@windowEnd@@).UtcDateTime;
+#DECLARE WCSView_FactDiscount_text_windowEndInclusive DateTime = @windowEnd.AddMinutes(-1);
+#DECLARE WCSView_FactDiscount_text_path string = string.Format("/shares/IDEAs.Prod.Data/Collect/Sensitive/DBGrowthSensitive/FeatureStore/Starlight/WCSView_FactDiscount/v1/%Y/%m/WCSView_FactDiscount_text_%Y_%m_%d.tsv?date={0:yyyy-MM-dd}..{1:yyyy-MM-dd}", @windowStart, @WCSView_FactDiscount_text_windowEndInclusive);
+#DECLARE WCSView_DimEnrollmentTerm_text_windowEndInclusive DateTime = @windowEnd.AddMinutes(-1);
+#DECLARE WCSView_DimEnrollmentTerm_text_path string = string.Format("/shares/IDEAs.Prod.Data/Collect/Sensitive/DBGrowthSensitive/FeatureStore/Starlight/WCSView_Dim_EnrollmentTerm/v1/%Y/%m/WCSView_DimEnrollmentTerm_text_%Y_%m_%d.tsv?date={0:yyyy-MM-dd}..{1:yyyy-MM-dd}", @windowStart, @WCSView_DimEnrollmentTerm_text_windowEndInclusive);
+#DECLARE Conformed_Dim_Date_text_windowEndInclusive DateTime = @windowEnd.AddMinutes(-1);
+#DECLARE Conformed_Dim_Date_text_path string = string.Format("/shares/IDEAs.Prod.Data/Collect/Sensitive/DBGrowthSensitive/FeatureStore/Starlight/Conformed_Dim_Date/v1/%Y/%m/Conformed_Dim_Date_text_%Y_%m_%d.tsv?date={0:yyyy-MM-dd}..{1:yyyy-MM-dd}", @windowStart, @Conformed_Dim_Date_text_windowEndInclusive);
+#DECLARE Conformed_Dim_ProductHierarchy_text_windowEndInclusive DateTime = @windowEnd.AddMinutes(-1);
+#DECLARE Conformed_Dim_ProductHierarchy_text_path string = string.Format("/shares/IDEAs.Prod.Data/Collect/Sensitive/DBGrowthSensitive/FeatureStore/Starlight/Conformed_Dim_ProductHierarchy/v1/%Y/%m/Conformed_Dim_ProductHierarchy_text_%Y_%m_%d.tsv?date={0:yyyy-MM-dd}..{1:yyyy-MM-dd}", @windowStart, @Conformed_Dim_ProductHierarchy_text_windowEndInclusive);
+#DECLARE Conformed_Dim_FieldGeographyHierarchy_text_windowEndInclusive DateTime = @windowEnd.AddMinutes(-1);
+#DECLARE Conformed_Dim_FieldGeographyHierarchy_text_path string = string.Format("/shares/IDEAs.Prod.Data/Collect/Sensitive/DBGrowthSensitive/FeatureStore/Starlight/Conformed_Dim_FieldGeographyHierarchy/v1/%Y/%m/Conformed_Dim_FieldGeographyHierarchy_text_%Y_%m_%d.tsv?date={0:yyyy-MM-dd}..{1:yyyy-MM-dd}", @windowStart, @Conformed_Dim_FieldGeographyHierarchy_text_windowEndInclusive);
+#DECLARE Conformed_Dim_Enrollment_text_windowEndInclusive DateTime = @windowEnd.AddMinutes(-1);
+#DECLARE Conformed_Dim_Enrollment_text_path string = string.Format("/shares/IDEAs.Prod.Data/Collect/Sensitive/DBGrowthSensitive/FeatureStore/Starlight/Conformed_Dim_Enrollment/v1/%Y/%m/Conformed_Dim_Enrollment_text_%Y_%m_%d.tsv?date={0:yyyy-MM-dd}..{1:yyyy-MM-dd}", @windowStart, @Conformed_Dim_Enrollment_text_windowEndInclusive);
+#DECLARE Conformed_Dim_PurchaseOrderType_text_windowEndInclusive DateTime = @windowEnd.AddMinutes(-1);
+#DECLARE Conformed_Dim_PurchaseOrderType_text_path string = string.Format("/shares/IDEAs.Prod.Data/Collect/Sensitive/DBGrowthSensitive/FeatureStore/Starlight/Conformed_Dim_PurchaseOrderType/v1/%Y/%m/Conformed_Dim_PurchaseOrderType_text_%Y_%m_%d.tsv?date={0:yyyy-MM-dd}..{1:yyyy-MM-dd}", @windowStart, @Conformed_Dim_PurchaseOrderType_text_windowEndInclusive);
+#DECLARE Agg_DealHistory_dataset_outputPath string = string.Format("/shares/IDEAs.Prod.Data/Private/Features/TPID/Commercial/FeatureStore/DealHistory/Streams/v1/{0:yyyy}/{0:MM}/DealHistory_{0:yyyy}_{0:MM}_{0:dd}.ss", @windowStart);
+#DECLARE SkuLevelDealHistory_dataset_outputPath string = string.Format("/shares/IDEAs.Prod.Data/Private/Features/TPID/Commercial/FeatureStore/SkuLevelDealHistory/Streams/v1/{0:yyyy}/{0:MM}/SkuLevelDealHistory_{0:yyyy}_{0:MM}_{0:dd}.ss", @windowStart);
+
+WCSView_FactDiscount_text =
+    EXTRACT DIM_EnrollmentTermId: long?,
+            DIM_AgreementEffectiveDateId: int?,
+            DIM_FirstBilledDateId: int?,
+            DIM_TPAccount_PrimaryEndCustomerTPAccountId: int?,
+            DIM_SubSegmentHierarchy_PrimaryReportedSubSegmentId: int?,
+            DIM_GeographyHierarchy_PrimaryEnrollmentSubsidiaryId: int?,
+            DIM_PrimaryEnrollmentFieldGeographyHierarchyId: int?,
+            DIM_PrimaryExpirationDateId: int?,
+            DIM_MasterAgreementEffectiveDateId: int?,
+            DIM_GeographyHierarchy_MasterAgreementSubsidiaryId: int?,
+            DIM_ProductHierarchy_TopParentProductId: int?,
+            DIM_ProductHierarchy_ProductId: int?,
+            DIM_BilledDateId: int?,
+            DIM_AdjustmentTypeId: int?,
+            DIM_ProgramHierarchy_ProgramId: int?,
+            DIM_BillingCurrencyId: int?,
+            DIM_PriceSourceId: int?,
+            DIM_ProductFirstBilledDateId: int?,
+            DIM_BusinessHierarchy_BusinessId: int?,
+            DIM_ContractValueRevenueTierId: int?,
+            DIM_ListPriceRevenueTierId: int?,
+            DIM_DiscountPercentTierId: int?,
+            DIM_TopParentContractValueRevenueTierId: int?,
+            DIM_WPSBookedDateId: int?,
+            DIM_ProposalId: int?,
+            DIM_LicensePurchaseOrderType_PurchaseOrderTypeId: int?,
+            DIM_TPAccount_EndCustomerTPAccountId: int?,
+            WPSContractId: string,
+            MasterAgreementNumber: string,
+            BillingMultiplier: int?,
+            BundleMultiplier: double?,
+            ExternalPONumber: string,
+            CombinationProductId: int?,
+            ProposalIdLIR: string,
+            WPSBookingFlag: string,
+            PricedFromMSQFlag: string,
+            ConcessionPriceFlag: string,
+            PricedFromLIRFlag: string,
+            PricedFromFeedstoreFlag: string,
+            PricedFromMSSalesFlag: string,
+            PriceListPriceCD: double?,
+            MSSalesAmount: double?,
+            MSSalesQuantity: double?,
+            SystemAmount: double?,
+            SystemAmountMSQ: double?,
+            SystemAmountLIR: double?,
+            SystemAmountFeedstore: double?,
+            SystemAmountMSSales: double?,
+            BuyDownAmount: double?,
+            FinancedAmount: double?,
+            AgreementDiscountPercent: double?
+    FROM @WCSView_FactDiscount_text_path
+    USING DefaultTextExtractor(
+        delimiter: '\t',
+        escape: false,
+        skipFirstNRows: 1,
+        silent: true
+    );
+
+WCSView_FactDiscount_text =
+    SELECT DIM_EnrollmentTermId,
+           DIM_TPAccount_PrimaryEndCustomerTPAccountId,
+           DIM_FirstBilledDateId,
+           CombinationProductId,
+           DIM_SubSegmentHierarchy_PrimaryReportedSubSegmentId,
+           DIM_PrimaryEnrollmentFieldGeographyHierarchyId,
+           DIM_LicensePurchaseOrderType_PurchaseOrderTypeId,
+           ConcessionPriceFlag,
+           MSSalesAmount,
+           SystemAmount,
+           MSSalesQuantity
+    FROM WCSView_FactDiscount_text;
+
+WCSView_DimEnrollmentTerm_text =
+    EXTRACT DIM_EnrollmentTermId: long?,
+            AgreementTerm: string,
+            AgreementId: string,
+            Term: int?,
+            AgreementEffectiveDateMSS: DateTime?,
+            AgreementEndDateMSS: DateTime?,
+            ActiveProxy: string,
+            AgedExpQTD: string,
+            AgedExpYTD: string,
+            AgedRenQTD: string,
+            AgedRenYTD: string,
+            AnnualizationDuration: double?,
+            AnnualizationSource: string,
+            CalculatedDuration: int?,
+            Consolidation: string,
+            ConsolidationMss: string,
+            CRMPromoFlag: string,
+            CustomerName: string,
+            CustomerMSLIName: string,
+            DealType: string,
+            DealTypeAtSigning: string,
+            EmpowermentFlag: string,
+            ExpirationMPSAFlag: string,
+            MSFinancingFlag: string,
+            ConsolidationFlag: string,
+            ContinuationFlag: string,
+            RenewalFlag: string,
+            ShadowAgreementFlag: string,
+            MssRenewal: string,
+            NotRenewedFlag: string,
+            ProjectCategory: string,
+            PrimaryCurrency: string,
+            PrimaryExpirationDateMss: DateTime?,
+            PrimaryLicenseAgreementContractType: string,
+            PrimaryProgramOfferingLevel: string,
+            PrimaryRenewedIntoMsf: string,
+            RenewalTypeMss: string,
+            RenewedInQuarterFlag: string,
+            RenewalRenewedInQuarterFlag: string,
+            TPIdDealType: string,
+            TPIdDealTypeAtSigning: string,
+            WasRenewedFlag: string,
+            WasRenewedShadowFlag: string,
+            OutlierFlag: string,
+            BDRegionalLead: string,
+            LEManager: string,
+            LEName: string,
+            ApproverId: string,
+            BDTouchFlag: string,
+            BuyDownFlag: string,
+            E3AdjustmentFlag: string,
+            MixedPricingFlag: string,
+            ManualAdjustmentFlag: string,
+            ProposalIdPrimary: string,
+            PrimaryPriorAgreementId: string,
+            PrimaryPriorCurrency: string,
+            PrimaryPriorMasterAgreementNumber: string,
+            OnExpirationBillingLagDays: int?,
+            OnRenewalBillingLagDays: int?,
+            RenewedOver30Days: string,
+            SingleProductAttributeFlag: string,
+            SCEFlag: string,
+            BuyDownRate: double?,
+            CustomSummarySegmentTier: string,
+            CustomSummarySegmentTierSortOrder: int?,
+            DealTypeCTCFlag: string,
+            AgreementEffectiveDate: DateTime?,
+            FirstBilledDate: DateTime?,
+            PrimaryExpirationDate: DateTime?,
+            ActualPrimaryExpirationDate: DateTime?,
+            RenewalIndicator: string,
+            FederalDealFlag: string,
+            DiscountScrubCommentary: string,
+            RenewedRange: string,
+            SCEAzureOnlyFlag: string,
+            AzureOnlyFlag: string,
+            RenewedWithinExpirationMonthFlag: string,
+            MaxPfamDiscountPercentText: string,
+            AgreementExpectedEndDateMss: DateTime?,
+            CategoryType: string,
+            CategorySubType: string,
+            CategorySubTypeId: int?,
+            CategoryTypeOrdering: int?,
+            EscalationSubType: string,
+            EscalationSubTypeId: int?,
+            EscalationType: string,
+            Status: string,
+            AreaName: string,
+            SubsidiaryName: string,
+            CountryName: string,
+            NonProfitFlag: string,
+            WithoutBECFlag: string,
+            QualifiedPipelineFlag: string,
+            CommittedQualifiedPipelineFlag: string,
+            WasRenewedOrInPipelineFlag: string,
+            OrganizationArea: string,
+            CityName: string,
+            OrganizationCountry: string,
+            PostalCodeName: string,
+            PrimaryCustomerID: int?,
+            PrimaryCustomerName: string,
+            StateName: string,
+            OrganizationSubsidiary: string
+    FROM @WCSView_DimEnrollmentTerm_text_path
+    USING DefaultTextExtractor(
+        delimiter: '\t',
+        escape: false,
+        skipFirstNRows: 1,
+        silent: true
+    );
+
+WCSView_DimEnrollmentTerm_text =
+    SELECT AgreementId,
+           PrimaryPriorAgreementId,
+           FederalDealFlag,
+           CalculatedDuration,
+           RenewalFlag,
+           AgreementEffectiveDate,
+           PrimaryExpirationDate,
+           BDTouchFlag,
+           PrimaryLicenseAgreementContractType,
+           DIM_EnrollmentTermId,
+           DealTypeAtSigning
+    FROM WCSView_DimEnrollmentTerm_text;
+
+Conformed_Dim_Date_text =
+    EXTRACT DIM_DateId: int?,
+            SalesDateId: int?,
+            FiscalMonthId: int?,
+            FiscalQuarterId: int?,
+            FiscalYearId: int?,
+            FiscalQuarterName: string,
+            FiscalMonthName: string,
+            FiscalYearName: string,
+            CalendarMonthName: string,
+            CalendarDate: DateTime?,
+            CalendarDateName: string,
+            MonthRelativeId: int?,
+            FMBeginDate: DateTime?,
+            FMEndDate: DateTime?,
+            TransactionDataPopulated: int?,
+            FiscalSemesterId: int?,
+            FiscalSemesterName: string,
+            ReportingWeekId: int?,
+            RWBeginDate: DateTime?,
+            RWEndDate: DateTime?,
+            GregorianMonthId: int?,
+            GregorianMonthBeginDate: DateTime?,
+            GregorianMonthEndDate: DateTime?,
+            GregorianMonthName: string,
+            GregorianMonthFullName: string,
+            GregorianQuarterId: int?,
+            GregorianQuarterName: string,
+            GregorianSemesterId: int?,
+            GregorianSemesterName: string,
+            GregorianYearId: int?,
+            GregorianYearName: string,
+            AggregatedGregorianSalesDateId: int?,
+            RelativeYear: string,
+            RelativeYearNumber: int?,
+            FYWeekNum: int?,
+            FQWeekNum: int?,
+            FQReportingWeekNum: int?,
+            FQReportingWeekNumCYAligned: int?,
+            FYReportingWeekNum: int?,
+            DayOfMonth: int?,
+            Weekday: string,
+            CurrentQuarter: string,
+            MTD: string,
+            QTD: string,
+            YTD: string,
+            TTM: string,
+            MTFD: string,
+            QTFD: string,
+            YTFD: string,
+            MTD_1: string,
+            QTD_1: string,
+            YTD_1: string,
+            TTM_1: string,
+            RW_1EndDate: string,
+            PastDate: string,
+            CurrentMonth: string,
+            ROQ: string,
+            ROY: string,
+            MonthSort: int?,
+            RelativeMonth: string,
+            RelativeQuarter: string,
+            TimeReferenceFlag: string,
+            O365ConsumerCohort: string,
+            CurrentDayFlag: string,
+            TimeReferenceFlagDaily: string,
+            FiscalWeekId: int?,
+            FWBeginDate: DateTime?,
+            FWEndDate: DateTime?,
+            ReportingPeriodKey: int?,
+            FiscalMonthNr: int?,
+            FiscalQuarterNr: int?,
+            FiscalMonthNr_InQuarter: int?,
+            Trailing3MonthsFlag: string,
+            Trailing6MonthsFlag: string,
+            Trailing12MonthsFlag: string,
+            Trailing13MonthsFlag: string
+    FROM @Conformed_Dim_Date_text_path
+    USING DefaultTextExtractor(
+        delimiter: '\t',
+        escape: false,
+        skipFirstNRows: 1,
+        silent: true
+    );
+
+Conformed_Dim_Date_text =
+    SELECT SalesDateId,
+           CalendarDate,
+           FiscalYearName,
+           FiscalQuarterName,
+           GregorianMonthBeginDate,
+           DIM_DateId
+    FROM Conformed_Dim_Date_text;
+
+Conformed_Dim_ProductHierarchy_text =
+    EXTRACT DIM_ProductHierarchy_ProductId: int?,
+            SuperRevSumDivisionId: int?,
+            SuperRevSumDivisionName: string,
+            SuperRevSumDivisionCode: string,
+            RevSumDivisionId: int?,
+            RevSumDivisionName: string,
+            RevSumDivisionCode: string,
+            RevSumCategoryId: int?,
+            RevSumCategoryName: string,
+            RevSumCategoryCode: string,
+            SuperDivisionId: int?,
+            SuperDivisionName: string,
+            SuperDivisionCode: string,
+            ProductDivisionId: int?,
+            ProductDivisionName: string,
+            ProductDivisionCode: string,
+            BusinessUnitId: int?,
+            BusinessUnitName: string,
+            BusinessUnitCode: string,
+            ProductUnitId: int?,
+            ProductUnitName: string,
+            ProductUnitCode: string,
+            ProductFamilyId: int?,
+            ProductFamilyName: string,
+            ProductFamilyCode: string,
+            ReportingRevSumDivisionName: string,
+            ReportingSummaryRevSumDivisionName: string,
+            PartNumber: string,
+            ItemName: string,
+            ProductTypeName: string,
+            SecondaryLicenseTypeId: int?,
+            SecondaryLicenseTypeName: string,
+            EditionTypeName: string,
+            PriceDifferentiatorName: string,
+            DerivedPriceDifferentiatorName: string,
+            VersionName: string,
+            ProductDistributionTypeName: string,
+            ProductDistributionTypeId: int?,
+            HardwareInterfaceId: int?,
+            HardwareInterfaceName: string,
+            NameDifferentiatorId: int?,
+            NameDifferentiatorName: string,
+            MarketingProgramName: string,
+            ProductGroupingName: string,
+            EndItemOfferingId: int?,
+            EndItemOfferingName: string,
+            LicenseTypeId: int?,
+            LicenseTypeName: string,
+            HostingType: string,
+            CnEProductFlag: int?,
+            CnECloudFlag: string,
+            CnELicensingFlag: string,
+            CnEDevicesFlag: string,
+            ProductivityDynamicsFlag: string,
+            ARMSPart_Flag: string,
+            AADP_Flag: string,
+            BPD_Deferred: string,
+            BPD_Runtime: string,
+            EnterpriseEdition: string,
+            RPS_Grouping: string,
+            RPS_RSC: string,
+            RPS_RSD: string,
+            RPS_SRSD: string,
+            SPLASecondaryLicenseType: string,
+            STB_ProductFamilyName: string,
+            STB_ProductFamilyName2: string,
+            SuiteEdition: string,
+            TechNet_DPL: string,
+            WS_Version: string,
+            STB_RevSumCategoryName: string,
+            STB_RevSumCategoryName2: string,
+            STB_RevSumDivisionName: string,
+            STB_SuperRevSumDivisionName: string,
+            STB_SuperSuperRevSumDivisionName: string,
+            STB_SuperSuperRevSumDivisionName3: string,
+            STB_SuperSuperRevSumDivisionName2: string,
+            STB_SuperSuperRevSumDivisionName1: string,
+            SKUCategory: string,
+            EMSProductGroupID: int?,
+            EMSProductGroup: string,
+            EMSProductDescription: string,
+            CloudAddOnFlag: string,
+            E5ProductBucket: string,
+            E5Allocation: float,
+            ProcessorCount: string,
+            CustomRevSumCategory: string,
+            CCGRevSumCategoryName: string,
+            CCGRevSumDivisionName: string,
+            CCGRevSumProductName: string,
+            CCGRevSumDevicesAndServicesName: string,
+            Bundle_Flag: string,
+            WindowsE5Flag: string,
+            SolutionArea: string,
+            CommercialUofA: string,
+            OLServiceFlagID: int?,
+            CommercialWorkload: string,
+            DynamicsWorkload: string,
+            ProductRoleName: string,
+            OLServiceFlagName: string,
+            CustomReportingRevSumDivisionName: string,
+            CustomReportingRevSumDivisionIdForSort: int?,
+            OnlineServiceFlag: string,
+            KioskFlag: string,
+            E5ProductGroup: string,
+            E5ProductSubGroup: string,
+            E5ProductSummaryGroup: string,
+            O365_1MonthFlag: string,
+            O365_AFOFlag: string,
+            O365_Excel1MonthAFOFlag: string,
+            O365Flag: string,
+            O365UniversityFlag: string,
+            OtherMODFlag: string,
+            PerpetualMACFlag: string,
+            PerpetualMIXFlag: string,
+            PerpetualPCFlag: string,
+            ProjectDesktopFlag: string,
+            SFB_PSTNFlag: string,
+            SPEFlag: string,
+            VoiceAddOnFlag: string,
+            WebAppFlag: string,
+            Workload_AzureFlag: string,
+            Workload_BIFlag: string,
+            Workload_CRMFlag: string,
+            Workload_DevToolsFlag: string,
+            Workload_EndpointManagementFlag: string,
+            Workload_ERPFlag: string,
+            Workload_ExchangeFlag: string,
+            Workload_IdentityFlag: string,
+            Workload_MDOPFlag: string,
+            Workload_MiddlewareFlag: string,
+            Workload_OfficeFlag: string,
+            Workload_ProjectFlag: string,
+            Workload_RemoteServicesFlag: string,
+            Workload_RightsManagementFlag: string,
+            Workload_SecurityFlag: string,
+            Workload_ServerOSFlag: string,
+            Workload_SFBFlag: string,
+            Workload_SFBVoiceFlag: string,
+            Workload_SharePointFlag: string,
+            Workload_SQLFlag: string,
+            Workload_SystemManagementFlag: string,
+            Workload_VisioFlag: string,
+            Workload_WindowsFlag: string,
+            OtherFlag: string,
+            Per_User_CAL: string,
+            ServerFlag: string,
+            PremiumFlag: string,
+            SuitesFlag: string,
+            Sfb_ConfFlag: string,
+            Sfb_E5_StandaloneFlag: string,
+            Workload_SfB_ConfFlag: string,
+            Workload_SfB_E5_StandaloneFlag: string,
+            OverageFlag: string,
+            Workload_Windows_SecurityFlag: string,
+            Workload_Office_SecurityFlag: string,
+            Workload_Other_Office_RevenueFlag: string,
+            ProductIdentification: string,
+            IdentificationLevel: string,
+            O365Seat_Flag: string,
+            SummaryUofA: string,
+            DetailUofA: string,
+            BizAppsCrossSellServiceFlag: string,
+            IRProductGroup1: string,
+            IRProductGroup2: string,
+            IRProductGroup3: string,
+            LinkedIn_Flag: string,
+            PremiumService: string,
+            LTVAzureGrouping: string,
+            FLWFlag: int?
+    FROM @Conformed_Dim_ProductHierarchy_text_path
+    USING DefaultTextExtractor(
+        delimiter: '\t',
+        escape: false,
+        skipFirstNRows: 1,
+        silent: true
+    );
+
+Conformed_Dim_ProductHierarchy_text =
+    SELECT DIM_ProductHierarchy_ProductId,
+           SuperRevSumDivisionName,
+           PartNumber,
+           RevSumDivisionName,
+           RevSumCategoryName,
+           ProductFamilyName,
+           ProductFamilyCode
+    FROM Conformed_Dim_ProductHierarchy_text;
+
+Conformed_Dim_FieldGeographyHierarchy_text =
+    EXTRACT DIM_FieldGeographyHierarchyId: int?,
+            BigAreaName: string,
+            AreaName: string,
+            RegionName: string,
+            SubRegionName: string,
+            SubsidiaryName: string,
+            SubsidiaryRegionName: string,
+            SubsidiaryDistrictName: string,
+            SubsidiarySubDistrictName: string
+    FROM @Conformed_Dim_FieldGeographyHierarchy_text_path
+    USING DefaultTextExtractor(
+        delimiter: '\t',
+        escape: false,
+        skipFirstNRows: 1,
+        silent: true
+    );
+
+Conformed_Dim_FieldGeographyHierarchy_text =
+    SELECT SubsidiaryName,
+           DIM_FieldGeographyHierarchyId
+    FROM Conformed_Dim_FieldGeographyHierarchy_text;
+
+Conformed_Dim_Enrollment_text =
+    EXTRACT DIM_Enrollment_AgreementVersionId: int?,
+            AgreementId: string,
+            AgreementStatusName: string,
+            MasterAgreementNumber: string,
+            BusinessAgreementNumber: string,
+            EnrollmentCreatedDate: DateTime?,
+            MasterAgreementEffectiveDate: DateTime?,
+            MasterAgreementEndDate: DateTime?,
+            OriginalEnrollmentEffectiveDate: DateTime?,
+            EnrollmentActualEndDate: DateTime?,
+            EnrollmentContractTypeId: int?,
+            LicenseAgreementContractTypeName: string,
+            LicensingProgram: string,
+            EnrollmentSubsidiaryId: int?,
+            Enrollment_PARSubsidiary: string,
+            PrimaryPriorAgreementId: string,
+            PrimaryExpirationDate: DateTime?,
+            AgreementExpectedEndDate: DateTime?,
+            RenewalTypeName: string,
+            ProgramName: string,
+            ProgramId: int?,
+            CALEquivalencyStatusName: string,
+            RenewalStartDate: DateTime?,
+            RenewalEndDate: DateTime?,
+            PrimaryPriorEndDate: DateTime?,
+            PrimaryRenewedIntoAgreementId: string,
+            OEMCustomerType: string,
+            SummaryOEMCustomerType: string,
+            Continuation: string,
+            OEMCustomerTypeGrouping: string,
+            HostAccountNameRank_YTD: int?,
+            HostAccountNameRank_QTD: int?,
+            HyperscalerFlag: string,
+            CustomAllocatedEnrollmentFlag: string,
+            AlternateAgreementID: string
+    FROM @Conformed_Dim_Enrollment_text_path
+    USING DefaultTextExtractor(
+        delimiter: '\t',
+        escape: false,
+        skipFirstNRows: 1,
+        silent: true
+    );
+
+Conformed_Dim_Enrollment_text =
+    SELECT AgreementId,
+           ProgramId
+    FROM Conformed_Dim_Enrollment_text;
+
+Conformed_Dim_PurchaseOrderType_text =
+    EXTRACT DIM_PurchaseOrderTypeId: int?,
+            PurchaseOrderTypeCode: string,
+            PurchaseOrderTypeName: string
+    FROM @Conformed_Dim_PurchaseOrderType_text_path
+    USING DefaultTextExtractor(
+        delimiter: '\t',
+        escape: false,
+        skipFirstNRows: 1,
+        silent: true
+    );
+
+Conformed_Dim_PurchaseOrderType_text =
+    SELECT DIM_PurchaseOrderTypeId,
+           PurchaseOrderTypeName
+    FROM Conformed_Dim_PurchaseOrderType_text;
+
+// START BUSINESS LOGIC. Edit below this line
+FederalDeals = 
+    SELECT DISTINCT AgreementId.Trim(new char[]{'"'}).Trim() AS AgreementId, ProgramId FROM Conformed_Dim_Enrollment_text WHERE ProgramId == 64 ;
+
+Conformed_Dim_Date_text =
+    SELECT SalesDateId,
+           (DateTime) CalendarDate AS CalendarDate,
+           FiscalYearName.Trim(new char[]{'"'}).Trim() AS FiscalYearName,
+           FiscalQuarterName.Trim(new char[]{'"'}).Trim() AS FiscalQuarterName,
+           GregorianMonthBeginDate AS FiscalMonth,
+           DIM_DateId
+    FROM Conformed_Dim_Date_text
+WHERE CalendarDate <= DateTime.Now 
+AND SalesDateId != NULL 
+AND DIM_DateId != NULL
+;
+
+WCSView_FactEADisco_text = 
+SELECT F.* 
+       ,(DateTime) D.FiscalMonth AS FirstBilledDate
+       ,D.FiscalYearName AS FirstBilledFY
+       ,D.FiscalQuarterName AS FirstBilledQtr
+       , D.CalendarDate
+FROM WCSView_FactDiscount_text AS F 
+INNER JOIN Conformed_Dim_Date_text AS D ON F.DIM_FirstBilledDateId == D.DIM_DateId
+WHERE F.DIM_FirstBilledDateId != NULL AND F.DIM_EnrollmentTermId != NULL AND F.CombinationProductId != NULL
+AND F.DIM_PrimaryEnrollmentFieldGeographyHierarchyId != NULL
+;
+
+Conformed_Dim_ProductHierarchy_text = SELECT 
+        DIM_ProductHierarchy_ProductId,
+           SuperRevSumDivisionName.Trim(new char[]{'"'}).Trim() AS SuperRevSumDivisionName,
+           PartNumber.Trim(new char[]{'"'}).Trim() AS PartNumber,
+           RevSumDivisionName.Trim(new char[]{'"'}).Trim() AS RevSumDivisionName,
+           RevSumCategoryName.Trim(new char[]{'"'}).Trim() AS RevSumCategoryName,
+           ProductFamilyName.Trim(new char[]{'"'}).Trim() AS ProductFamilyName,
+           ProductFamilyCode.Trim(new char[]{'"'}).Trim() AS ProductFamilyCode
+         FROM Conformed_Dim_ProductHierarchy_text
+         WHERE DIM_ProductHierarchy_ProductId != NULL
+;
+
+Conformed_Dim_ProductHierarchy_text = 
+    SELECT * 
+    FROM Conformed_Dim_ProductHierarchy_text
+    WHERE SuperRevSumDivisionName IN (
+    "O365 Core - Non M365",
+	"O365 Core - M365",
+	"Office",
+	"Enterprise Client",
+	"Enterprise Mobility Core - M365",
+	"Windows Core - Non M365 Enterprise",
+	"Windows Core - M365",
+	"Hardware",
+	"Enterprise Mobility Core - Non M365",
+	"O365 E5 - M365",
+	"Windows Core - Non M365 E3",
+	"Enterprise Mobility E5 - M365",
+	"Enterprise Mobility E5 - Non M365",
+	"Windows E5 - M365",
+	"Power BI - Non M365",
+	"Windows E5 - Non M365",
+	"O365 E5 - Non M365",
+	"Power BI - M365",
+	"Windows Device Licensing",
+	"Windows Embedded"
+)
+;
+
+
+WCSView_Dim_AgreementAttributes_text = 
+    SELECT AgreementId.Trim(new char[]{'"'}).Trim() AS AgreementId
+    , PrimaryPriorAgreementId.Trim(new char[]{'"'}).Trim() AS PrimaryPriorAgreementID   
+    , FederalDealFlag.Trim(new char[]{'"'}).Trim() AS FederalDealFlag 
+    , CalculatedDuration
+    , RenewalFlag.Trim(new char[]{'"'}).Trim() AS RenewalFlag
+    , AgreementEffectiveDate
+    , PrimaryExpirationDate
+    , BDTouchFlag.Trim(new char[]{'"'}).Trim() AS BDTouchFlag
+    , PrimaryLicenseAgreementContractType.Trim(new char[]{'"'}).Trim() AS PrimaryLicenseAgreementContractType
+    , DIM_EnrollmentTermId
+    , DealTypeAtSigning.Trim(new char[]{'"'}).Trim() AS DealTypeAtSigning
+    FROM WCSView_DimEnrollmentTerm_text  
+    WHERE AgreementId != NULL;
+
+Conformed_Dim_PurchaseOrderType_text  = 
+SELECT DIM_PurchaseOrderTypeId,
+       PurchaseOrderTypeName.Trim(new char[]{'"'}).Trim() AS PurchaseOrderTypeName
+FROM Conformed_Dim_PurchaseOrderType_text 
+WHERE DIM_PurchaseOrderTypeId != NULL;
+
+Conformed_Dim_PurchaseOrderType_text  = 
+SELECT DIM_PurchaseOrderTypeId,
+       PurchaseOrderTypeName
+FROM Conformed_Dim_PurchaseOrderType_text 
+WHERE PurchaseOrderTypeName == "Basic Enterprise Commitment"; // filter down to BEC deals 
+
+
+
+DistHist = 
+SELECT A.AgreementId AS EnrollmentNumber
+, A.PrimaryPriorAgreementID
+, (E.ProgramId == 64 OR A.FederalDealFlag == "Yes")? 1:0 AS FederalFlag 
+,F.DIM_TPAccount_PrimaryEndCustomerTPAccountId AS TPID
+,F.FirstBilledDate
+,F.FirstBilledFY
+,F.FirstBilledQtr
+,A.CalculatedDuration
+,A.RenewalFlag
+,A.AgreementEffectiveDate
+,A.PrimaryExpirationDate
+,A.BDTouchFlag
+,(A.PrimaryLicenseAgreementContractType.Contains("UAF")? 1: 0) AS UAF_Flag
+,A.DealTypeAtSigning
+,PT.PurchaseOrderTypeName
+,P.PartNumber
+,P.DIM_ProductHierarchy_ProductId
+,P.SuperRevSumDivisionName
+,P.RevSumDivisionName
+,P.RevSumCategoryName
+,P.ProductFamilyName
+,P.ProductFamilyCode
+,FG.SubsidiaryName.Trim(new char[]{'"'}).Trim() AS SubsidiaryName
+,F.ConcessionPriceFlag AS IsAConcessionPrice
+,SUM(F.MSSalesQuantity) AS MSSalesQty
+,SUM(F.MSSalesAmount) AS ContractValue
+,SUM(F.SystemAmount) AS ListPriceAmount
+,F.CalendarDate 
+FROM WCSView_FactEADisco_text AS F 
+INNER JOIN WCSView_Dim_AgreementAttributes_text AS A ON F.DIM_EnrollmentTermId == A.DIM_EnrollmentTermId
+INNER JOIN Conformed_Dim_ProductHierarchy_text AS P ON F.CombinationProductId == P.DIM_ProductHierarchy_ProductId
+INNER JOIN Conformed_Dim_FieldGeographyHierarchy_text AS FG ON F.DIM_PrimaryEnrollmentFieldGeographyHierarchyId == FG.DIM_FieldGeographyHierarchyId
+LEFT OUTER JOIN FederalDeals AS E ON A.AgreementId == E.AgreementId  
+LEFT OUTER JOIN Conformed_Dim_PurchaseOrderType_text AS PT ON F.DIM_LicensePurchaseOrderType_PurchaseOrderTypeId == PT.DIM_PurchaseOrderTypeId
+GROUP BY EnrollmentNumber
+, PrimaryPriorAgreementID
+, FederalFlag 
+,TPID
+,CalendarDate
+,FirstBilledDate
+,FirstBilledFY
+,FirstBilledQtr
+,CalculatedDuration
+,RenewalFlag
+,AgreementEffectiveDate
+,PrimaryExpirationDate
+,BDTouchFlag
+,UAF_Flag
+,DealTypeAtSigning
+,PurchaseOrderTypeName
+,PartNumber
+,DIM_ProductHierarchy_ProductId
+,SuperRevSumDivisionName
+,RevSumDivisionName
+,RevSumCategoryName
+,ProductFamilyName
+,ProductFamilyCode
+,SubsidiaryName
+,IsAConcessionPrice
+;
+
+DistHistMonth = SELECT * FROM DistHist
+WHERE CalendarDate >= DateTime.Now.AddMonths(-38);
+
+DistHistMonth = 
+SELECT TPID,
+		FederalFlag,
+        PurchaseOrderTypeName,        
+        RenewalFlag,// since the request comes in with Deal Type at TPID level, bring it up to the same level in training 
+		ProductFamilyCode,
+		ProductFamilyName,
+		FirstBilledDate AS FirstBilledYearMonth, 
+		FirstBilledFY,
+		FirstBilledQtr,
+		SuperRevSumDivisionName,
+		RevSumDivisionName,
+		RevSumCategoryName,
+		COUNT(*) AS SKUCnt, 
+		SUM( ContractValue ) AS ContractValueSum,
+		SUM( ListPriceAmount ) AS ListPriceAmountSum,
+		MIN( FirstBilledDate ) AS FirstBilledDateInMonth,
+		MAX( CalculatedDuration ) AS MaxDuration,
+		AVG( CalculatedDuration ) AS AvgDuration,
+		MIN( AgreementEffectiveDate ) AS FirstAgrEffectiveDate,
+		MIN( PrimaryExpirationDate ) AS FirstPrimaryExpDate,
+		(int?) SUM( IsAConcessionPrice == "No"? 1: 0 ) AS NonConcessionCnt,
+		(int?) SUM( IsAConcessionPrice == "Yes"? 1: 0 ) AS ConcessionCnt,
+		SUM( IsAConcessionPrice == "No"? ContractValue:0 ) AS NonConcessionContractAmt,
+		SUM( IsAConcessionPrice == "Yes"? ContractValue:0 ) AS ConcessionContractAmt
+FROM DistHistMonth 
+GROUP BY TPID,
+		FederalFlag,
+        PurchaseOrderTypeName,
+        RenewalFlag,
+		ProductFamilyCode,
+		ProductFamilyName,
+		FirstBilledYearMonth,
+		FirstBilledFY,
+		FirstBilledQtr,
+		SuperRevSumDivisionName,
+		RevSumDivisionName,
+		RevSumCategoryName;
+
+DealMonthSummary = 
+SELECT	TPID, 
+		FirstBilledYearMonth,
+		COUNT( DISTINCT	SuperRevSumDivisionName ) AS DealSuperRevSumDivCnt,
+		COUNT( DISTINCT	RevSumDivisionName ) AS DealRevSumDivCnt,
+		COUNT( DISTINCT	RevSumCategoryName ) AS DealRevSumCatCnt,
+		COUNT( DISTINCT	ProductFamilyCode ) AS DealProdFamCnt,
+		(double?) SUM( ContractValueSum ) AS DealContractValueSum,
+		(double?) SUM( ListPriceAmountSum ) AS DealListPriceAmountSum
+FROM DistHistMonth
+GROUP BY TPID, FirstBilledYearMonth;
+
+DistHistMonth = 
+	SELECT *,
+			LAG( FirstBilledYearMonth, 1 ) OVER (PARTITION BY TPID, ProductFamilyCode ORDER BY FirstBilledYearMonth ) AS PrevEnrollmentYearMonth,
+			LAG( FirstBilledDateInMonth, 1 ) OVER (PARTITION BY TPID, ProductFamilyCode ORDER BY FirstBilledYearMonth ) AS PrevBilledDate,
+			LAG( FirstAgrEffectiveDate, 1 ) OVER (PARTITION BY TPID, ProductFamilyCode ORDER BY FirstBilledYearMonth ) AS PrevAgrEffectiveDate,
+			(double?) LAG( ContractValueSum, 1 ) OVER (PARTITION BY TPID, ProductFamilyCode ORDER BY FirstBilledYearMonth ) AS PrevContractValue,
+			(double?) LAG( ListPriceAmountSum, 1 ) OVER (PARTITION BY TPID, ProductFamilyCode ORDER BY FirstBilledYearMonth ) AS PrevListPriceAmount,
+			LAG( MaxDuration, 1 ) OVER (PARTITION BY TPID, ProductFamilyCode ORDER BY FirstBilledYearMonth ) AS PrevDuration,
+			(int?) LAG( ConcessionCnt, 1 ) OVER (PARTITION BY TPID, ProductFamilyCode ORDER BY FirstBilledYearMonth ) AS PrevConcessionCnt
+	FROM DistHistMonth;
+
+
+Agg_DealHistory_dataset = 
+SELECT	a.TPID,
+		a.FederalFlag,
+        PurchaseOrderTypeName,
+        RenewalFlag,
+		ProductFamilyCode,
+		ProductFamilyName,
+		FirstBilledYearMonth,
+		FirstBilledFY,
+		FirstBilledQtr,
+		SuperRevSumDivisionName,
+		RevSumDivisionName,
+		RevSumCategoryName,     
+		SKUCnt,
+        ContractValueSum,
+        ListPriceAmountSum,
+        FirstBilledDateInMonth,
+        MaxDuration, 
+        AvgDuration,
+        FirstAgrEffectiveDate,
+        FirstPrimaryExpDate,
+        NonConcessionCnt,
+        ConcessionCnt,
+        NonConcessionContractAmt,
+        ConcessionContractAmt,
+        (ConcessionCnt > 0 AND NonConcessionCnt == 0)? 1:(ConcessionCnt == 0 AND NonConcessionCnt > 0)? 0: 0 AS ConcessionFlg,
+        PrevEnrollmentYearMonth,
+        PrevBilledDate, 
+        PrevAgrEffectiveDate,
+        PrevContractValue,
+        PrevListPriceAmount,
+        PrevDuration,
+        PrevConcessionCnt,
+        (PrevListPriceAmount > 0)?( PrevListPriceAmount - PrevContractValue ) / PrevListPriceAmount: 0 AS PrevEmpDiscountRat,
+        PrevConcessionCnt > 0 ? 1: PrevConcessionCnt == 0? 0: 0 AS PrevConcessionFlg,
+        b.DealSuperRevSumDivCnt,
+		b.DealRevSumDivCnt,
+		b.DealRevSumCatCnt,
+		b.DealProdFamCnt,
+		b.DealContractValueSum,
+		b.DealListPriceAmountSum,
+        DealContractValueSum > 0? ContractValueSum / DealContractValueSum : NULL AS RevSumShareInContractValue,
+        DealListPriceAmountSum > 0? ( DealListPriceAmountSum - DealContractValueSum ) / DealListPriceAmountSum : NULL AS EnrollmentAllupEmpDiscRat
+FROM DistHistMonth AS a
+LEFT JOIN DealMonthSummary AS b ON a.TPID == b.TPID AND a.FirstBilledYearMonth == b.FirstBilledYearMonth
+                                ;
+
+SkuLevelDealHistory_dataset = 
+    SELECT
+        EnrollmentNumber,
+        PrimaryPriorAgreementID,
+        FederalFlag,
+        TPID,
+        FirstBilledDate AS FirstBilledDateFirstOfTheMonth, // This is the date from (DateTime) D.FiscalMonth where D is Conformed_Dim_Date_text. It is down to month-level granularity. 
+        CalendarDate AS FirstBilledDate, // This is the FirstBilledDate as appearing in the original SQL table, which uses CalendarDate from Conformed_Dim_Date_text. It is down to date-level granularity.
+        CalculatedDuration,
+        RenewalFlag,
+        AgreementEffectiveDate,
+        PrimaryExpirationDate,
+        BDTouchFlag,
+        UAF_Flag,
+        DealTypeAtSigning,
+        PurchaseOrderTypeName,
+        PartNumber,
+        DIM_ProductHierarchy_ProductId,
+        SuperRevSumDivisionName,
+        RevSumDivisionName,
+        RevSumCategoryName,
+        ProductFamilyName,
+        ProductFamilyCode,
+        SubsidiaryName,
+        IsAConcessionPrice,
+        MSSalesQty,
+        ContractValue,
+        ListPriceAmount
+    FROM DistHist; 
+
+SkuLevelDealHistory_dataset = SELECT TPID, FirstBilledDateFirstOfTheMonth, SuperRevSumDivisionName, SUM(ContractValue) AS ContractValue, SUM(ListPriceAmount) AS ListPriceAmount FROM SkuLevelDealHistory_dataset 
+    GROUP BY TPID, FirstBilledDateFirstOfTheMonth, SuperRevSumDivisionName;
+
+OUTPUT SkuLevelDealHistory_dataset TO SSTREAM @"/my/UToR/Discounting.ss";
+

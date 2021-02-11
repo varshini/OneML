@@ -1,0 +1,20 @@
+﻿//Script GUID:2f105648-e95d-458c-be44-11386b0b0cdc
+//Used for tracking history
+
+output1 = SSTREAM @"/my/UToR/O365_MAU.ss";
+
+OUTPUT output1
+TO "/my/UToR/O365_MAU.csv"
+USING DefaultTextOutputter(delimiter: ',', outputHeader: true);
+
+output2 = SSTREAM @"/my/UToR/AADP_MAU.ss";
+
+OUTPUT output2
+TO "/my/UToR/AADP_MAU.csv"
+USING DefaultTextOutputter(delimiter: ',', outputHeader: true);
+
+output3 = SSTREAM @"/my/UToR/ODSP_MAU.ss";
+
+OUTPUT output3
+TO "/my/UToR/ODSP_MAU.csv"
+USING DefaultTextOutputter(delimiter: ',', outputHeader: true);

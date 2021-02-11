@@ -1,0 +1,141 @@
+﻿//Script GUID:eb2f3f29-0916-4d71-9704-99c03d132321
+//Used for tracking history
+
+
+#DECLARE aadpView string = @"/shares/IDEAs.Prod.Data/Publish/Usage/Tenant/Commercial/TenantActiveUsage/Intune/Views/v3/IntuneTenantActiveUsage.view";
+
+aadp11 = 
+    VIEW @aadpView
+    PARAMS (InputDate  = DateTime.Parse("11/30/2019"));
+
+aadp11 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp AS Intune_MAU,
+           Premium AS IntunePremium_MAU
+    FROM aadp11;
+
+aadp12 = 
+    VIEW @aadpView
+    PARAMS (InputDate  = DateTime.Parse("12/31/2019"));
+
+aadp12 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp AS Intune_MAU,
+           Premium AS IntunePremium_MAU
+    FROM aadp12;
+
+aadp13 = 
+    VIEW @aadpView
+    PARAMS (InputDate  = DateTime.Parse("01/31/2020"));
+
+aadp13 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp AS Intune_MAU,
+           Premium AS IntunePremium_MAU
+    FROM aadp13;
+
+aadp14 = 
+    VIEW @aadpView
+    PARAMS (InputDate  = DateTime.Parse("02/28/2020"));
+
+aadp14 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp AS Intune_MAU,
+           Premium AS IntunePremium_MAU
+    FROM aadp14;
+
+aadp15 = 
+    VIEW @aadpView
+    PARAMS (InputDate  = DateTime.Parse("03/31/2020"));
+
+aadp15 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp AS Intune_MAU,
+           Premium AS IntunePremium_MAU
+    FROM aadp15;
+
+aadp16 = 
+    VIEW @aadpView
+    PARAMS (InputDate  = DateTime.Parse("04/30/2020"));
+
+aadp16 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp AS Intune_MAU,
+           Premium AS IntunePremium_MAU
+    FROM aadp16;
+
+aadp17 = 
+    VIEW @aadpView
+    PARAMS (InputDate  = DateTime.Parse("05/31/2020"));
+
+aadp17 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp AS Intune_MAU,
+           Premium AS IntunePremium_MAU
+    FROM aadp17;
+
+aadp18 = 
+    VIEW @aadpView
+    PARAMS (InputDate  = DateTime.Parse("06/30/2020"));
+
+aadp18 =
+    SELECT Date,
+           OmsTenantId,
+           AllUp AS Intune_MAU,
+           Premium AS IntunePremium_MAU
+    FROM aadp18;
+
+aadp_data =
+    SELECT *
+    FROM aadp11 UNION ALL
+    SELECT *
+    FROM aadp12 UNION ALL
+    SELECT *
+    FROM aadp13 UNION ALL
+    SELECT *
+    FROM aadp14 UNION ALL
+    SELECT *
+    FROM aadp15 UNION ALL
+    SELECT *
+    FROM aadp16 UNION ALL
+    SELECT *
+    FROM aadp17 UNION ALL
+    SELECT *
+    FROM aadp18; 
+
+#DECLARE tenant_tpid_mapping string = @"/shares/IDEAs.Prod.Data/Publish/Profiles/Tenant/Commercial/IDEAsTenantTPIDMappingProfile/Views/v1/IDEAsTenantTPIDMappingProfile.view";
+
+mapping = 
+    VIEW @tenant_tpid_mapping
+    PARAMS (HistoryDate = DateTime.Parse("12/31/2020"));
+
+mapping =
+    SELECT OMSTenantId,
+           FinalTPID AS TPId
+    FROM mapping;
+
+aadp_data =
+    SELECT aadp_data.*, mapping.TPId
+    FROM aadp_data
+         INNER JOIN
+             mapping
+         ON aadp_data.OmsTenantId == mapping.OMSTenantId;
+
+aadp_data =
+    SELECT TPId,
+           Date,
+           SUM(Intune_MAU) AS Intune_MAU,
+           SUM(IntunePremium_MAU) AS IntunePremium_MAU
+    FROM aadp_data
+    GROUP BY TPId,
+             Date;
+
+OUTPUT aadp_data
+TO SSTREAM @"/my/UToR/Intune_MAU.ss";

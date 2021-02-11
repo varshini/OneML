@@ -1,0 +1,34 @@
+﻿//Script GUID:964db58c-329d-470d-8e37-20cd11810d8f
+//Used for tracking history
+
+
+//PCIB
+#DECLARE pcibView string = @"/shares/IDEAs.Prod.Data/Publish/Usage/Tenant/Commercial/Metrics/Field/Win10MAD/AdjustedPCIB/Views/v2/AdjustedPCIB.view";
+
+pcib = 
+    VIEW @pcibView
+    PARAMS (StreamDate  = DateTime.Parse("06/30/2020"));
+
+pcib =
+    SELECT TPID, AdjustedPCIBDate, 
+           AdjustedPCIB 
+    FROM pcib;
+
+pcib1 = 
+    VIEW @pcibView
+    PARAMS (StreamDate  = DateTime.Parse("03/31/2020"));
+
+pcib1 =
+    SELECT TPID, AdjustedPCIBDate, 
+           AdjustedPCIB
+    FROM pcib1;
+
+pcib_data =
+    SELECT *
+    FROM pcib
+    UNION ALL
+    SELECT *
+    FROM pcib1;
+
+OUTPUT pcib_data
+TO SSTREAM @"/my/UToR/PCIB.ss";

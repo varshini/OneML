@@ -1,11 +1,5 @@
-# cohort_august <- read.csv("C:\\Users\\varamase\\Documents\\DataStreams\\SalesModelsFY21\\ActualsOverlay\\Cohort_August.csv")
-# colnames(cohort_august)[1] <- "FinalTPID"
-
-actuals <- read.csv("C:\\Users\\varamase\\Documents\\DataStreams\\SalesModelsFY21\\ActualsOverlay\\Q1EndActuals.csv")
+actuals <- read.csv("C:\\Users\\varamase\\Documents\\DataStreams\\SalesModelsFY21\\ActualsOverlay\\H1Upsell.csv")
 colnames(actuals)[1] <- "FinalTPID"
-actuals <- filter(actuals, IS.UPSELL == 1)
-
-# actuals <- filter(actuals, `August Upsell` != "On Prem")
 
 mal <- read.csv("C:\\Users\\varamase\\Documents\\DataStreams\\SalesModelsFY21\\MAL.csv")
 colnames(mal)[1] <- "FinalTPID"
@@ -65,54 +59,33 @@ e5$Model <- "E5"
 ######## Analysis ########
 #Overall Models Coverage #
 all_tpids <- rbind(o365, ems, e5, ca)
-all_tpids_1 <- data.frame(unique(all_tpids$FinalTPID))
-colnames(all_tpids_1)[1] <- "FinalTPID"
-a <- inner_join(all_tpids_1, actuals)
+all_tpids_2 <- data.frame(unique(all_tpids$FinalTPID))
+colnames(all_tpids_2)[1] <- "FinalTPID"
+a <- inner_join(all_tpids_2, actuals)
 nrow(a)
 nrow(a)/nrow(actuals)
 
-all_tpids_smc <- inner_join(all_tpids_1, smc)
-all_tpids_ent <- inner_join(all_tpids_1, ent)
-actuals_smc <- inner_join(smc, actuals)
-actuals_ent <- inner_join(ent, actuals)
-
-a <- inner_join(actuals_smc, all_tpids_smc) 
-nrow(a)
-nrow(a)/nrow(actuals_smc) #85%
-
-a <- inner_join(actuals_ent, all_tpids_ent) 
-nrow(a)
-nrow(a)/nrow(actuals_ent) #90%
-
-s2500 <- read.csv("C:\\Users\\varamase\\Documents\\DataStreams\\SalesModelsFY21\\ActualsOverlay\\S2500.csv")
-colnames(s2500)[1] <- "FinalTPID"
-
-all_tpids_2500 <- inner_join(all_tpids_ent, s2500)
-actuals_2500 <- inner_join(s2500, actuals)
-a <- inner_join(actuals_2500, all_tpids_2500) 
-nrow(a)
-nrow(a)/nrow(actuals_2500) #90%
-
-################################
+#######################
 # Per model #
 
-all_data <- read.csv("C:\\Users\\varamase\\Documents\\DataStreams\\SalesModelsFY21\\ActualsOverlay\\Q1EndActuals.csv")
+all_data <- read.csv("C:\\Users\\varamase\\Documents\\DataStreams\\SalesModelsFY21\\ActualsOverlay\\H1All.csv")
 colnames(all_data)[1] <- "FinalTPID"
-all_data <- filter(all_data, IS.UPSELL == 0)
+all_data$MW.PIPE[is.na(all_data$MW.PIPE)] <- 0
+all_data <- filter(all_data, IsUpsell == 0)
 
 #### M365 E5 ####
-e5_possible <- filter(all_data, SEP.BOX %in% c("2B", "2C", "3B")) #12k
-e5_propensity <- inner_join(e5_possible, e5, by = "FinalTPID")#3880
+e5_possible <- filter(all_data, Dec %in% c("2B", "2C", "3B")) #11.7k
+e5_propensity <- inner_join(e5_possible, e5, by = "FinalTPID") #3626
 e5_propensity %>% group_by(SEGMENT) %>% summarise(count = n())
 
 #### M365 E3 ####
-e3_possible <- filter(all_data, SEP.BOX %in% c("1A", "2A", "1B", "1C")) #20.4k
-e3_propensity <- inner_join(e3_possible, ca, by = "FinalTPID") #6991
+e3_possible <- filter(all_data, Dec %in% c("1A", "2A", "1B", "1C")) #19.7k
+e3_propensity <- inner_join(e3_possible, ca, by = "FinalTPID") #6606
 e3_propensity %>% group_by(SEGMENT) %>% summarise(count = n())
 
 #### O365 ####
-o365_possible <- filter(all_data, SEP.BOX %in% c("1A", "2A")) #12.2k
-o365_propensity <- inner_join(o365_possible, o365, by = "FinalTPID") #2381
+o365_possible <- filter(all_data, Dec %in% c("1A", "2A")) #13.2k
+o365_propensity <- inner_join(o365_possible, o365, by = "FinalTPID") #2628
 only_o365 <- data.frame(setdiff(o365_propensity$FinalTPID, e3_propensity$FinalTPID))
 colnames(only_o365)[1] <- "FinalTPID" #1336
 only_o365 <- inner_join(only_o365, all_data)
@@ -121,8 +94,8 @@ only_o365$Recommendation <- "Dummy"
 only_o365$Model <- "Dummy"
 
 #### EMS ####
-ems_possible <- filter(all_data, SEP.BOX %in% c("1B", "1C", "2B", "2C")) #19.1k
-ems_propensity <- inner_join(ems_possible, ems, by = "FinalTPID") #8120
+ems_possible <- filter(all_data, Dec %in% c("1B", "1C", "2B", "2C")) #19.1k
+ems_propensity <- inner_join(ems_possible, ems, by = "FinalTPID") #7711
 only_ems <- data.frame(setdiff(ems_propensity$FinalTPID, e5_propensity$FinalTPID))
 colnames(only_ems)[1] <- "FinalTPID" 
 only_ems <- data.frame(setdiff(only_ems$FinalTPID, e3_propensity$FinalTPID))
@@ -133,40 +106,26 @@ only_ems$Recommendation <- "Dummy"
 only_ems$Model <- "Dummy"
 
 #### In total ####
-all_tpids <- rbind(o365, ems, e5, ca)
-all_tpids_1 <- data.frame(unique(all_tpids$FinalTPID))
-colnames(all_tpids_1)[1] <- "FinalTPID"
-a <- inner_join(all_tpids_1, all_data)
-nrow(a)
-nrow(a)/nrow(all_data)
-
-all_tpids_smc <- inner_join(all_tpids_1, smc)
-all_tpids_ent <- inner_join(all_tpids_1, ent)
-actuals_smc <- inner_join(smc, actuals)
-actuals_ent <- inner_join(ent, actuals)
-
-a <- inner_join(actuals_smc, all_tpids_smc) 
-nrow(a)
-nrow(a)/nrow(actuals_smc) #85%
-
-a <- inner_join(actuals_ent, all_tpids_ent) 
-nrow(a)
-nrow(a)/nrow(actuals_ent) #90%
-
-correct_upsell <- rbind(e5_propensity, e3_propensity, only_o365, only_ems) # 16.8k
+correct_upsell <- rbind(e5_propensity, e3_propensity, only_o365, only_ems) #16k
 correct_upsell %>% group_by(SEGMENT) %>% summarise(count = n())
-correct_upsell %>% group_by(Anniversay.Renewal.Flag) %>% summarise(count = n())
 
+mal <- read.csv("C:\\Users\\varamase\\Documents\\DataStreams\\SalesModelsFY21\\ActualsOverlay\\MAL.csv")
+colnames(mal)[1] <- "FinalTPID" 
+correct_upsell <- inner_join(correct_upsell, mal, by = "FinalTPID")
+
+b <- correct_upsell %>% group_by(AreaName) %>% summarise(count = n())
+
+correct_upsell$MW.PIPE[is.na(correct_upsell$MW.PIPE)] <- 0
 nrow(filter(correct_upsell, MW.PIPE > 0))
-sum(correct_upsell$MW.PIPE)
-
 no_pipe <- filter(correct_upsell, MW.PIPE == 0)
 a <- no_pipe %>% group_by(AREA) %>% summarise(count = n())
 
 
-correct_upsell$finalSegment <- ifelse(correct_upsell$SEGMENT %in% c("Enterprise Commercial", "Enterprise Public Sector", 
-                                                                    "Enterprise Growth"), "Enterprise", "SMC")
-                                                                    
-a <- correct_upsell %>% group_by(AREA, finalSegment) %>% summarise(count = n())
+# correct_upsell$finalSegment <- ifelse(correct_upsell$SEGMENT %in% c("Enterprise Commercial", "Enterprise Public Sector", 
+#                                                                     "Enterprise Growth"), "Enterprise", "SMC")
+# a <- correct_upsell %>% group_by(AREA, finalSegment) %>% summarise(count = n())
 
 
+vuc <- read.csv("C:\\Users\\varamase\\Documents\\DataStreams\\SalesModelsFY21\\ActualsOverlay\\VUC_Q2.csv")
+colnames(vuc)[1] <- "FinalTPID"
+y <- inner_join(correct_upsell, vuc, by = "FinalTPID")
